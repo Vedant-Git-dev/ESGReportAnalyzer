@@ -1,0 +1,40 @@
+Company,KPI,KPI_Type,Value,Benchmark,Gap,Gap_Pct,Status,Rating
+Castrol India Limited,GHG_tCO2e_perEmployee,ESG Efficiency,1.4,662.6067,-661.2067,-99.8,Above,Good
+Castrol India Limited,Energy_GJ_perEmployee,ESG Efficiency,51.85,25.7733,26.0767,101.2,Below,Below Average
+Castrol India Limited,Female_Ratio_ContractWorkers,Social,1.74,2.4,-0.66,-27.5,Below,Below Average
+Castrol India Limited,RenewableEnergyShare_Pct,ESG Policy,49.74,16.69,33.05,198.0,Above,Good
+Castrol India Limited,Female_Ratio_PermanentWorkers,Social,3.27,4.5267,-1.2567,-27.8,Below,Below Average
+Castrol India Limited,Waste_MT_perEmployee,ESG Efficiency,2.44,13.0567,-10.6167,-81.3,Above,Good
+Castrol India Limited,Female_Ratio_AllWorkers,Social,2.61,2.8233,-0.2133,-7.6,Below,Average
+Castrol India Limited,Complaints_Filed,Governance,0.0,0.0,0.0,,Aligned,Average
+Castrol India Limited,WasteRecoveryRate_Pct,ESG Policy,98.87,84.79,14.08,16.6,Above,Good
+Castrol India Limited,Water_KL_perEmployee,ESG Efficiency,64.86,3099.3033,-3034.4433,-97.9,Above,Good
+Castrol India Limited,Female_Ratio_AllEmployees,Social,19.96,13.5333,6.4267,47.5,Above,Good
+Castrol India Limited,Fatalities,Safety,0.0,0.0,0.0,,Aligned,Average
+Castrol India Limited,Female_Ratio_PermanentEmp,Social,17.75,12.7933,4.9567,38.7,Above,Good
+Bharat Petroleum Corporation Limited,GHG_tCO2e_perEmployee,ESG Efficiency,1233.94,662.6067,571.3333,86.2,Below,Below Average
+Bharat Petroleum Corporation Limited,Energy_GJ_perEmployee,ESG Efficiency,14.77,25.7733,-11.0033,-42.7,Above,Good
+Bharat Petroleum Corporation Limited,Female_Ratio_ContractWorkers,Social,3.49,2.4,1.09,45.4,Above,Good
+Bharat Petroleum Corporation Limited,RenewableEnergyShare_Pct,ESG Policy,0.16,16.69,-16.53,-99.0,Below,Below Average
+Bharat Petroleum Corporation Limited,Female_Ratio_PermanentWorkers,Social,4.43,4.5267,-0.0967,-2.1,Below,Average
+Bharat Petroleum Corporation Limited,Waste_MT_perEmployee,ESG Efficiency,21.22,13.0567,8.1633,62.5,Below,Below Average
+Bharat Petroleum Corporation Limited,Female_Ratio_AllWorkers,Social,3.57,2.8233,0.7467,26.4,Above,Good
+Bharat Petroleum Corporation Limited,Complaints_Filed,Governance,0.0,0.0,0.0,,Aligned,Average
+Bharat Petroleum Corporation Limited,WasteRecoveryRate_Pct,ESG Policy,84.4,84.79,-0.39,-0.5,Below,Average
+Bharat Petroleum Corporation Limited,Water_KL_perEmployee,ESG Efficiency,4125.48,3099.3033,1026.1767,33.1,Below,Below Average
+Bharat Petroleum Corporation Limited,Female_Ratio_AllEmployees,Social,9.96,13.5333,-3.5733,-26.4,Below,Below Average
+Bharat Petroleum Corporation Limited,Fatalities,Safety,0.0,0.0,0.0,,Aligned,Average
+Bharat Petroleum Corporation Limited,Female_Ratio_PermanentEmp,Social,9.94,12.7933,-2.8533,-22.3,Below,Below Average
+Indian Oil Corporation Limited,GHG_tCO2e_perEmployee,ESG Efficiency,752.48,662.6067,89.8733,13.6,Below,Below Average
+Indian Oil Corporation Limited,Energy_GJ_perEmployee,ESG Efficiency,10.7,25.7733,-15.0733,-58.5,Above,Good
+Indian Oil Corporation Limited,Female_Ratio_ContractWorkers,Social,1.97,2.4,-0.43,-17.9,Below,Below Average
+Indian Oil Corporation Limited,RenewableEnergyShare_Pct,ESG Policy,0.17,16.69,-16.52,-99.0,Below,Below Average
+Indian Oil Corporation Limited,Female_Ratio_PermanentWorkers,Social,5.88,4.5267,1.3533,29.9,Above,Good
+Indian Oil Corporation Limited,Waste_MT_perEmployee,ESG Efficiency,15.51,13.0567,2.4533,18.8,Below,Below Average
+Indian Oil Corporation Limited,Female_Ratio_AllWorkers,Social,2.29,2.8233,-0.5333,-18.9,Below,Below Average
+Indian Oil Corporation Limited,Complaints_Filed,Governance,0.0,0.0,0.0,,Aligned,Average
+Indian Oil Corporation Limited,WasteRecoveryRate_Pct,ESG Policy,71.1,84.79,-13.69,-16.1,Below,Below Average
+Indian Oil Corporation Limited,Water_KL_perEmployee,ESG Efficiency,5107.57,3099.3033,2008.2667,64.8,Below,Below Average
+Indian Oil Corporation Limited,Female_Ratio_AllEmployees,Social,10.68,13.5333,-2.8533,-21.1,Below,Below Average
+Indian Oil Corporation Limited,Fatalities,Safety,0.0,0.0,0.0,,Aligned,Average
+Indian Oil Corporation Limited,Female_Ratio_PermanentEmp,Social,10.69,12.7933,-2.1033,-16.4,Below,Below Average

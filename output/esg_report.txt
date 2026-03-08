@@ -1,0 +1,413 @@
+==============================================================================================================================================
+  ESG BENCHMARKING REPORT — SEBI BRSR XBRL  |  FY 2024-25
+  Mode     : Industry average benchmark
+  Companies: Castrol India Limited | Bharat Petroleum Corporation Limited | Indian Oil Corporation Limited
+==============================================================================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 0 — EXECUTIVE SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ESG Performance Rating per Company
+  ✓ GOOD (≥+10% vs benchmark)  |  ~ AVERAGE (±10%)  |  ✗ BELOW AVERAGE (≤−10%)  |  — N/A
+
+  Category                              Castrol India Limited         Bharat Petroleum Corporation  Indian Oil Corporation Limit  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Gender Diversity — Employees          ✓ Good                        ✗ Below Average               ✗ Below Average               
+  Gender Diversity — Workers            ✗ Below Average               ~ Average                     ✗ Below Average               
+  Renewable Energy                      ✓ Good                        ✗ Below Average               ✗ Below Average               
+  GHG Emissions Intensity               ✓ Good                        ✗ Below Average               ✗ Below Average               
+  Energy Efficiency                     ✗ Below Average               ✓ Good                        ✓ Good                        
+  Water Efficiency                      ✓ Good                        ✗ Below Average               ✗ Below Average               
+  Waste Management                      ✓ Good                        ✗ Below Average               ✗ Below Average               
+  Workplace Safety                      ~ Average                     ~ Average                     ~ Average                     
+  Training & Development                — N/A                         — N/A                         — N/A                         
+  Governance                            ~ Average                     ~ Average                     ~ Average                     
+
+  Company Snapshot
+  ────────────────────────────────────────────────────────────
+
+  Castrol India Limited
+    ✓ GOOD          : Gender Diversity — Employees, Renewable Energy, GHG Emissions Intensity, Water Efficiency, Waste Management
+    ~ AVERAGE       : Workplace Safety, Governance
+    ✗ BELOW AVERAGE : Gender Diversity — Workers, Energy Efficiency
+    — DATA MISSING  : Training & Development
+
+  Bharat Petroleum Corporation Limited
+    ✓ GOOD          : Energy Efficiency
+    ~ AVERAGE       : Gender Diversity — Workers, Workplace Safety, Governance
+    ✗ BELOW AVERAGE : Gender Diversity — Employees, Renewable Energy, GHG Emissions Intensity, Water Efficiency, Waste Management
+    — DATA MISSING  : Training & Development
+
+  Indian Oil Corporation Limited
+    ✓ GOOD          : Energy Efficiency
+    ~ AVERAGE       : Workplace Safety, Governance
+    ✗ BELOW AVERAGE : Gender Diversity — Employees, Gender Diversity — Workers, Renewable Energy, GHG Emissions Intensity, Water Efficiency, Waste Management
+    — DATA MISSING  : Training & Development
+
+  ⚠  Bharat Petroleum Corporation Limited: the following ratios have small denominators (< 30) and are excluded from rankings:
+       • Female_Ratio_NonPermEmployees
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 1 — COMPANY KPI SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Metric                                              Castrol India Limited         Bharat Petroleum Corporation  Indian Oil Corporation Limit  
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  [Workforce — Headcount [scale]]
+  Permanent Employees  [scale]                        479.00                        6196.00                       18740.00                      
+  Permanent Workers  [scale]                          153.00                        2551.00                       11201.00                      
+  Contract Workers  [scale]                           115.00                        27629.00                      124633.00                     
+  Total Employees  [scale]                            561.00                        6197.00                       19131.00                      
+  Total Workers  [scale]                              268.00                        30180.00                      135834.00                     
+
+  [Workforce — Diversity [social / ranked]]
+  Female % (Perm Employees)                           17.75                         9.94                          10.69                         
+  Female % (Perm Workers)                             3.27                          4.43                          5.88                          
+  Female % (Contract Workers)                         1.74                          3.49                          1.97                          
+  Female % (All Employees)                            19.96                         9.96                          10.68                         
+  Female % (All Workers)                              2.61                          3.57                          2.29                          
+
+  [Environmental — Operational Scale [context only, not ranked]]
+  Total Energy (GJ)  [scale]                          32771.00                      129219.14                     320346.00                     
+  Renewable Energy (GJ)  [scale]                      16301.00                      212.24                        556.00                        
+  Total GHG Scope1+2 (tCO2e)  [scale]                 883.00                        10793298.65                   22530000.00                   
+  GHG Scope 1 (tCO2e)  [scale]                        769.00                        9935959.52                    21240000.00                   
+  GHG Scope 2 (tCO2e)  [scale]                        114.00                        857339.13                     1290000.00                    
+  Water Consumption (KL)  [scale]                     40994.00                      36085530.00                   152925668.00                  
+  Waste Generated (MT)  [scale]                       1544.72                       185615.69                     464362.00                     
+  Waste Recovered (MT)  [scale]                       1527.24                       156655.15                     330174.00                     
+
+  [Environmental — ESG Efficiency [ranked, lower = better]]
+  GHG / Employee (tCO2e)  ↓better                     1.40                          1233.94                       752.48                        
+  Energy / Employee (GJ)  ↓better                     51.85                         14.77                         10.70                         
+  Water / Employee (KL)  ↓better                      64.86                         4125.48                       5107.57                       
+  Waste / Employee (MT)  ↓better                      2.44                          21.22                         15.51                         
+
+  [Environmental — ESG Policy [ranked, higher = better]]
+  Renewable Energy Share (%)                          49.74                         0.16                          0.17                          
+  Waste Recovery Rate (%)                             98.87                         84.40                         71.10                         
+
+  [Safety [ranked, lower = better]]
+  Fatalities  ↓better                                 N/A                           N/A                           N/A                           
+
+  [Financial — Operational Scale [context only, not ranked]]
+  Turnover (INR)  [scale]                             ₹57,215,019,535               ₹5,003,712,500,000            ₹8,455,130,000,000            
+  Net Worth (INR)  [scale]                            ₹19,003,000,000               ₹809,600,900,000              ₹1,508,627,000,000            
+
+  [Governance [ranked, lower = better]]
+  Complaints Filed  ↓better                           N/A                           N/A                           N/A                           
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 2 — ESG EFFICIENCY & POLICY RANKINGS
+  (Only normalised intensity metrics, policy rates, social ratios,
+   safety and governance KPIs — operational scale metrics excluded)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ── ESG Efficiency — lower = better ↓ ──
+
+  Energy_GJ_perEmployee  [↓ lowest = best]
+    🥇  Indian Oil Corporation Limited                 10.7000        ✓ Most Efficient (lowest intensity)
+    🥈  Bharat Petroleum Corporation Limited           14.7700        
+    🥉  Castrol India Limited                          51.8500        ✗ Least Efficient (highest intensity)
+
+  GHG_tCO2e_perEmployee  [↓ lowest = best]
+    🥇  Castrol India Limited                          1.4000         ✓ Most Efficient (lowest intensity)
+    🥈  Indian Oil Corporation Limited                 752.4800       
+    🥉  Bharat Petroleum Corporation Limited           1233.9400      ✗ Least Efficient (highest intensity)
+
+  Waste_MT_perEmployee  [↓ lowest = best]
+    🥇  Castrol India Limited                          2.4400         ✓ Most Efficient (lowest intensity)
+    🥈  Indian Oil Corporation Limited                 15.5100        
+    🥉  Bharat Petroleum Corporation Limited           21.2200        ✗ Least Efficient (highest intensity)
+
+  Water_KL_perEmployee  [↓ lowest = best]
+    🥇  Castrol India Limited                          64.8600        ✓ Most Efficient (lowest intensity)
+    🥈  Bharat Petroleum Corporation Limited           4125.4800      
+    🥉  Indian Oil Corporation Limited                 5107.5700      ✗ Least Efficient (highest intensity)
+
+  ── ESG Policy — higher = better ↑ ──
+
+  RenewableEnergyShare_Pct  [↑ highest = best]
+    🥇  Castrol India Limited                          49.7400        ✓ Leader
+    🥈  Indian Oil Corporation Limited                 0.1700         
+    🥉  Bharat Petroleum Corporation Limited           0.1600         ✗ Laggard
+
+  WasteRecoveryRate_Pct  [↑ highest = best]
+    🥇  Castrol India Limited                          98.8700        ✓ Leader
+    🥈  Bharat Petroleum Corporation Limited           84.4000        
+    🥉  Indian Oil Corporation Limited                 71.1000        ✗ Laggard
+
+  ── Social — higher = better ↑ ──
+
+  Female_Ratio_AllEmployees  [↑ highest = best]
+    🥇  Castrol India Limited                          19.9600        ✓ Leader
+    🥈  Indian Oil Corporation Limited                 10.6800        
+    🥉  Bharat Petroleum Corporation Limited           9.9600         ✗ Laggard
+
+  Female_Ratio_AllWorkers  [↑ highest = best]
+    🥇  Bharat Petroleum Corporation Limited           3.5700         ✓ Leader
+    🥈  Castrol India Limited                          2.6100         
+    🥉  Indian Oil Corporation Limited                 2.2900         ✗ Laggard
+
+  Female_Ratio_ContractWorkers  [↑ highest = best]
+    🥇  Bharat Petroleum Corporation Limited           3.4900         ✓ Leader
+    🥈  Indian Oil Corporation Limited                 1.9700         
+    🥉  Castrol India Limited                          1.7400         ✗ Laggard
+
+  Female_Ratio_PermanentEmp  [↑ highest = best]
+    🥇  Castrol India Limited                          17.7500        ✓ Leader
+    🥈  Indian Oil Corporation Limited                 10.6900        
+    🥉  Bharat Petroleum Corporation Limited           9.9400         ✗ Laggard
+
+  Female_Ratio_PermanentWorkers  [↑ highest = best]
+    🥇  Indian Oil Corporation Limited                 5.8800         ✓ Leader
+    🥈  Bharat Petroleum Corporation Limited           4.4300         
+    🥉  Castrol India Limited                          3.2700         ✗ Laggard
+
+  ── Safety — lower = better ↓ ──
+
+  Fatalities  [↓ lowest = best]
+    🥇  Castrol India Limited                          N/A            ✓ Most Efficient (lowest intensity)
+    🥈  Bharat Petroleum Corporation Limited           N/A            
+    🥉  Indian Oil Corporation Limited                 N/A            ✗ Least Efficient (highest intensity)
+
+  ── Governance — lower = better ↓ ──
+
+  Complaints_Filed  [↓ lowest = best]
+    🥇  Castrol India Limited                          N/A            ✓ Most Efficient (lowest intensity)
+    🥈  Bharat Petroleum Corporation Limited           N/A            
+    🥉  Indian Oil Corporation Limited                 N/A            ✗ Least Efficient (highest intensity)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 3 — GAP ANALYSIS
+  (ESG efficiency, policy, social, safety, governance metrics only)
+  (Operational scale metrics — TotalGHG, TotalEnergy etc. — excluded)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Castrol India Limited
+  ────────────────────────────────────────────────────────────────────
+  ✓ Good (≥+10%):  7  |  ~ Average (±10%):  3  |  ✗ Below Average (≤−10%):  3
+
+  Areas needing improvement:
+    ✗  Female_Ratio_PermanentWorkers                  val=3.270  ref=4.527  gap=-1.257 (-27.8%)  [below target — improve]
+    ✗  Female_Ratio_ContractWorkers                   val=1.740  ref=2.400  gap=-0.660 (-27.5%)  [below target — improve]
+    ✗  Energy_GJ_perEmployee                          val=51.850  ref=25.773  gap=+26.077 (+101.2%)  [higher intensity → reduce emissions/consumption per employee]
+
+  Areas of strength:
+    ✓  RenewableEnergyShare_Pct                       val=49.740  ref=16.690  gap=+33.050 (+198.0%)  [outperforming]
+    ✓  Female_Ratio_AllEmployees                      val=19.960  ref=13.533  gap=+6.427 (+47.5%)  [outperforming]
+    ✓  Female_Ratio_PermanentEmp                      val=17.750  ref=12.793  gap=+4.957 (+38.7%)  [outperforming]
+    ✓  WasteRecoveryRate_Pct                          val=98.870  ref=84.790  gap=+14.080 (+16.6%)  [outperforming]
+    ✓  Waste_MT_perEmployee                           val=2.440  ref=13.057  gap=-10.617 (-81.3%)  [lower intensity → better environmental efficiency]
+    ✓  Water_KL_perEmployee                           val=64.860  ref=3099.303  gap=-3034.443 (-97.9%)  [lower intensity → better environmental efficiency]
+    ✓  GHG_tCO2e_perEmployee                          val=1.400  ref=662.607  gap=-661.207 (-99.8%)  [lower intensity → better environmental efficiency]
+
+  On-target KPIs:
+    ~  Female_Ratio_AllWorkers                        val=2.610  ref=2.823  [within ±10%]
+    ~  Complaints_Filed                               val=N/A  ref=N/A  [within ±10%]
+    ~  Fatalities                                     val=N/A  ref=N/A  [within ±10%]
+
+  Bharat Petroleum Corporation Limited
+  ────────────────────────────────────────────────────────────────────
+  ✓ Good (≥+10%):  3  |  ~ Average (±10%):  4  |  ✗ Below Average (≤−10%):  6
+
+  Areas needing improvement:
+    ✗  RenewableEnergyShare_Pct                       val=0.160  ref=16.690  gap=-16.530 (-99.0%)  [below target — improve]
+    ✗  Female_Ratio_AllEmployees                      val=9.960  ref=13.533  gap=-3.573 (-26.4%)  [below target — improve]
+    ✗  Female_Ratio_PermanentEmp                      val=9.940  ref=12.793  gap=-2.853 (-22.3%)  [below target — improve]
+    ✗  Water_KL_perEmployee                           val=4125.480  ref=3099.303  gap=+1026.177 (+33.1%)  [higher intensity → reduce emissions/consumption per employee]
+    ✗  Waste_MT_perEmployee                           val=21.220  ref=13.057  gap=+8.163 (+62.5%)  [higher intensity → reduce emissions/consumption per employee]
+    ✗  GHG_tCO2e_perEmployee                          val=1233.940  ref=662.607  gap=+571.333 (+86.2%)  [higher intensity → reduce emissions/consumption per employee]
+
+  Areas of strength:
+    ✓  Female_Ratio_ContractWorkers                   val=3.490  ref=2.400  gap=+1.090 (+45.4%)  [outperforming]
+    ✓  Female_Ratio_AllWorkers                        val=3.570  ref=2.823  gap=+0.747 (+26.4%)  [outperforming]
+    ✓  Energy_GJ_perEmployee                          val=14.770  ref=25.773  gap=-11.003 (-42.7%)  [lower intensity → better environmental efficiency]
+
+  On-target KPIs:
+    ~  Female_Ratio_PermanentWorkers                  val=4.430  ref=4.527  [within ±10%]
+    ~  Complaints_Filed                               val=N/A  ref=N/A  [within ±10%]
+    ~  WasteRecoveryRate_Pct                          val=84.400  ref=84.790  [within ±10%]
+    ~  Fatalities                                     val=N/A  ref=N/A  [within ±10%]
+
+  Indian Oil Corporation Limited
+  ────────────────────────────────────────────────────────────────────
+  ✓ Good (≥+10%):  2  |  ~ Average (±10%):  2  |  ✗ Below Average (≤−10%):  9
+
+  Areas needing improvement:
+    ✗  RenewableEnergyShare_Pct                       val=0.170  ref=16.690  gap=-16.520 (-99.0%)  [below target — improve]
+    ✗  Female_Ratio_AllEmployees                      val=10.680  ref=13.533  gap=-2.853 (-21.1%)  [below target — improve]
+    ✗  Female_Ratio_AllWorkers                        val=2.290  ref=2.823  gap=-0.533 (-18.9%)  [below target — improve]
+    ✗  Female_Ratio_ContractWorkers                   val=1.970  ref=2.400  gap=-0.430 (-17.9%)  [below target — improve]
+    ✗  Female_Ratio_PermanentEmp                      val=10.690  ref=12.793  gap=-2.103 (-16.4%)  [below target — improve]
+    ✗  WasteRecoveryRate_Pct                          val=71.100  ref=84.790  gap=-13.690 (-16.1%)  [below target — improve]
+    ✗  GHG_tCO2e_perEmployee                          val=752.480  ref=662.607  gap=+89.873 (+13.6%)  [higher intensity → reduce emissions/consumption per employee]
+    ✗  Waste_MT_perEmployee                           val=15.510  ref=13.057  gap=+2.453 (+18.8%)  [higher intensity → reduce emissions/consumption per employee]
+    ✗  Water_KL_perEmployee                           val=5107.570  ref=3099.303  gap=+2008.267 (+64.8%)  [higher intensity → reduce emissions/consumption per employee]
+
+  Areas of strength:
+    ✓  Female_Ratio_PermanentWorkers                  val=5.880  ref=4.527  gap=+1.353 (+29.9%)  [outperforming]
+    ✓  Energy_GJ_perEmployee                          val=10.700  ref=25.773  gap=-15.073 (-58.5%)  [lower intensity → better environmental efficiency]
+
+  On-target KPIs:
+    ~  Complaints_Filed                               val=N/A  ref=N/A  [within ±10%]
+    ~  Fatalities                                     val=N/A  ref=N/A  [within ±10%]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 4 — COMPANY COMPARISON
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Castrol India Limited  |  Bharat Petroleum Corporation Limited  |  Indian Oil Corporation Limited
+
+  KPI Leaders per Metric
+  ────────────────────────────────────────────────────────────────────
+  Complaints_Filed                                   Most Efficient: Castrol India Limited (N/A)
+  Energy_GJ_perEmployee                              Most Efficient (lowest intensity): Indian Oil Corporation Limited (10.700)
+  Fatalities                                         Most Efficient: Castrol India Limited (N/A)
+  Female_Ratio_AllEmployees                          Leader: Castrol India Limited (19.960)
+  Female_Ratio_AllWorkers                            Leader: Bharat Petroleum Corporation Limited (3.570)
+  Female_Ratio_ContractWorkers                       Leader: Bharat Petroleum Corporation Limited (3.490)
+  Female_Ratio_PermanentEmp                          Leader: Castrol India Limited (17.750)
+  Female_Ratio_PermanentWorkers                      Leader: Indian Oil Corporation Limited (5.880)
+  GHG_tCO2e_perEmployee                              Most Efficient (lowest intensity): Castrol India Limited (1.400)
+  RenewableEnergyShare_Pct                           Leader: Castrol India Limited (49.740)
+  WasteRecoveryRate_Pct                              Leader: Castrol India Limited (98.870)
+  Waste_MT_perEmployee                               Most Efficient (lowest intensity): Castrol India Limited (2.440)
+  Water_KL_perEmployee                               Most Efficient (lowest intensity): Castrol India Limited (64.860)
+
+  ESG Strengths (Good rating — ≥+10% vs benchmark)
+  ────────────────────────────────────────────────────────────────────
+
+  Castrol India Limited
+    ✓ RenewableEnergyShare_Pct                       49.740 vs 16.690  [outperforming]
+    ✓ Female_Ratio_AllEmployees                      19.960 vs 13.533  [outperforming]
+    ✓ Female_Ratio_PermanentEmp                      17.750 vs 12.793  [outperforming]
+    ✓ WasteRecoveryRate_Pct                          98.870 vs 84.790  [outperforming]
+    ✓ Waste_MT_perEmployee                           2.440 vs 13.057  [lower intensity = better environmental efficiency]
+    ✓ Water_KL_perEmployee                           64.860 vs 3099.303  [lower intensity = better environmental efficiency]
+    ✓ GHG_tCO2e_perEmployee                          1.400 vs 662.607  [lower intensity = better environmental efficiency]
+
+  Bharat Petroleum Corporation Limited
+    ✓ Female_Ratio_ContractWorkers                   3.490 vs 2.400  [outperforming]
+    ✓ Female_Ratio_AllWorkers                        3.570 vs 2.823  [outperforming]
+    ✓ Energy_GJ_perEmployee                          14.770 vs 25.773  [lower intensity = better environmental efficiency]
+
+  Indian Oil Corporation Limited
+    ✓ Female_Ratio_PermanentWorkers                  5.880 vs 4.527  [outperforming]
+    ✓ Energy_GJ_perEmployee                          10.700 vs 25.773  [lower intensity = better environmental efficiency]
+
+  ESG Weaknesses (Below Average — ≤−10% vs benchmark)
+  ────────────────────────────────────────────────────────────────────
+
+  Castrol India Limited
+    ✗ Female_Ratio_PermanentWorkers                  3.270 vs 4.527  gap=-27.8%  → increase female representation
+    ✗ Female_Ratio_ContractWorkers                   1.740 vs 2.400  gap=-27.5%  → increase female representation
+    ✗ Energy_GJ_perEmployee                          51.850 vs 25.773  gap=+101.2%  → improve energy efficiency
+
+  Bharat Petroleum Corporation Limited
+    ✗ RenewableEnergyShare_Pct                       0.160 vs 16.690  gap=-99.0%  → increase renewable energy share
+    ✗ Female_Ratio_AllEmployees                      9.960 vs 13.533  gap=-26.4%  → increase female representation
+    ✗ Female_Ratio_PermanentEmp                      9.940 vs 12.793  gap=-22.3%  → increase female representation
+    ✗ Water_KL_perEmployee                           4125.480 vs 3099.303  gap=+33.1%  → reduce water consumption per employee
+    ✗ Waste_MT_perEmployee                           21.220 vs 13.057  gap=+62.5%  → reduce waste generation
+    ✗ GHG_tCO2e_perEmployee                          1233.940 vs 662.607  gap=+86.2%  → reduce emissions intensity
+
+  Indian Oil Corporation Limited
+    ✗ RenewableEnergyShare_Pct                       0.170 vs 16.690  gap=-99.0%  → increase renewable energy share
+    ✗ Female_Ratio_AllEmployees                      10.680 vs 13.533  gap=-21.1%  → increase female representation
+    ✗ Female_Ratio_AllWorkers                        2.290 vs 2.823  gap=-18.9%  → increase female representation
+    ✗ Female_Ratio_ContractWorkers                   1.970 vs 2.400  gap=-17.9%  → increase female representation
+    ✗ Female_Ratio_PermanentEmp                      10.690 vs 12.793  gap=-16.4%  → increase female representation
+    ✗ WasteRecoveryRate_Pct                          71.100 vs 84.790  gap=-16.1%  → improve waste recovery
+    ✗ GHG_tCO2e_perEmployee                          752.480 vs 662.607  gap=+13.6%  → reduce emissions intensity
+    ✗ Waste_MT_perEmployee                           15.510 vs 13.057  gap=+18.8%  → reduce waste generation
+    ✗ Water_KL_perEmployee                           5107.570 vs 3099.303  gap=+64.8%  → reduce water consumption per employee
+
+  Operational Scale & Environmental Impact  [context only — not used for ESG performance ranking]
+  ────────────────────────────────────────────────────────────────────
+  Metric                                          Castrol India Limited         Bharat Petroleum Corporation  Indian Oil Corporation Limit  
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Permanent Employees                             479.00                        6196.00                       18740.00                      
+  Total Workers                                   268.00                        30180.00                      135834.00                     
+  Annual Turnover (INR)                           ₹57,215,019,535               ₹5,003,712,500,000            ₹8,455,130,000,000            
+  Net Worth (INR)                                 ₹19,003,000,000               ₹809,600,900,000              ₹1,508,627,000,000            
+  National Plants                                 3.00                          253.00                        626.00                        
+  Total GHG Scope1+2 (tCO2e)  ← size-dependent    883.00                        10793298.65                   22530000.00                   
+  Total Energy (GJ)  ← size-dependent             32771.00                      129219.14                     320346.00                     
+  Water Consumption (KL)  ← size-dependent        40994.00                      36085530.00                   152925668.00                  
+  Waste Generated (MT)  ← size-dependent          1544.72                       185615.69                     464362.00                     
+
+  Permanent Employees: Indian Oil Corporation Limited is 39.1× larger than Castrol India Limited
+  Turnover: Indian Oil Corporation Limited is 147.8× larger than Castrol India Limited
+  Total GHG: Indian Oil Corporation Limited is 25515.3× larger than Castrol India Limited — higher total GHG is expected for a larger company; compare GHG_tCO2e_perEmployee for ESG performance
+
+  ESG Efficiency Snapshot  [these are the metrics used for ESG performance comparison]
+  ────────────────────────────────────────────────────────────────────
+  Metric                                        Castrol India Limited         Bharat Petroleum Corporation  Indian Oil Corporation Limit  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  GHG / Employee (tCO2e)  ↓ lower = better      1.40                          1233.94                       752.48                        
+  Energy / Employee (GJ)  ↓ lower = better      51.85                         14.77                         10.70                         
+  Water / Employee (KL)  ↓ lower = better       64.86                         4125.48                       5107.57                       
+  Waste / Employee (MT)  ↓ lower = better       2.44                          21.22                         15.51                         
+  Renewable Energy Share (%)  ↑ higher = better 49.74                         0.16                          0.17                          
+  Waste Recovery Rate (%)  ↑ higher = better    98.87                         84.40                         71.10                         
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 5 — KEY ESG INSIGHTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## KEY INSIGHTS
+* Castrol India Limited leads in GHG_tCO2e_perEmployee with a value of 1.4, indicating better environmental efficiency compared to the industry average.
+* Indian Oil Corporation Limited has the lowest Energy_GJ_perEmployee at 10.7, showcasing its efficient energy usage per employee.
+* Bharat Petroleum Corporation Limited has a high Female_Ratio_ContractWorkers at 3.49, demonstrating its strength in social metrics, particularly in contract worker diversity.
+* Castrol India Limited also excels in RenewableEnergyShare_Pct with a value of 49.74, significantly higher than the industry average, highlighting its commitment to renewable energy.
+* Indian Oil Corporation Limited has a notable advantage in Energy_GJ_perEmployee, with a 58.5% lower value than the benchmark, indicating its efficient energy management.
+
+## STRENGTHS BY COMPANY
+* Castrol India Limited:
+	+ RenewableEnergyShare_Pct: 49.74, 198% advantage over the benchmark, indicating a strong commitment to renewable energy.
+	+ GHG_tCO2e_perEmployee: 1.4, 99.8% advantage over the benchmark, showcasing excellent environmental efficiency.
+	+ Water_KL_perEmployee: 64.86, 97.9% advantage over the benchmark, demonstrating efficient water usage.
+	+ Waste_MT_perEmployee: 2.44, 81.3% advantage over the benchmark, highlighting effective waste management.
+	+ Female_Ratio_AllEmployees: 19.96, 47.5% advantage over the benchmark, indicating a strong female representation in the workforce.
+* Bharat Petroleum Corporation Limited:
+	+ Female_Ratio_ContractWorkers: 3.49, 45.4% advantage over the benchmark, demonstrating a strong contract worker diversity.
+	+ Energy_GJ_perEmployee: 14.77, 42.7% advantage over the benchmark, indicating efficient energy usage.
+	+ Female_Ratio_AllWorkers: 3.57, 26.4% advantage over the benchmark, showcasing a good female representation among all workers.
+* Indian Oil Corporation Limited:
+	+ Energy_GJ_perEmployee: 10.7, 58.5% advantage over the benchmark, highlighting excellent energy efficiency.
+	+ Female_Ratio_PermanentWorkers: 5.88, 29.9% advantage over the benchmark, indicating a strong female representation among permanent workers.
+
+## GAPS & IMPROVEMENT AREAS
+* Castrol India Limited:
+	+ Energy_GJ_perEmployee: 51.85, 101.2% deficit from the benchmark, indicating a need to reduce energy consumption per employee.
+	+ Female_Ratio_PermanentWorkers: 3.27, 27.8% deficit from the benchmark, suggesting a need to improve female representation among permanent workers.
+	+ Female_Ratio_ContractWorkers: 1.74, 27.5% deficit from the benchmark, highlighting a need to enhance contract worker diversity.
+* Bharat Petroleum Corporation Limited:
+	+ RenewableEnergyShare_Pct: 0.16, 99% deficit from the benchmark, indicating a significant need to increase renewable energy share.
+	+ GHG_tCO2e_perEmployee: 1233.94, 86.2% deficit from the benchmark, suggesting a need to drastically reduce GHG emissions per employee.
+	+ Waste_MT_perEmployee: 21.22, 62.5% deficit from the benchmark, highlighting a need to improve waste management.
+	+ Water_KL_perEmployee: 4125.48, 33.1% deficit from the benchmark, indicating a need to reduce water consumption per employee.
+	+ Female_Ratio_AllEmployees: 9.96, 26.4% deficit from the benchmark, suggesting a need to improve female representation in the workforce.
+* Indian Oil Corporation Limited:
+	+ RenewableEnergyShare_Pct: 0.17, 99% deficit from the benchmark, indicating a significant need to increase renewable energy share.
+	+ Water_KL_perEmployee: 5107.57, 64.8% deficit from the benchmark, highlighting a need to reduce water consumption per employee.
+	+ Female_Ratio_AllEmployees: 10.68, 21.1% deficit from the benchmark, suggesting a need to improve female representation in the workforce.
+	+ Female_Ratio_AllWorkers: 2.29, 18.9% deficit from the benchmark, indicating a need to enhance female representation among all workers.
+	+ Waste_MT_perEmployee: 15.51, 18.8% deficit from the benchmark, highlighting a need to improve waste management.
+
+## ENVIRONMENTAL PERFORMANCE
+The environmental performance of the companies is primarily evaluated based on intensity metrics, which provide a clearer picture of efficiency. 
+* GHG_tCO2e_perEmployee: Castrol India Limited leads with 1.4 tCO2e per employee, significantly lower than the industry average, indicating better environmental efficiency. Bharat Petroleum Corporation Limited has the highest GHG emissions per employee at 1233.94 tCO2e.
+* Energy_GJ_perEmployee: Indian Oil Corporation Limited has the lowest energy consumption per employee at 10.7 GJ, followed by Bharat Petroleum Corporation Limited at 14.77 GJ. Castrol India Limited has a higher energy consumption per employee at 51.85 GJ.
+* Water_KL_perEmployee: Castrol India Limited has the lowest water consumption per employee at 64.86 KL, while Indian Oil Corporation Limited has the highest at 5107.57 KL.
+* Waste_MT_perEmployee: Castrol India Limited generates the least waste per employee at 2.44 MT, whereas Bharat Petroleum Corporation Limited has the highest waste generation per employee at 21.22 MT.
+
+## OVERALL ESG RANKING
+Based on the provided data, Castrol India Limited appears to have a strong overall ESG performance, driven by its excellent environmental efficiency metrics, such as GHG_tCO2e_perEmployee and Water_KL_perEmployee, as well as its high RenewableEnergyShare_Pct. Indian Oil Corporation Limited and Bharat Petroleum Corporation Limited also demonstrate strengths in specific areas, such as Energy_GJ_perEmployee for Indian Oil Corporation Limited and Female_Ratio_ContractWorkers for Bharat Petroleum Corporation Limited. However, both Indian Oil Corporation Limited and Bharat Petroleum Corporation Limited have significant gaps in their environmental performance, particularly in terms of GHG emissions and renewable energy share. Therefore, the overall ESG ranking would likely place Castrol India Limited at the top, followed by Indian Oil Corporation Limited and then Bharat Petroleum Corporation Limited, based on their respective strengths and gaps in ESG metrics.
+
+==============================================================================================================================================
+  END OF REPORT
+==============================================================================================================================================

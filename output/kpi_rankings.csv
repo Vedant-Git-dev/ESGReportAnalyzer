@@ -1,0 +1,40 @@
+KPI,Rank,Company,Value,Higher_is_Better
+Complaints_Filed,1,Castrol India Limited,0.0,False
+Complaints_Filed,2,Bharat Petroleum Corporation Limited,0.0,False
+Complaints_Filed,3,Indian Oil Corporation Limited,0.0,False
+Energy_GJ_perEmployee,1,Indian Oil Corporation Limited,10.7,False
+Energy_GJ_perEmployee,2,Bharat Petroleum Corporation Limited,14.77,False
+Energy_GJ_perEmployee,3,Castrol India Limited,51.85,False
+Fatalities,1,Castrol India Limited,0.0,False
+Fatalities,2,Bharat Petroleum Corporation Limited,0.0,False
+Fatalities,3,Indian Oil Corporation Limited,0.0,False
+Female_Ratio_AllEmployees,1,Castrol India Limited,19.96,True
+Female_Ratio_AllEmployees,2,Indian Oil Corporation Limited,10.68,True
+Female_Ratio_AllEmployees,3,Bharat Petroleum Corporation Limited,9.96,True
+Female_Ratio_AllWorkers,1,Bharat Petroleum Corporation Limited,3.57,True
+Female_Ratio_AllWorkers,2,Castrol India Limited,2.61,True
+Female_Ratio_AllWorkers,3,Indian Oil Corporation Limited,2.29,True
+Female_Ratio_ContractWorkers,1,Bharat Petroleum Corporation Limited,3.49,True
+Female_Ratio_ContractWorkers,2,Indian Oil Corporation Limited,1.97,True
+Female_Ratio_ContractWorkers,3,Castrol India Limited,1.74,True
+Female_Ratio_PermanentEmp,1,Castrol India Limited,17.75,True
+Female_Ratio_PermanentEmp,2,Indian Oil Corporation Limited,10.69,True
+Female_Ratio_PermanentEmp,3,Bharat Petroleum Corporation Limited,9.94,True
+Female_Ratio_PermanentWorkers,1,Indian Oil Corporation Limited,5.88,True
+Female_Ratio_PermanentWorkers,2,Bharat Petroleum Corporation Limited,4.43,True
+Female_Ratio_PermanentWorkers,3,Castrol India Limited,3.27,True
+GHG_tCO2e_perEmployee,1,Castrol India Limited,1.4,False
+GHG_tCO2e_perEmployee,2,Indian Oil Corporation Limited,752.48,False
+GHG_tCO2e_perEmployee,3,Bharat Petroleum Corporation Limited,1233.94,False
+RenewableEnergyShare_Pct,1,Castrol India Limited,49.74,True
+RenewableEnergyShare_Pct,2,Indian Oil Corporation Limited,0.17,True
+RenewableEnergyShare_Pct,3,Bharat Petroleum Corporation Limited,0.16,True
+WasteRecoveryRate_Pct,1,Castrol India Limited,98.87,True
+WasteRecoveryRate_Pct,2,Bharat Petroleum Corporation Limited,84.4,True
+WasteRecoveryRate_Pct,3,Indian Oil Corporation Limited,71.1,True
+Waste_MT_perEmployee,1,Castrol India Limited,2.44,False
+Waste_MT_perEmployee,2,Indian Oil Corporation Limited,15.51,False
+Waste_MT_perEmployee,3,Bharat Petroleum Corporation Limited,21.22,False
+Water_KL_perEmployee,1,Castrol India Limited,64.86,False
+Water_KL_perEmployee,2,Bharat Petroleum Corporation Limited,4125.48,False
+Water_KL_perEmployee,3,Indian Oil Corporation Limited,5107.57,False
