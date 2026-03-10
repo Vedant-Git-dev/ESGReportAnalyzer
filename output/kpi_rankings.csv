@@ -1,40 +1,52 @@
-KPI,Rank,Company,Value,Higher_is_Better
-Complaints_Filed,1,Castrol India Limited,0.0,False
-Complaints_Filed,2,Bharat Petroleum Corporation Limited,0.0,False
-Complaints_Filed,3,Indian Oil Corporation Limited,0.0,False
-Energy_GJ_perEmployee,1,Indian Oil Corporation Limited,10.7,False
-Energy_GJ_perEmployee,2,Bharat Petroleum Corporation Limited,14.77,False
-Energy_GJ_perEmployee,3,Castrol India Limited,51.85,False
-Fatalities,1,Castrol India Limited,0.0,False
-Fatalities,2,Bharat Petroleum Corporation Limited,0.0,False
-Fatalities,3,Indian Oil Corporation Limited,0.0,False
-Female_Ratio_AllEmployees,1,Castrol India Limited,19.96,True
-Female_Ratio_AllEmployees,2,Indian Oil Corporation Limited,10.68,True
-Female_Ratio_AllEmployees,3,Bharat Petroleum Corporation Limited,9.96,True
-Female_Ratio_AllWorkers,1,Bharat Petroleum Corporation Limited,3.57,True
-Female_Ratio_AllWorkers,2,Castrol India Limited,2.61,True
-Female_Ratio_AllWorkers,3,Indian Oil Corporation Limited,2.29,True
-Female_Ratio_ContractWorkers,1,Bharat Petroleum Corporation Limited,3.49,True
-Female_Ratio_ContractWorkers,2,Indian Oil Corporation Limited,1.97,True
-Female_Ratio_ContractWorkers,3,Castrol India Limited,1.74,True
-Female_Ratio_PermanentEmp,1,Castrol India Limited,17.75,True
-Female_Ratio_PermanentEmp,2,Indian Oil Corporation Limited,10.69,True
-Female_Ratio_PermanentEmp,3,Bharat Petroleum Corporation Limited,9.94,True
-Female_Ratio_PermanentWorkers,1,Indian Oil Corporation Limited,5.88,True
-Female_Ratio_PermanentWorkers,2,Bharat Petroleum Corporation Limited,4.43,True
-Female_Ratio_PermanentWorkers,3,Castrol India Limited,3.27,True
-GHG_tCO2e_perEmployee,1,Castrol India Limited,1.4,False
-GHG_tCO2e_perEmployee,2,Indian Oil Corporation Limited,752.48,False
-GHG_tCO2e_perEmployee,3,Bharat Petroleum Corporation Limited,1233.94,False
-RenewableEnergyShare_Pct,1,Castrol India Limited,49.74,True
-RenewableEnergyShare_Pct,2,Indian Oil Corporation Limited,0.17,True
-RenewableEnergyShare_Pct,3,Bharat Petroleum Corporation Limited,0.16,True
-WasteRecoveryRate_Pct,1,Castrol India Limited,98.87,True
-WasteRecoveryRate_Pct,2,Bharat Petroleum Corporation Limited,84.4,True
-WasteRecoveryRate_Pct,3,Indian Oil Corporation Limited,71.1,True
-Waste_MT_perEmployee,1,Castrol India Limited,2.44,False
-Waste_MT_perEmployee,2,Indian Oil Corporation Limited,15.51,False
-Waste_MT_perEmployee,3,Bharat Petroleum Corporation Limited,21.22,False
-Water_KL_perEmployee,1,Castrol India Limited,64.86,False
-Water_KL_perEmployee,2,Bharat Petroleum Corporation Limited,4125.48,False
-Water_KL_perEmployee,3,Indian Oil Corporation Limited,5107.57,False
+KPI,Rank,Company,Value,Higher_is_Better,Percentile,Q1,Q3
+Complaints_Filed,1,Bharat Petroleum Corporation Limited,0.0,False,0.0,,
+Complaints_Filed,2,Hindustan Petroleum Corporation Limited,0.0,False,50.0,,
+Complaints_Filed,3,Indian Oil Corporation Limited,0.0,False,100.0,,
+Energy_GJ_perEmployee,1,Indian Oil Corporation Limited,10.6992,False,0.0,,
+Energy_GJ_perEmployee,2,Bharat Petroleum Corporation Limited,14.773,False,50.0,,
+Energy_GJ_perEmployee,3,Hindustan Petroleum Corporation Limited,8735.436,False,100.0,,
+Energy_GJ_perRevCr,1,Bharat Petroleum Corporation Limited,0.258247,False,0.0,,
+Energy_GJ_perRevCr,2,Indian Oil Corporation Limited,0.378878,False,50.0,,
+Energy_GJ_perRevCr,3,Hindustan Petroleum Corporation Limited,151.452847,False,100.0,,
+Fatalities,1,Bharat Petroleum Corporation Limited,0.0,False,0.0,,
+Fatalities,2,Hindustan Petroleum Corporation Limited,0.0,False,50.0,,
+Fatalities,3,Indian Oil Corporation Limited,0.0,False,100.0,,
+Female_Ratio_AllEmployees,1,Hindustan Petroleum Corporation Limited,13.1,True,100.0,,
+Female_Ratio_AllEmployees,2,Indian Oil Corporation Limited,10.68,True,50.0,,
+Female_Ratio_AllEmployees,3,Bharat Petroleum Corporation Limited,9.96,True,0.0,,
+Female_Ratio_AllWorkers,1,Bharat Petroleum Corporation Limited,3.57,True,100.0,,
+Female_Ratio_AllWorkers,2,Hindustan Petroleum Corporation Limited,3.36,True,50.0,,
+Female_Ratio_AllWorkers,3,Indian Oil Corporation Limited,2.29,True,0.0,,
+Female_Ratio_ContractWorkers,1,Bharat Petroleum Corporation Limited,3.49,True,100.0,,
+Female_Ratio_ContractWorkers,2,Hindustan Petroleum Corporation Limited,3.19,True,50.0,,
+Female_Ratio_ContractWorkers,3,Indian Oil Corporation Limited,1.97,True,0.0,,
+Female_Ratio_PermanentEmp,1,Hindustan Petroleum Corporation Limited,12.41,True,100.0,,
+Female_Ratio_PermanentEmp,2,Indian Oil Corporation Limited,10.69,True,50.0,,
+Female_Ratio_PermanentEmp,3,Bharat Petroleum Corporation Limited,9.94,True,0.0,,
+Female_Ratio_PermanentWorkers,1,Hindustan Petroleum Corporation Limited,6.42,True,100.0,,
+Female_Ratio_PermanentWorkers,2,Indian Oil Corporation Limited,5.88,True,50.0,,
+Female_Ratio_PermanentWorkers,3,Bharat Petroleum Corporation Limited,4.43,True,0.0,,
+GHG_tCO2e_perEmployee,1,Indian Oil Corporation Limited,752.4799,False,0.0,,
+GHG_tCO2e_perEmployee,2,Hindustan Petroleum Corporation Limited,833.9291,False,50.0,,
+GHG_tCO2e_perEmployee,3,Bharat Petroleum Corporation Limited,1233.9429,False,100.0,,
+GHG_tCO2e_perRevCr,1,Hindustan Petroleum Corporation Limited,14.458458,False,0.0,,
+GHG_tCO2e_perRevCr,2,Bharat Petroleum Corporation Limited,21.570581,False,50.0,,
+GHG_tCO2e_perRevCr,3,Indian Oil Corporation Limited,26.646545,False,100.0,,
+RenewableEnergyShare_Pct,1,Hindustan Petroleum Corporation Limited,0.42,True,100.0,,
+RenewableEnergyShare_Pct,2,Indian Oil Corporation Limited,0.17,True,50.0,,
+RenewableEnergyShare_Pct,3,Bharat Petroleum Corporation Limited,0.16,True,0.0,,
+WasteRecoveryRate_Pct,1,Bharat Petroleum Corporation Limited,84.4,True,100.0,,
+WasteRecoveryRate_Pct,2,Indian Oil Corporation Limited,71.1,True,50.0,,
+WasteRecoveryRate_Pct,3,Hindustan Petroleum Corporation Limited,11.68,True,0.0,,
+Waste_MT_perEmployee,1,Indian Oil Corporation Limited,15.5092,False,0.0,,
+Waste_MT_perEmployee,2,Hindustan Petroleum Corporation Limited,16.7219,False,50.0,,
+Waste_MT_perEmployee,3,Bharat Petroleum Corporation Limited,21.2205,False,100.0,,
+Waste_MT_perRevCr,1,Hindustan Petroleum Corporation Limited,0.289919,False,0.0,,
+Waste_MT_perRevCr,2,Bharat Petroleum Corporation Limited,0.370956,False,50.0,,
+Waste_MT_perRevCr,3,Indian Oil Corporation Limited,0.549207,False,100.0,,
+Water_KL_perEmployee,1,Hindustan Petroleum Corporation Limited,2462.8855,False,0.0,,
+Water_KL_perEmployee,2,Bharat Petroleum Corporation Limited,4125.475,False,50.0,,
+Water_KL_perEmployee,3,Indian Oil Corporation Limited,5107.5671,False,100.0,,
+Water_KL_perRevCr,1,Hindustan Petroleum Corporation Limited,42.700904,False,0.0,,
+Water_KL_perRevCr,2,Bharat Petroleum Corporation Limited,72.117513,False,50.0,,
+Water_KL_perRevCr,3,Indian Oil Corporation Limited,180.867317,False,100.0,,

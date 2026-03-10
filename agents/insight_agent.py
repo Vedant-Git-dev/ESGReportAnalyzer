@@ -1,24 +1,22 @@
 """
 agents/insight_agent.py
 -----------------------
-Agent 6 — InsightAgent
-
-LLM-only insights via Groq (official `groq` library).
-No rule-based fallback.
+Agent 6 — InsightAgent (LLM-only, Groq)
 
 Hallucination prevention
 ------------------------
-The LLM is given a pre-computed, structured summary — NOT raw data.
-It is explicitly told NOT to recompute or re-rank any metric.
-The payload includes:
-  • kpi_leaders       — who leads each KPI and by how much
-  • kpi_laggards      — who lags each KPI and by how much
-  • top_strengths     — per company: KPIs rated "Good" with ±% vs benchmark
-  • top_gaps          — per company: KPIs rated "Below Average" with ±%
-  • operational_scale — absolute totals for context only (not for ranking)
-  • unreliable_flags  — metrics excluded due to small denominators
+The LLM receives a pre-computed, structured summary including:
+  • kpi_leaders / kpi_laggards    — pre-ranked, direction-labelled
+  • top_strengths / top_gaps      — per company, with advantage/deficit %
+  • esg_scores                    — composite weighted scores (E/S/G + composite)
+  • scale_warning                 — if companies differ massively in size
+  • company_sizes                 — turnover, employees (for economic context)
+  • benchmark_method              — "median" so LLM cites it correctly
+  • operational_scale_context     — totals clearly labelled as size indicators
+  • metric_type_guide             — so LLM uses correct direction language
 
-The system prompt strictly forbids re-computing or re-ranking.
+The system prompt forbids re-computing metrics and contains explicit rules
+for how to describe scale metrics vs ESG performance metrics.
 """
 
 from __future__ import annotations
@@ -31,11 +29,12 @@ from typing import Optional
 import pandas as pd
 
 from config.constants import (
-    GROQ_MODEL, LOWER_IS_BETTER,
+    GROQ_MODEL, LOWER_IS_BETTER, BENCHMARK_METHOD,
     ESG_EFFICIENCY_METRICS, ESG_POLICY_METRICS,
     SOCIAL_METRICS, SAFETY_METRICS, GOVERNANCE_METRICS,
     OPERATIONAL_SCALE_METRICS,
 )
+from utils.formatting import _magnitude
 
 try:
     from groq import Groq as _GroqLib
@@ -51,57 +50,87 @@ class InsightAgent:
         You are a senior ESG analyst specialising in Indian energy sector companies
         filing SEBI BRSR XBRL reports.
 
-        You will be given a pre-computed, structured ESG summary.
-        Your ONLY job is to write clear narrative explanations of what the numbers mean.
+        You receive a pre-computed, structured ESG performance summary.
+        Your ONLY job is to write clear, accurate narrative explanations.
 
-        ABSOLUTE RULES — never violate these:
+        ABSOLUTE RULES — never violate any of these:
+
         1. Do NOT re-compute, re-rank, or re-derive any metric.
-           The summary already contains the correct leaders, laggards, gaps, and strengths.
-        2. Do NOT say a company "performs better" because its total emissions or total energy
-           is larger. Absolute operational scale metrics (TotalGHG, TotalEnergy, etc.)
-           reflect company size — they are NOT performance indicators.
-        3. Only judge environmental performance using intensity metrics (per employee):
-           GHG_tCO2e_perEmployee, Energy_GJ_perEmployee, Water_KL_perEmployee,
-           Waste_MT_perEmployee.
-           Lower intensity = better environmental efficiency.
-        4. Do NOT fabricate data. If a metric is null or absent, say "data not available".
-        5. For "lower is better" KPIs (efficiency intensities, LTIFR, Fatalities,
-           Complaints): a LOWER value is the BETTER outcome. Always state this clearly.
-        6. Any metric marked as "unreliable" (small sample) must be flagged, not praised.
+           All rankings, scores, leaders, laggards, and gaps are pre-computed.
+
+        2. SCALE METRICS ARE NOT PERFORMANCE INDICATORS:
+           TotalGHG, TotalEnergy, WaterConsumption, WasteGenerated, Turnover
+           are operational scale indicators. A company with higher total GHG
+           is not "worse" — it is simply larger.
+           CORRECT language: "Company X has larger operational GHG due to its
+           significantly larger scale — {N}× larger by revenue."
+           INCORRECT language: "Company X performs worse on emissions."
+
+        3. Use INTENSITY metrics for ESG performance:
+           - GHG/employee, Energy/employee, GHG/₹Cr-revenue, etc.
+           - Lower intensity = better environmental efficiency.
+           - Always state: "lower intensity = better performance"
+
+        4. Revenue-normalised intensities (perRevCr) are often more meaningful
+           in capital-intensive sectors. If both per-employee and per-revenue
+           metrics are available, discuss both and explain any divergence.
+
+        5. Cite the benchmark method as "industry median" not "industry average".
+
+        6. Cite ESG composite scores (E/S/G + composite) and grades (A/B/C/D)
+           in your Overall ESG Ranking section.
+
+        7. If a scale_warning is present, include it prominently in Key Insights.
+
+        8. Do NOT fabricate data. If a value is null, say "data not available".
+
+        10. LANGUAGE RULE — never cite raw percentage gaps as performance claims:
+           WRONG: "Company has a 99% advantage in GHG per employee"
+           WRONG: "Company is 87% below the benchmark"
+           CORRECT: "GHG intensity is substantially lower than the industry median"
+           CORRECT: "Energy intensity is significantly above the industry median"
+           Use these magnitude qualifiers based on the gap size:
+             |gap| ≥ 50% → "substantially"
+             |gap| ≥ 25% → "significantly"
+             |gap| ≥ 10% → "moderately"
+             |gap| < 10% → "marginally"
+           Always pair the qualifier with direction: "lower/higher than the industry median"
+
+        11. If a pillar score is N/A (excluded due to missing data), note this clearly.
+            State the effective re-normalised weights used for the composite score.
+            Cite the confidence level (High/Medium/Low) and number of KPIs used.
 
         Structure your response with these exact headings:
 
         ## KEY INSIGHTS
-        (3-5 data-driven bullets; compare companies on ESG efficiency, not scale)
+        (3-5 bullets; lead with scale warning if present; compare on ESG intensity)
 
         ## STRENGTHS BY COMPANY
-        (For each company: list KPIs where it is rated GOOD vs benchmark, with %
-         advantage; use ESG-correct language)
+        (KPIs rated Good; cite % advantage vs industry median; correct direction)
 
         ## GAPS & IMPROVEMENT AREAS
-        (For each company: list KPIs rated BELOW AVERAGE; state the specific gap %;
-         recommend concrete actions)
+        (KPIs rated Below Average; cite specific gap %; recommend concrete actions)
 
         ## ENVIRONMENTAL PERFORMANCE
-        (Discuss only intensity metrics — GHG/employee, Energy/employee, etc.;
-         mention absolute totals for context only, clearly labeled as scale indicators)
+        (Intensity metrics only for comparison; totals for scale context only)
+
+        ## ESG COMPOSITE SCORES
+        (Cite E/S/G pillar scores and composite; assign grades; rank companies)
 
         ## OVERALL ESG RANKING
-        (Rank companies; justify using only the pre-computed data provided)
+        (Rank with justification; reference composite scores and grades)
     """).strip()
 
     QUERY_SYSTEM_PROMPT = textwrap.dedent("""
-        You are a senior ESG analyst. Answer the question using ONLY the structured
-        data provided. Do NOT re-compute metrics. Do NOT fabricate comparisons.
-        For lower-is-better KPIs (efficiency intensities, LTIFR, Fatalities,
-        Complaints), a lower value = better performance.
-        Keep the answer under 200 words.
+        You are a senior ESG analyst. Answer using ONLY pre-computed data provided.
+        Do NOT re-compute. For lower-is-better KPIs, lower = better.
+        Scale metrics (TotalGHG, TotalEnergy) reflect company size, not performance.
+        Cite the benchmark method as "industry median".
+        Keep answer under 200 words.
     """).strip()
 
-    # ── Groq call ─────────────────────────────────────────────────────────────
-
     def _call_groq(self, system: str, user_prompt: str,
-                   max_tokens: int = 1000) -> Optional[str]:
+                   max_tokens: int = 1200) -> Optional[str]:
         if not _GROQ_AVAILABLE:
             return None
         api_key = os.environ.get("GROQ_API_KEY", "").strip()
@@ -112,7 +141,7 @@ class InsightAgent:
             resp = client.chat.completions.create(
                 model=GROQ_MODEL,
                 max_tokens=max_tokens,
-                temperature=0.2,   # low temperature = less hallucination
+                temperature=0.2,
                 messages=[
                     {"role": "system", "content": system},
                     {"role": "user",   "content": user_prompt},
@@ -132,92 +161,133 @@ class InsightAgent:
 
     # ── public interface ──────────────────────────────────────────────────────
 
-    def generate(self, companies: dict, gap_df: pd.DataFrame,
-                 rankings_df: pd.DataFrame, mode_info: str) -> str:
-        if not _GROQ_AVAILABLE:
-            return self._unavailable("groq library not installed")
-        if not os.environ.get("GROQ_API_KEY", "").strip():
-            return self._unavailable("GROQ_API_KEY not set")
-
-        payload = self._build_structured_payload(
-            companies, gap_df, rankings_df, mode_info)
-        user_prompt = (
-            f"Benchmark mode: {mode_info}\n"
-            f"Companies: {', '.join(companies.keys())}\n\n"
-            "IMPORTANT: Use ONLY the pre-computed summary below.\n"
-            "Do NOT recompute or rerank any metric.\n\n"
-            f"{json.dumps(payload, indent=2)}\n\n"
-            "Write the structured ESG narrative report using the section "
-            "headings in your instructions."
-        )
-        result = self._call_groq(self.SYSTEM_PROMPT, user_prompt, max_tokens=1400)
-        return result or self._unavailable(
-            "Groq API call failed — check your key and network")
-
-    def answer_query(self, query: str, companies: dict,
-                     gap_df: pd.DataFrame, rankings_df: pd.DataFrame) -> str:
-        if not _GROQ_AVAILABLE:
-            return self._unavailable("groq library not installed")
-        if not os.environ.get("GROQ_API_KEY", "").strip():
-            return self._unavailable("GROQ_API_KEY not set")
-
-        payload = self._build_structured_payload(companies, gap_df, rankings_df, "")
-        user_prompt = (
-            "Pre-computed ESG summary (use only this — do not recompute):\n"
-            f"{json.dumps(payload, indent=2)}\n\n"
-            f"Question: {query}"
-        )
-        result = self._call_groq(self.QUERY_SYSTEM_PROMPT, user_prompt, max_tokens=400)
-        return result or self._unavailable(
-            "Groq API call failed — check your key and network")
-
-    # ── structured payload builder ────────────────────────────────────────────
-
-    def _build_structured_payload(
+    def generate(
         self,
         companies: dict,
         gap_df: pd.DataFrame,
         rankings_df: pd.DataFrame,
         mode_info: str,
-    ) -> dict:
-        """
-        Build a pre-computed, structured payload that tells the LLM exactly:
-          - who leads / lags each KPI (and by how much)
-          - each company's top strengths and gaps (with % vs benchmark)
-          - operational scale context (clearly labelled — not for ranking)
-          - which metrics are unreliable
+        scale_warning: Optional[str] = None,
+        esg_scores: Optional[dict] = None,
+    ) -> str:
+        if not _GROQ_AVAILABLE:
+            return self._unavailable("groq library not installed")
+        if not os.environ.get("GROQ_API_KEY", "").strip():
+            return self._unavailable("GROQ_API_KEY not set")
 
-        The LLM only needs to translate this into narrative.
-        """
+        payload = self._build_payload(
+            companies, gap_df, rankings_df, mode_info,
+            scale_warning, esg_scores)
+        user_prompt = (
+            f"Benchmark mode: {mode_info}\n"
+            f"Companies: {', '.join(companies.keys())}\n\n"
+            "IMPORTANT: Use ONLY this pre-computed data. Do NOT recompute metrics.\n\n"
+            f"{json.dumps(payload, indent=2)}\n\n"
+            "Write the structured ESG narrative report using the section headings."
+        )
+        result = self._call_groq(self.SYSTEM_PROMPT, user_prompt, max_tokens=1600)
+        return result or self._unavailable(
+            "Groq API call failed — check key and network")
+
+    def answer_query(
+        self, query: str, companies: dict,
+        gap_df: pd.DataFrame, rankings_df: pd.DataFrame,
+    ) -> str:
+        if not _GROQ_AVAILABLE:
+            return self._unavailable("groq library not installed")
+        if not os.environ.get("GROQ_API_KEY", "").strip():
+            return self._unavailable("GROQ_API_KEY not set")
+
+        payload = self._build_payload(companies, gap_df, rankings_df, "")
+        user_prompt = (
+            "Pre-computed ESG data:\n"
+            f"{json.dumps(payload, indent=2)}\n\n"
+            f"Question: {query}"
+        )
+        result = self._call_groq(self.QUERY_SYSTEM_PROMPT, user_prompt, max_tokens=400)
+        return result or self._unavailable("Groq API call failed")
+
+    # ── payload builder ───────────────────────────────────────────────────────
+
+    def _build_payload(
+        self,
+        companies: dict,
+        gap_df: pd.DataFrame,
+        rankings_df: pd.DataFrame,
+        mode_info: str,
+        scale_warning: Optional[str] = None,
+        esg_scores: Optional[dict] = None,
+    ) -> dict:
 
         payload: dict = {
-            "instructions_to_llm": (
-                "Use ONLY this pre-computed data. Do NOT re-derive metrics. "
-                "Do NOT use operational_scale_context for performance comparison."
-            ),
-            "benchmark_mode": mode_info,
+            "critical_rules": [
+                "Scale metrics (TotalGHG, TotalEnergy, etc.) reflect company SIZE — "
+                "they are NOT ESG performance indicators",
+                "Use only intensity metrics (per employee, per revenue) for ESG comparison",
+                "Lower intensity = better environmental efficiency",
+                "Benchmark method = " + BENCHMARK_METHOD,
+            ],
+            "benchmark_mode":  mode_info,
+            "benchmark_method": BENCHMARK_METHOD,
             "lower_is_better_kpis": sorted(LOWER_IS_BETTER),
             "metric_type_guide": {
-                "ESG Efficiency (lower=better, ranked)":
-                    sorted(ESG_EFFICIENCY_METRICS),
-                "ESG Policy (higher=better, ranked)":
-                    sorted(ESG_POLICY_METRICS),
-                "Social (higher=better, ranked)":
-                    sorted(SOCIAL_METRICS),
-                "Safety (lower=better, ranked)":
-                    sorted(SAFETY_METRICS),
-                "Governance (lower=better, ranked)":
-                    sorted(GOVERNANCE_METRICS),
-                "Operational Scale (context only — NOT for ranking)":
-                    sorted(OPERATIONAL_SCALE_METRICS & {
-                        "TotalGHG_tCO2e","TotalEnergy_GJ",
-                        "WaterConsumption_KL","WasteGenerated_MT",
-                        "Turnover_INR",
+                "ESG_Efficiency_per_employee (lower=better, ranked)":
+                    sorted(set(ESG_EFFICIENCY_METRICS) & {
+                        "GHG_tCO2e_perEmployee","Energy_GJ_perEmployee",
+                        "Water_KL_perEmployee","Waste_MT_perEmployee",
                     }),
+                "ESG_Efficiency_per_revenue (lower=better, ranked)":
+                    sorted(set(ESG_EFFICIENCY_METRICS) & {
+                        "GHG_tCO2e_perRevCr","Energy_GJ_perRevCr",
+                        "Water_KL_perRevCr","Waste_MT_perRevCr",
+                    }),
+                "ESG_Policy (higher=better, ranked)": sorted(ESG_POLICY_METRICS),
+                "Social (higher=better, ranked)":     sorted(SOCIAL_METRICS),
+                "Safety (lower=better, ranked)":      sorted(SAFETY_METRICS),
+                "Governance (lower=better, ranked)":  sorted(GOVERNANCE_METRICS),
+                "Operational_Scale (context only — NOT for ESG performance)": [
+                    "TotalGHG_tCO2e","TotalEnergy_GJ",
+                    "WaterConsumption_KL","WasteGenerated_MT","Turnover_INR",
+                ],
             },
         }
 
-        # ── KPI leaders & laggards (pre-computed from rankings_df) ────────────
+        if scale_warning:
+            payload["SCALE_WARNING"] = scale_warning
+
+        # ── Company sizes (for economic context) ──────────────────────────────
+        payload["company_sizes"] = {}
+        for company, m in companies.items():
+            payload["company_sizes"][company] = {
+                "turnover_INR":         m.get("Turnover_INR"),
+                "permanent_employees":  m.get("perm_emp_total"),
+                "total_workers":        m.get("total_wkr_total"),
+            }
+
+        # ── ESG composite scores ───────────────────────────────────────────────
+        if esg_scores:
+            payload["esg_composite_scores"] = {
+                company: {
+                    "Environment":        sc.get("Environment"),
+                    "Social":             sc.get("Social"),
+                    "Governance":         sc.get("Governance"),
+                    "Composite":          sc.get("Composite"),
+                    "Grade":              sc.get("Grade"),
+                    "Confidence":         sc.get("Confidence"),
+                    "Valid_KPI_Count":    sc.get("Valid_KPI_Count"),
+                    "Missing_Pillars":    sc.get("Missing_Pillars", []),
+                    "Effective_Weights":  sc.get("Effective_Weights", {}),
+                    "note": (
+                        f"Composite uses re-normalised weights because "
+                        f"{sc.get('Missing_Pillars')} pillar(s) had no valid data"
+                        if sc.get("Missing_Pillars")
+                        else "All three pillars available"
+                    ),
+                }
+                for company, sc in esg_scores.items()
+            }
+
+        # ── Pre-computed KPI leaders / laggards ───────────────────────────────
         if not rankings_df.empty:
             payload["kpi_leaders"]  = {}
             payload["kpi_laggards"] = {}
@@ -226,100 +296,100 @@ class InsightAgent:
                 best  = sub.iloc[0]
                 worst = sub.iloc[-1]
                 lower = kpi in LOWER_IS_BETTER
-                perf_label = "lower_is_better" if lower else "higher_is_better"
-                bv = None if best["Value"] == 0.0 else round(best["Value"], 4)
-                wv = None if worst["Value"] == 0.0 else round(worst["Value"], 4)
+                bv = None if best["Value"] == 0.0 else round(best["Value"], 6)
+                wv = None if worst["Value"] == 0.0 else round(worst["Value"], 6)
                 payload["kpi_leaders"][kpi] = {
                     "company": best["Company"], "value": bv,
-                    "performance_direction": perf_label,
+                    "direction": "lower_is_better" if lower else "higher_is_better",
+                    "note": (
+                        "This company has LOWER intensity = more efficient"
+                        if lower else "This company has HIGHER value = better"
+                    ),
                 }
                 if len(sub) > 1:
                     payload["kpi_laggards"][kpi] = {
                         "company": worst["Company"], "value": wv,
-                        "performance_direction": perf_label,
+                        "direction": "lower_is_better" if lower else "higher_is_better",
                     }
 
-        # ── Per-company strengths and gaps (pre-computed from gap_df) ─────────
+        # ── Per-company strengths and gaps ────────────────────────────────────
         payload["company_analysis"] = {}
         for company in companies:
             sub = gap_df[gap_df["Company"] == company] if not gap_df.empty \
                 else pd.DataFrame()
 
-            # top strengths (Good rating, sorted by gap_pct advantage)
             good = sub[sub["Rating"] == "Good"] if not sub.empty else pd.DataFrame()
+            bad  = sub[sub["Rating"] == "Below Average"] if not sub.empty \
+                else pd.DataFrame()
+
             top_strengths = []
             if not good.empty:
-                lower_mask = good["KPI"].isin(LOWER_IS_BETTER)
-                # For lower-is-better, gap is negative when we're better
-                good_sorted = good.copy()
-                good_sorted["perf_pct"] = good_sorted.apply(
-                    lambda r: -r["Gap_Pct"] if r["KPI"] in LOWER_IS_BETTER
-                              else r["Gap_Pct"], axis=1)
-                for _, r in good_sorted.sort_values(
-                        "perf_pct", ascending=False).head(5).iterrows():
+                for _, r in good.sort_values("Gap_Pct", ascending=False).head(6).iterrows():
+                    lower = r["KPI"] in LOWER_IS_BETTER
+                    gp    = r["Gap_Pct"]
+                    mag   = _magnitude(gp)
                     top_strengths.append({
-                        "kpi":      r["KPI"],
-                        "kpi_type": r["KPI_Type"],
-                        "value":    None if r["Value"] == 0.0 else r["Value"],
-                        "benchmark":r["Benchmark"],
-                        "advantage_pct": abs(r["Gap_Pct"]) if r["Gap_Pct"] else None,
-                        "note": (
-                            "lower_value_is_better — this company emits/uses less"
-                            if r["KPI"] in LOWER_IS_BETTER else "higher_value_is_better"
+                        "kpi":          r["KPI"],
+                        "kpi_type":     r["KPI_Type"],
+                        "value":        None if r["Value"] == 0.0 else round(r["Value"], 4),
+                        "median":       round(r["Benchmark"], 4),
+                        "magnitude":    mag,
+                        "description":  (
+                            f"{mag} lower than the industry median "
+                            f"(lower intensity = better efficiency)"
+                            if lower else
+                            f"{mag} above the industry median"
                         ),
+                        "percentile":   r.get("Percentile"),
                     })
 
-            # top gaps (Below Average, sorted by worst first)
-            bad = sub[sub["Rating"] == "Below Average"] \
-                if not sub.empty else pd.DataFrame()
             top_gaps = []
             if not bad.empty:
-                bad_sorted = bad.copy()
-                bad_sorted["deficit_pct"] = bad_sorted.apply(
-                    lambda r: r["Gap_Pct"] if r["KPI"] in LOWER_IS_BETTER
-                              else -r["Gap_Pct"], axis=1)
-                for _, r in bad_sorted.sort_values(
-                        "deficit_pct", ascending=False).head(5).iterrows():
+                for _, r in bad.sort_values("Gap_Pct").head(6).iterrows():
+                    lower = r["KPI"] in LOWER_IS_BETTER
+                    gp    = r["Gap_Pct"]
+                    mag   = _magnitude(gp)
                     top_gaps.append({
-                        "kpi":       r["KPI"],
-                        "kpi_type":  r["KPI_Type"],
-                        "value":     None if r["Value"] == 0.0 else r["Value"],
-                        "benchmark": r["Benchmark"],
-                        "deficit_pct": abs(r["Gap_Pct"]) if r["Gap_Pct"] else None,
-                        "note": (
-                            "lower_value_is_better — this company needs to reduce this"
-                            if r["KPI"] in LOWER_IS_BETTER
-                            else "higher_value_is_better — this company needs to improve this"
+                        "kpi":         r["KPI"],
+                        "kpi_type":    r["KPI_Type"],
+                        "value":       None if r["Value"] == 0.0 else round(r["Value"], 4),
+                        "median":      round(r["Benchmark"], 4),
+                        "magnitude":   mag,
+                        "description": (
+                            f"{mag} higher than the industry median "
+                            f"(higher intensity = less efficient — needs reduction)"
+                            if lower else
+                            f"{mag} below the industry median — needs improvement"
                         ),
+                        "action":      (
+                            "reduce_intensity" if lower else "increase_value"),
+                        "percentile":  r.get("Percentile"),
                     })
 
-            # unreliable metrics for this company
             unreliable = [
                 k.replace("_UNRELIABLE", "")
                 for k, v in companies[company].items()
                 if k.endswith("_UNRELIABLE") and v
             ]
 
-            # operational scale context (display-only, clearly labelled)
-            scale_keys = {
-                "TotalGHG_tCO2e":     "Total GHG Scope1+2 (tCO2e) — scale indicator only",
-                "TotalEnergy_GJ":     "Total Energy (GJ) — scale indicator only",
-                "WaterConsumption_KL":"Water Consumption (KL) — scale indicator only",
-                "WasteGenerated_MT":  "Waste Generated (MT) — scale indicator only",
-                "Turnover_INR":       "Turnover (INR) — scale indicator only",
-                "perm_emp_total":     "Permanent Employees",
-            }
-            scale_ctx = {
-                label: companies[company][k]
-                for k, label in scale_keys.items()
-                if companies[company].get(k) is not None
-                and companies[company][k] != 0.0
-            }
+            # operational scale — clearly labelled
+            scale_ctx = {}
+            for k, label in [
+                ("TotalGHG_tCO2e",    "total_GHG_tCO2e_scale_indicator"),
+                ("TotalEnergy_GJ",    "total_energy_GJ_scale_indicator"),
+                ("WaterConsumption_KL","water_consumption_KL_scale_indicator"),
+                ("WasteGenerated_MT", "waste_generated_MT_scale_indicator"),
+                ("Turnover_INR",      "annual_turnover_INR"),
+                ("perm_emp_total",    "permanent_employees"),
+            ]:
+                v = companies[company].get(k)
+                if v is not None and v != 0.0:
+                    scale_ctx[label] = v
 
             payload["company_analysis"][company] = {
-                "top_strengths":       top_strengths,
-                "top_gaps":            top_gaps,
-                "unreliable_metrics":  unreliable,
+                "top_strengths":            top_strengths,
+                "top_gaps":                 top_gaps,
+                "unreliable_metrics":       unreliable,
                 "operational_scale_context": scale_ctx,
             }
 

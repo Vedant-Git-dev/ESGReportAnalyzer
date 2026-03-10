@@ -7,14 +7,28 @@ KPI metadata, benchmark thresholds and display-group definitions.
 Metric type taxonomy
 --------------------
 OPERATIONAL_SCALE_METRICS  — absolute totals; context/size only, never ranked
-ESG_EFFICIENCY_METRICS     — per-employee intensities; lower = better; ranked
-ESG_POLICY_METRICS         — rates/shares; higher = better; ranked
-SOCIAL_METRICS             — diversity ratios; higher = better; ranked
-SAFETY_METRICS             — incident counts/rates; lower = better; ranked
-GOVERNANCE_METRICS         — complaint counts; lower = better; ranked
+ESG_EFFICIENCY_EMP_METRICS — per-employee intensities; lower=better; ranked
+ESG_EFFICIENCY_REV_METRICS — per-revenue intensities; lower=better; ranked (new)
+ESG_POLICY_METRICS         — rates/shares; higher=better; ranked
+SOCIAL_METRICS             — diversity ratios; higher=better; ranked
+SAFETY_METRICS             — incident counts/rates; lower=better; ranked
+GOVERNANCE_METRICS         — complaint counts; lower=better; ranked
 
-RANKABLE_KPIS              — union of efficiency + policy + social + safety + governance
+ESG_EFFICIENCY_METRICS     — union of EMP + REV efficiency metrics
+
+RANKABLE_KPIS              — efficiency + policy + social + safety + governance
                              (NO operational scale metrics)
+
+ESG Category Weights (for composite score)
+-------------------------------------------
+Environment  = 40%  (efficiency intensities + policy rates)
+Social       = 30%  (diversity ratios)
+Governance   = 30%  (safety + complaints)
+
+Benchmarking method
+-------------------
+  industry mode → median of peer values (robust to outliers)
+  Also computes Q1 (25th pctile) and Q3 (75th pctile) for quartile banding
 """
 
 # ── XBRL namespace URIs ───────────────────────────────────────────────────────
@@ -35,7 +49,6 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 
 # Absolute totals — scale / impact indicators ONLY.
 # NEVER ranked, NEVER used in gap analysis.
-# Displayed in "Operational Scale / Environmental Impact" section.
 OPERATIONAL_SCALE_METRICS: set[str] = {
     "TotalGHG_tCO2e",
     "Scope1_tCO2e",
@@ -62,15 +75,30 @@ OPERATIONAL_SCALE_METRICS: set[str] = {
     "Emp_HS_Training", "Wkr_HS_Training",
 }
 
-# Per-employee intensities — lower = better — RANKED & gap-analysed
-ESG_EFFICIENCY_METRICS: set[str] = {
+# Per-employee environmental intensities — lower = better — RANKED
+ESG_EFFICIENCY_EMP_METRICS: set[str] = {
     "GHG_tCO2e_perEmployee",
     "Energy_GJ_perEmployee",
     "Water_KL_perEmployee",
     "Waste_MT_perEmployee",
 }
 
-# Policy / commitment rates — higher = better — RANKED & gap-analysed
+# Per-revenue environmental intensities — lower = better — RANKED
+# Used when companies differ greatly in workforce size (capital-intensive sectors)
+# Units: tCO2e/₹Cr, GJ/₹Cr, KL/₹Cr, MT/₹Cr
+ESG_EFFICIENCY_REV_METRICS: set[str] = {
+    "GHG_tCO2e_perRevCr",
+    "Energy_GJ_perRevCr",
+    "Water_KL_perRevCr",
+    "Waste_MT_perRevCr",
+}
+
+# Combined efficiency set
+ESG_EFFICIENCY_METRICS: set[str] = (
+    ESG_EFFICIENCY_EMP_METRICS | ESG_EFFICIENCY_REV_METRICS
+)
+
+# Policy / commitment rates — higher = better — RANKED
 ESG_POLICY_METRICS: set[str] = {
     "RenewableEnergyShare_Pct",
     "WasteRecoveryRate_Pct",
@@ -78,17 +106,16 @@ ESG_POLICY_METRICS: set[str] = {
     "Pct_Wkr_HS_Training",
 }
 
-# Social / workforce diversity — higher = better — RANKED & gap-analysed
+# Social / workforce diversity — higher = better — RANKED
 SOCIAL_METRICS: set[str] = {
     "Female_Ratio_PermanentEmp",
     "Female_Ratio_PermanentWorkers",
     "Female_Ratio_ContractWorkers",
     "Female_Ratio_AllEmployees",
     "Female_Ratio_AllWorkers",
-    # Female_Ratio_NonPermEmployees is computed but subject to denominator check
 }
 
-# Safety — lower = better — RANKED & gap-analysed
+# Safety — lower = better — RANKED
 SAFETY_METRICS: set[str] = {
     "Fatalities",
     "LTIFR",
@@ -96,17 +123,16 @@ SAFETY_METRICS: set[str] = {
     "RecordableInjuries",
 }
 
-# Governance — lower = better — RANKED & gap-analysed
+# Governance — lower = better — RANKED
 GOVERNANCE_METRICS: set[str] = {
     "Complaints_Filed",
     "Complaints_Pending",
 }
 
-# Minimum denominator for ratio metrics to be statistically reliable
+# Denominator floor for ratio reliability
 MIN_RATIO_DENOMINATOR: int = 30
 
-# ── KPIs eligible for ranking and gap analysis ────────────────────────────────
-# Strict union of typed sets — operational scale metrics are EXCLUDED
+# ── RANKABLE_KPIS = all typed sets EXCEPT operational scale ───────────────────
 RANKABLE_KPIS: set[str] = (
     ESG_EFFICIENCY_METRICS
     | ESG_POLICY_METRICS
@@ -115,15 +141,72 @@ RANKABLE_KPIS: set[str] = (
     | GOVERNANCE_METRICS
 )
 
-# ── KPIs where LOWER value = BETTER performance ───────────────────────────────
+# ── Lower = better ────────────────────────────────────────────────────────────
 LOWER_IS_BETTER: set[str] = (
     ESG_EFFICIENCY_METRICS
     | SAFETY_METRICS
     | GOVERNANCE_METRICS
 )
 
-# ── Static industry benchmarks ────────────────────────────────────────────────
-# Only for RANKABLE_KPIS — no operational scale metrics here
+# ══════════════════════════════════════════════════════════════════════════════
+# ESG COMPOSITE SCORING WEIGHTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+ESG_WEIGHTS: dict[str, float] = {
+    "Environment": 0.40,
+    "Social":      0.30,
+    "Governance":  0.30,
+}
+
+# Which KPIs belong to each ESG pillar (for composite scoring)
+ESG_PILLAR_KPIS: dict[str, list[str]] = {
+    "Environment": [
+        "GHG_tCO2e_perEmployee",
+        "Energy_GJ_perEmployee",
+        "Water_KL_perEmployee",
+        "Waste_MT_perEmployee",
+        "GHG_tCO2e_perRevCr",
+        "Energy_GJ_perRevCr",
+        "RenewableEnergyShare_Pct",
+        "WasteRecoveryRate_Pct",
+    ],
+    "Social": [
+        "Female_Ratio_PermanentEmp",
+        "Female_Ratio_PermanentWorkers",
+        "Female_Ratio_ContractWorkers",
+        "Female_Ratio_AllEmployees",
+        "Female_Ratio_AllWorkers",
+        "Pct_Emp_HS_Training",
+        "Pct_Wkr_HS_Training",
+    ],
+    "Governance": [
+        "Fatalities",
+        "LTIFR",
+        "HighConsequenceInjuries",
+        "Complaints_Filed",
+        "Complaints_Pending",
+    ],
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BENCHMARKING METHOD
+# ══════════════════════════════════════════════════════════════════════════════
+
+BENCHMARK_METHOD = "median"   # "median" (robust) or "mean"
+
+# Scale-ratio threshold: if max_turnover / min_turnover > this, add disclaimer
+SCALE_RATIO_THRESHOLD: float = 10.0
+
+# ── ESG scoring thresholds ────────────────────────────────────────────────────
+# Legacy ±10% thresholds — used only when < 4 peers (percentile method needs ≥4)
+GOOD_THRESHOLD: float = 0.10
+BAD_THRESHOLD:  float = 0.10
+
+# Percentile bands for executive summary scoring (used when ≥4 peers available)
+PERCENTILE_GOOD:  float = 75.0   # top quartile
+PERCENTILE_BAD:   float = 25.0   # bottom quartile
+
+# ── Static industry benchmarks (used when computed benchmark unavailable) ─────
 STATIC_BENCHMARKS: dict[str, float] = {
     # Social
     "Female_Ratio_PermanentEmp":     15.0,
@@ -139,29 +222,30 @@ STATIC_BENCHMARKS: dict[str, float] = {
     # Safety
     "LTIFR":                          0.30,
     "Fatalities":                     0.0,
-    # Efficiency (Indian energy sector reference values)
+    # Efficiency (Indian energy sector reference values, per employee)
     "GHG_tCO2e_perEmployee":          5.0,
     "Energy_GJ_perEmployee":         80.0,
     "Water_KL_perEmployee":         150.0,
     "Waste_MT_perEmployee":           3.0,
+    # Efficiency (Indian energy sector reference values, per ₹Cr revenue)
+    "GHG_tCO2e_perRevCr":            0.05,
+    "Energy_GJ_perRevCr":            0.80,
+    "Water_KL_perRevCr":             1.50,
+    "Waste_MT_perRevCr":             0.03,
 }
-
-# ── ESG category scoring thresholds ──────────────────────────────────────────
-# GOOD         : company ≥ benchmark × (1 + GOOD_THRESHOLD)    [higher-is-better]
-#              : company ≤ benchmark × (1 − GOOD_THRESHOLD)    [lower-is-better]
-# BELOW AVERAGE: company ≤ benchmark × (1 − BAD_THRESHOLD)     [higher-is-better]
-#              : company ≥ benchmark × (1 + BAD_THRESHOLD)     [lower-is-better]
-# AVERAGE      : within ±GOOD_THRESHOLD of benchmark
-GOOD_THRESHOLD: float = 0.10   # ±10%
-BAD_THRESHOLD:  float = 0.10   # same band, opposite direction
 
 # ── Human-readable KPI labels ─────────────────────────────────────────────────
 KPI_LABELS: dict[str, str] = {
-    # Efficiency
+    # Per-employee efficiency
     "GHG_tCO2e_perEmployee":         "GHG Intensity / Employee (tCO2e)  ↓better",
     "Energy_GJ_perEmployee":         "Energy Intensity / Employee (GJ)  ↓better",
     "Water_KL_perEmployee":          "Water Intensity / Employee (KL)  ↓better",
     "Waste_MT_perEmployee":          "Waste Intensity / Employee (MT)  ↓better",
+    # Per-revenue efficiency
+    "GHG_tCO2e_perRevCr":            "GHG Intensity / ₹Cr Revenue (tCO2e)  ↓better",
+    "Energy_GJ_perRevCr":            "Energy Intensity / ₹Cr Revenue (GJ)  ↓better",
+    "Water_KL_perRevCr":             "Water Intensity / ₹Cr Revenue (KL)  ↓better",
+    "Waste_MT_perRevCr":             "Waste Intensity / ₹Cr Revenue (MT)  ↓better",
     # Policy
     "RenewableEnergyShare_Pct":      "Renewable Energy Share (%)",
     "WasteRecoveryRate_Pct":         "Waste Recovery Rate (%)",
@@ -181,17 +265,15 @@ KPI_LABELS: dict[str, str] = {
     "Complaints_Filed":              "Complaints Filed  ↓better",
     "Complaints_Pending":            "Complaints Pending  ↓better",
     # Operational scale (display-only)
-    "TotalGHG_tCO2e":                "Total GHG Scope1+2 (tCO2e)  [scale]",
-    "TotalEnergy_GJ":                "Total Energy (GJ)  [scale]",
-    "WaterConsumption_KL":           "Water Consumption (KL)  [scale]",
-    "WasteGenerated_MT":             "Waste Generated (MT)  [scale]",
-    "Turnover_INR":                  "Turnover (INR)  [scale]",
+    "TotalGHG_tCO2e":                "Total GHG Scope1+2 (tCO2e)  [operational scale]",
+    "TotalEnergy_GJ":                "Total Energy (GJ)  [operational scale]",
+    "WaterConsumption_KL":           "Water Consumption (KL)  [operational scale]",
+    "WasteGenerated_MT":             "Waste Generated (MT)  [operational scale]",
 }
 
-# ── Display groups for Section 1 KPI table ───────────────────────────────────
-# Groups are labelled with their metric type for clarity
+# ── Display groups for Section 1 KPI table ────────────────────────────────────
 DISPLAY_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
-    ("Workforce — Headcount [scale]", [
+    ("Workforce — Headcount [operational scale]", [
         ("perm_emp_total",    "Permanent Employees"),
         ("perm_wkr_total",    "Permanent Workers"),
         ("contract_wkr_total","Contract Workers"),
@@ -215,30 +297,36 @@ DISPLAY_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
         ("WasteGenerated_MT", "Waste Generated (MT)"),
         ("WasteRecovered_MT", "Waste Recovered (MT)"),
     ]),
-    ("Environmental — ESG Efficiency [ranked, lower = better]", [
+    ("Environmental — ESG Efficiency per Employee [ranked ↓]", [
         ("GHG_tCO2e_perEmployee",  "GHG / Employee (tCO2e)"),
         ("Energy_GJ_perEmployee",  "Energy / Employee (GJ)"),
         ("Water_KL_perEmployee",   "Water / Employee (KL)"),
         ("Waste_MT_perEmployee",   "Waste / Employee (MT)"),
     ]),
-    ("Environmental — ESG Policy [ranked, higher = better]", [
+    ("Environmental — ESG Efficiency per ₹Cr Revenue [ranked ↓]", [
+        ("GHG_tCO2e_perRevCr",  "GHG / ₹Cr Revenue (tCO2e)"),
+        ("Energy_GJ_perRevCr",  "Energy / ₹Cr Revenue (GJ)"),
+        ("Water_KL_perRevCr",   "Water / ₹Cr Revenue (KL)"),
+        ("Waste_MT_perRevCr",   "Waste / ₹Cr Revenue (MT)"),
+    ]),
+    ("Environmental — ESG Policy [ranked ↑]", [
         ("RenewableEnergyShare_Pct", "Renewable Energy Share (%)"),
         ("WasteRecoveryRate_Pct",    "Waste Recovery Rate (%)"),
     ]),
-    ("Safety [ranked, lower = better]", [
+    ("Safety [ranked ↓]", [
         ("Fatalities",           "Fatalities"),
         ("LTIFR",                "Lost-Time Injury Rate"),
         ("HighConsequenceInjuries","High-Consequence Injuries"),
     ]),
-    ("Training [ranked, higher = better]", [
+    ("Training [ranked ↑]", [
         ("Pct_Emp_HS_Training", "Employees H&S Trained (%)"),
         ("Pct_Wkr_HS_Training", "Workers H&S Trained (%)"),
     ]),
     ("Financial — Operational Scale [context only, not ranked]", [
-        ("Turnover_INR",  "Turnover (INR)"),
+        ("Turnover_INR",  "Annual Turnover (INR)"),
         ("NetWorth_INR",  "Net Worth (INR)"),
     ]),
-    ("Governance [ranked, lower = better]", [
+    ("Governance [ranked ↓]", [
         ("Complaints_Filed",   "Complaints Filed"),
         ("Complaints_Pending", "Complaints Pending"),
     ]),

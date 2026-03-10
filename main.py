@@ -1,11 +1,8 @@
 """
-main.py
--------
-Entry point for the ESG Benchmarking Analytics Engine.
 
-Edit FILES and QUERIES below, then run:
-    cd esg_engine
-    python main.py
+main.py
+
+---
 
 To enable Groq LLM insights, set the environment variable:
     export GROQ_API_KEY=gsk_...
@@ -16,8 +13,9 @@ from engine import ESGBenchmarkingEngine
 
 # ── Input XML files (add / remove as needed) ─────────────────────────────────
 FILES = [
-    "./data/castrol.xml",
+    # "./data/castrol.xml",
     "./data/bpcl.xml",
+    "./data/hp.xml",
     "./data/indianoil.xml"
 ]
 
