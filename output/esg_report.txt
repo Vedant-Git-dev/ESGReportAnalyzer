@@ -1,214 +1,264 @@
-================================================================================================================================================
+============================================================================================================================================================================================================
   ESG BENCHMARKING REPORT — SEBI BRSR XBRL  |  FY 2024-25
   Benchmark : Industry median benchmark (median)
   Method    : MEDIAN (robust to outliers)
-  Companies : Bharat Petroleum Corporation Limited | Hindustan Petroleum Corporation Limited | Indian Oil Corporation Limited
-================================================================================================================================================
+  Companies : Bharat Petroleum Corporation Limited | Hindustan Petroleum Corporation Limited | Indian Oil Corporation Limited | MANGALORE REFINERY AND PETROCHEMICALS LIMITED | Reliance Industries Limited
+============================================================================================================================================================================================================
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   SECTION 0 — EXECUTIVE SUMMARY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   ESG Performance Rating per Company
   Scoring: percentile-based (top 25% = GOOD, middle 50% = AVERAGE, bottom 25% = BELOW AVERAGE)
   Benchmark: industry median
   ✓ GOOD  |  ~ AVERAGE  |  ✗ BELOW AVERAGE  |  — N/A
 
-  Category                              Bharat Petroleum Corporation  Hindustan Petroleum Corporat  Indian Oil Corporation Limit  
-  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  Gender Diversity — Employees          ~ Average                     ✓ Good                        ~ Average                     
-  Gender Diversity — Workers            ✗ Below Average               ~ Average                     ✗ Below Average               
-  Renewable Energy                      ~ Average                     ✓ Good                        ~ Average                     
-  GHG Intensity                         ✗ Below Average               ~ Average                     ✗ Below Average               
-  Energy Efficiency                     ~ Average                     ✗ Below Average               ~ Average                     
-  Water Efficiency                      ~ Average                     ✓ Good                        ✗ Below Average               
-  Waste Management                      ✗ Below Average               ✗ Below Average               ✗ Below Average               
-  Workplace Safety                      ~ Average                     ~ Average                     ~ Average                     
-  Training & Development                — N/A                         — N/A                         — N/A                         
-  Governance                            ~ Average                     ~ Average                     ~ Average                     
+  Category                              Bharat Petroleum Corporation  Hindustan Petroleum Corporat  Indian Oil Corporation Limit  MANGALORE REFINERY AND PETRO  Reliance Industries Limited   
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Gender Diversity — Employees          ~ Average                     ✓ Good                        ✓ Good                        ✗ Below Average               ✗ Below Average               
+  Gender Diversity — Workers            ✗ Below Average               ~ Average                     ✗ Below Average               ✓ Good                        ✗ Below Average               
+  Renewable Energy                      ✗ Below Average               ✓ Good                        ✗ Below Average               ~ Average                     ✓ Good                        
+  GHG Intensity                         ✗ Below Average               ✗ Below Average               ✗ Below Average               ✓ Good                        ~ Average                     
+  Energy Efficiency                     ✗ Below Average               ✗ Below Average               ✗ Below Average               ✓ Good                        ~ Average                     
+  Water Efficiency                      ✗ Below Average               ✗ Below Average               ~ Average                     ✓ Good                        ✓ Good                        
+  Waste Management                      ~ Average                     ✗ Below Average               ✗ Below Average               ✗ Below Average               ✓ Good                        
+  Workplace Safety                      ✗ Below Average               ✗ Below Average               ~ Average                     ✓ Good                        ✓ Good                        
+  Training & Development                — N/A                         — N/A                         — N/A                         — N/A                         — N/A                         
+  Governance                            ✗ Below Average               ✗ Below Average               ~ Average                     ✓ Good                        ✓ Good                        
 
-  ESG Composite Scores  (E=57%  S=43%)  ⚠ Excluded (no data): Governance
-  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  Environment score (0–100)             43.8/100                      50.0/100                      56.2/100                      
-  Social score (0–100)                  40.0/100                      80.0/100                      30.0/100                      
-  Governance score (0–100)              N/A (excluded)                N/A (excluded)                N/A (excluded)                
-  Composite score (0–100)               42.2/100                      62.9/100                      45.0/100                      
-  ESG Grade (A≥70 B≥50 C≥30 D<30)       C                             B                             C                             
-  Confidence (High≥10 Medium≥5 Low<5)   High (15 KPIs)                High (15 KPIs)                High (15 KPIs)                
+  ESG Composite Scores
+  Weight basis: Fixed configuration weights (E=40% S=30% G=30%)
+  Config weights: E=40%  S=30%  G=30%  |  Effective weights: E=57%  S=43%  ⚠ Excluded (no data): Governance
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Environment score (0–100)             43.8/100                      75.0/100                      56.2/100                      31.2/100                      43.8/100                      
+  Social score (0–100)                  53.3/100                      71.7/100                      45.0/100                      60.0/100                      12.5/100                      
+  Governance score (0–100)              N/A (excluded)                N/A (excluded)                N/A (excluded)                N/A (excluded)                N/A (excluded)                
+  Composite score (0–100)               47.9/100                      73.6/100                      51.4/100                      43.5/100                      30.4/100                      
+  ESG Grade (A≥70 B≥50 C≥30 D<30)       C                             A                             B                             C                             C                             
+  Confidence (High≥10 Medium≥5 Low<5)   High (15 KPIs)                High (15 KPIs)                High (15 KPIs)                High (15 KPIs)                High (14 KPIs)                
 
   Company Snapshot
   ────────────────────────────────────────────────────────────
 
   Bharat Petroleum Corporation Limited
-    ESG Grade: C  Score: 42.2/100  Confidence: High (15 KPIs)
-    E:43.8  S:40.0  G:N/A (excluded)
+    ESG Grade: C  Score: 47.9/100  Confidence: High (15 KPIs)
+    E:43.8  S:53.3  G:N/A (excluded)
     ⚠ Pillar(s) excluded (no data): Governance  →  Effective weights: E=57%  S=43%
-    ~ AVERAGE       : Gender Diversity — Employees, Renewable Energy, Energy Efficiency, Water Efficiency, Workplace Safety, Governance
-    ✗ BELOW AVERAGE : Gender Diversity — Workers, GHG Intensity, Waste Management
+    ~ AVERAGE       : Gender Diversity — Employees, Waste Management
+    ✗ BELOW AVERAGE : Gender Diversity — Workers, Renewable Energy, GHG Intensity, Energy Efficiency, Water Efficiency, Workplace Safety, Governance
     — DATA MISSING  : Training & Development
     ⚠ Excluded (small denominator < 30): Female_Ratio_NonPermEmployees
 
   Hindustan Petroleum Corporation Limited
-    ESG Grade: B  Score: 62.9/100  Confidence: High (15 KPIs)
-    E:50.0  S:80.0  G:N/A (excluded)
+    ESG Grade: A  Score: 73.6/100  Confidence: High (15 KPIs)
+    E:75.0  S:71.7  G:N/A (excluded)
     ⚠ Pillar(s) excluded (no data): Governance  →  Effective weights: E=57%  S=43%
-    ✓ GOOD          : Gender Diversity — Employees, Renewable Energy, Water Efficiency
-    ~ AVERAGE       : Gender Diversity — Workers, GHG Intensity, Workplace Safety, Governance
-    ✗ BELOW AVERAGE : Energy Efficiency, Waste Management
+    ✓ GOOD          : Gender Diversity — Employees, Renewable Energy
+    ~ AVERAGE       : Gender Diversity — Workers
+    ✗ BELOW AVERAGE : GHG Intensity, Energy Efficiency, Water Efficiency, Waste Management, Workplace Safety, Governance
     — DATA MISSING  : Training & Development
 
   Indian Oil Corporation Limited
-    ESG Grade: C  Score: 45.0/100  Confidence: High (15 KPIs)
-    E:56.2  S:30.0  G:N/A (excluded)
+    ESG Grade: B  Score: 51.4/100  Confidence: High (15 KPIs)
+    E:56.2  S:45.0  G:N/A (excluded)
     ⚠ Pillar(s) excluded (no data): Governance  →  Effective weights: E=57%  S=43%
-    ~ AVERAGE       : Gender Diversity — Employees, Renewable Energy, Energy Efficiency, Workplace Safety, Governance
-    ✗ BELOW AVERAGE : Gender Diversity — Workers, GHG Intensity, Water Efficiency, Waste Management
+    ✓ GOOD          : Gender Diversity — Employees
+    ~ AVERAGE       : Water Efficiency, Workplace Safety, Governance
+    ✗ BELOW AVERAGE : Gender Diversity — Workers, Renewable Energy, GHG Intensity, Energy Efficiency, Waste Management
     — DATA MISSING  : Training & Development
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  SECTION 1 — COMPANY KPI SUMMARY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  MANGALORE REFINERY AND PETROCHEMICALS LIMITED
+    ESG Grade: C  Score: 43.5/100  Confidence: High (15 KPIs)
+    E:31.2  S:60.0  G:N/A (excluded)
+    ⚠ Pillar(s) excluded (no data): Governance  →  Effective weights: E=57%  S=43%
+    ✓ GOOD          : Gender Diversity — Workers, GHG Intensity, Energy Efficiency, Water Efficiency, Workplace Safety, Governance
+    ~ AVERAGE       : Renewable Energy
+    ✗ BELOW AVERAGE : Gender Diversity — Employees, Waste Management
+    — DATA MISSING  : Training & Development
 
-  Metric                                              Bharat Petroleum Corporation  Hindustan Petroleum Corporat  Indian Oil Corporation Limit  
-  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Reliance Industries Limited
+    ESG Grade: C  Score: 30.4/100  Confidence: High (14 KPIs)
+    E:43.8  S:12.5  G:N/A (excluded)
+    ⚠ Pillar(s) excluded (no data): Governance  →  Effective weights: E=57%  S=43%
+    ✓ GOOD          : Renewable Energy, Water Efficiency, Waste Management, Workplace Safety, Governance
+    ~ AVERAGE       : GHG Intensity, Energy Efficiency
+    ✗ BELOW AVERAGE : Gender Diversity — Employees, Gender Diversity — Workers
+    — DATA MISSING  : Training & Development
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 1 — COMPANY KPI SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Metric                                              Bharat Petroleum Corporation  Hindustan Petroleum Corporat  Indian Oil Corporation Limit  MANGALORE REFINERY AND PETRO  Reliance Industries Limited   
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
   [Workforce — Headcount [operational scale]]
-  Permanent Employees  [scale]                        6196.0000                     6009.0000                     18740.0000                    
-  Permanent Workers  [scale]                          2551.0000                     2040.0000                     11201.0000                    
-  Contract Workers  [scale]                           27629.0000                    36974.0000                    124633.0000                   
-  Total Employees  [scale]                            6197.0000                     6158.0000                     19131.0000                    
-  Total Workers  [scale]                              30180.0000                    39014.0000                    135834.0000                   
+  Permanent Employees  [scale]                        6196.0000                     6009.0000                     18740.0000                    1162.0000                     33802.0000                    
+  Permanent Workers  [scale]                          2551.0000                     2040.0000                     11201.0000                    1368.0000                     3545.0000                     
+  Contract Workers  [scale]                           27629.0000                    36974.0000                    124633.0000                   4089.0000                     N/A                           
+  Total Employees  [scale]                            6197.0000                     6158.0000                     19131.0000                    1162.0000                     39158.0000                    
+  Total Workers  [scale]                              30180.0000                    39014.0000                    135834.0000                   5457.0000                     3545.0000                     
 
   [Workforce — Diversity [social / ranked]]
-  Female % (Perm Employees)                           9.9400                        12.4100                       10.6900                       
-  Female % (Perm Workers)                             4.4300                        6.4200                        5.8800                        
-  Female % (Contract Workers)                         3.4900                        3.1900                        1.9700                        
-  Female % (All Employees)                            9.9600                        13.1000                       10.6800                       
-  Female % (All Workers)                              3.5700                        3.3600                        2.2900                        
+  Female % (Perm Employees)                           9.9400                        12.4100                       10.6900                       6.0200                        6.4900                        
+  Female % (Perm Workers)                             4.4300                        6.4200                        5.8800                        11.4000                       1.4700                        
+  Female % (Contract Workers)                         3.4900                        3.1900                        1.9700                        7.4100                        —                             
+  Female % (All Employees)                            9.9600                        13.1000                       10.6800                       6.0200                        6.0300                        
+  Female % (All Workers)                              3.5700                        3.3600                        2.2900                        8.4100                        1.4700                        
 
   [Environmental — Operational Scale [context only, not ranked]]
-  Total Energy (GJ)  [scale]                          129219.1400                   70311524.0000                 320346.0000                   
-  Renewable Energy (GJ)  [scale]                      212.2400                      297182.0000                   556.0000                      
-  Total GHG Scope1+2 (tCO2e)  [scale]                 10793298.6500                 6712295.0000                  22530000.0000                 
-  GHG Scope 1 (tCO2e)  [scale]                        9935959.5200                  5513044.0000                  21240000.0000                 
-  GHG Scope 2 (tCO2e)  [scale]                        857339.1300                   1199251.0000                  1290000.0000                  
-  Water Consumption (KL)  [scale]                     36085530.0000                 19823765.0000                 152925668.0000                
-  Waste Generated (MT)  [scale]                       185615.6900                   134594.2000                   464362.0000                   
-  Waste Recovered (MT)  [scale]                       156655.1500                   15721.8000                    330174.0000                   
+  Total Energy (GJ)  [scale]                          129219140.0000                70311524.0000                 320346000.0000                74964550.0000                 481641954.0000                
+  Renewable Energy (GJ)  [scale]                      212240.0000                   297182.0000                   556000.0000                   204225.0000                   5344930.0000                  
+  Total GHG Scope1+2 (tCO2e)  [scale]                 10793298.6500                 6712295.0000                  22530000.0000                 5818829.0000                  37929391.0000                 
+  GHG Scope 1 (tCO2e)  [scale]                        9935959.5200                  5513044.0000                  21240000.0000                 5675575.0000                  36459294.0000                 
+  GHG Scope 2 (tCO2e)  [scale]                        857339.1300                   1199251.0000                  1290000.0000                  143254.0000                   1470097.0000                  
+  Water Consumption (KL)  [scale]                     36085530.0000                 19823765.0000                 152925668.0000                22127450.0000                 208465383.0000                
+  Waste Generated (MT)  [scale]                       185615.6900                   134594.2000                   464362.0000                   15244.9000                    760123.0000                   
+  Waste Recovered (MT)  [scale]                       156655.1500                   15721.8000                    330174.0000                   11978.0000                    737961.0000                   
 
   [Environmental — ESG Efficiency per Employee [ranked ↓]]
-  GHG / Employee (tCO2e)  ↓better                     1233.9429                     833.9291                      752.4799                      
-  Energy / Employee (GJ)  ↓better                     14.7730                       8735.4360                     10.6992                       
-  Water / Employee (KL)  ↓better                      4125.4750                     2462.8855                     5107.5671                     
-  Waste / Employee (MT)  ↓better                      21.2205                       16.7219                       15.5092                       
+  GHG / Employee (tCO2e)  ↓better                     1233.9429                     833.9291                      752.4799                      2299.9324                     1015.5941                     
+  Energy / Employee (GJ)  ↓better                     14772.9667                    8735.4360                     10699.2418                    29630.2569                    12896.4028                    
+  Water / Employee (KL)  ↓better                      4125.4750                     2462.8855                     5107.5671                     8746.0277                     5581.8508                     
+  Waste / Employee (MT)  ↓better                      21.2205                       16.7219                       15.5092                       6.0257                        20.3530                       
 
   [Environmental — ESG Efficiency per ₹Cr Revenue [ranked ↓]]
-  GHG / ₹Cr Revenue (tCO2e)  ↓better                  21.5706                       14.4585                       26.6465                       
-  Energy / ₹Cr Revenue (GJ)  ↓better                  0.2582                        151.4528                      0.3789                        
-  Water / ₹Cr Revenue (KL)  ↓better                   72.1175                       42.7009                       180.8673                      
-  Waste / ₹Cr Revenue (MT)  ↓better                   0.3710                        0.2899                        0.5492                        
+  GHG / ₹Cr Revenue (tCO2e)  ↓better                  21.5706                       14.4585                       26.6465                       53.2482                       68.0760                       
+  Energy / ₹Cr Revenue (GJ)  ↓better                  258.2465                      151.4528                      378.8777                      686.0018                      864.4546                      
+  Water / ₹Cr Revenue (KL)  ↓better                   72.1175                       42.7009                       180.8673                      202.4886                      374.1552                      
+  Waste / ₹Cr Revenue (MT)  ↓better                   0.3710                        0.2899                        0.5492                        0.1395                        1.3643                        
 
   [Environmental — ESG Policy [ranked ↑]]
-  Renewable Energy Share (%)                          0.1600                        0.4200                        0.1700                        
-  Waste Recovery Rate (%)                             84.4000                       11.6800                       71.1000                       
+  Renewable Energy Share (%)                          0.1600                        0.4200                        0.1700                        0.2700                        1.1100                        
+  Waste Recovery Rate (%)                             84.4000                       11.6800                       71.1000                       78.5700                       97.0800                       
 
   [Safety [ranked ↓]]
-  Fatalities  ↓better                                 N/A                           N/A                           N/A                           
+  Fatalities  ↓better                                 N/A                           N/A                           N/A                           N/A                           N/A                           
 
   [Financial — Operational Scale [context only, not ranked]]
-  Annual Turnover (INR)  [scale]                      ₹5,003,712,500,000            ₹4,642,469,600,000            ₹8,455,130,000,000            
-  Net Worth (INR)  [scale]                            ₹809,600,900,000              ₹459,583,000,000              ₹1,508,627,000,000            
+  Annual Turnover (INR)  [scale]                      ₹5,003,712,500,000            ₹4,642,469,600,000            ₹8,455,130,000,000            ₹1,092,774,900,000            ₹5,571,628,286,326            
+  Net Worth (INR)  [scale]                            ₹809,600,900,000              ₹459,583,000,000              ₹1,508,627,000,000            ₹129,337,800,000              ₹4,968,899,014,702            
 
   [Governance [ranked ↓]]
-  Complaints Filed  ↓better                           N/A                           N/A                           N/A                           
+  Complaints Filed  ↓better                           N/A                           N/A                           N/A                           N/A                           N/A                           
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   SECTION 2 — ESG EFFICIENCY & POLICY RANKINGS
   (Benchmark: industry median  |  Operational scale metrics excluded)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   ── ESG Efficiency per Employee — lower = better ↓ ──
 
-  Energy_GJ_perEmployee  [↓ lowest = best]
-    🥇  Indian Oil Corporation Limited                 10.69920         ✓ Most Efficient  [pctile=0%]
-    🥈  Bharat Petroleum Corporation Limited           14.77300           [pctile=50%]
-    🥉  Hindustan Petroleum Corporation Limited        8735.43600       ✗ Least Efficient  [pctile=100%]
+  Energy_GJ_perEmployee  [↓ lowest = best]  Q1=9717.339  median  Q3=22201.612
+    🥇  Hindustan Petroleum Corporation Limited        8735.43600       ✓ Most Efficient  [pctile=0%]
+    🥈  Indian Oil Corporation Limited                 10699.24180        [pctile=25%]
+    🥉  Reliance Industries Limited                    12896.40280        [pctile=50%]
+       #4  Bharat Petroleum Corporation Limited           14772.96670        [pctile=75%]
+       #5  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  29630.25690      ✗ Least Efficient  [pctile=100%]
 
-  GHG_tCO2e_perEmployee  [↓ lowest = best]
+  GHG_tCO2e_perEmployee  [↓ lowest = best]  Q1=793.205  median  Q3=1766.938
     🥇  Indian Oil Corporation Limited                 752.47990        ✓ Most Efficient  [pctile=0%]
-    🥈  Hindustan Petroleum Corporation Limited        833.92910          [pctile=50%]
-    🥉  Bharat Petroleum Corporation Limited           1233.94290       ✗ Least Efficient  [pctile=100%]
+    🥈  Hindustan Petroleum Corporation Limited        833.92910          [pctile=25%]
+    🥉  Reliance Industries Limited                    1015.59410         [pctile=50%]
+       #4  Bharat Petroleum Corporation Limited           1233.94290         [pctile=75%]
+       #5  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  2299.93240       ✗ Least Efficient  [pctile=100%]
 
-  Waste_MT_perEmployee  [↓ lowest = best]
-    🥇  Indian Oil Corporation Limited                 15.50920         ✓ Most Efficient  [pctile=0%]
-    🥈  Hindustan Petroleum Corporation Limited        16.72190           [pctile=50%]
-    🥉  Bharat Petroleum Corporation Limited           21.22050         ✗ Least Efficient  [pctile=100%]
+  Waste_MT_perEmployee  [↓ lowest = best]  Q1=10.767  median  Q3=20.787
+    🥇  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  6.02570          ✓ Most Efficient  [pctile=0%]
+    🥈  Indian Oil Corporation Limited                 15.50920           [pctile=25%]
+    🥉  Hindustan Petroleum Corporation Limited        16.72190           [pctile=50%]
+       #4  Reliance Industries Limited                    20.35300           [pctile=75%]
+       #5  Bharat Petroleum Corporation Limited           21.22050         ✗ Least Efficient  [pctile=100%]
 
-  Water_KL_perEmployee  [↓ lowest = best]
+  Water_KL_perEmployee  [↓ lowest = best]  Q1=3294.180  median  Q3=7163.939
     🥇  Hindustan Petroleum Corporation Limited        2462.88550       ✓ Most Efficient  [pctile=0%]
-    🥈  Bharat Petroleum Corporation Limited           4125.47500         [pctile=50%]
-    🥉  Indian Oil Corporation Limited                 5107.56710       ✗ Least Efficient  [pctile=100%]
+    🥈  Bharat Petroleum Corporation Limited           4125.47500         [pctile=25%]
+    🥉  Indian Oil Corporation Limited                 5107.56710         [pctile=50%]
+       #4  Reliance Industries Limited                    5581.85080         [pctile=75%]
+       #5  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  8746.02770       ✗ Least Efficient  [pctile=100%]
 
   ── ESG Efficiency per ₹Cr Revenue — lower = better ↓ ──
 
-  Energy_GJ_perRevCr  [↓ lowest = best]
-    🥇  Bharat Petroleum Corporation Limited           0.25825          ✓ Most Efficient  [pctile=0%]
-    🥈  Indian Oil Corporation Limited                 0.37888            [pctile=50%]
-    🥉  Hindustan Petroleum Corporation Limited        151.45285        ✗ Least Efficient  [pctile=100%]
+  Energy_GJ_perRevCr  [↓ lowest = best]  Q1=204.850  median  Q3=775.228
+    🥇  Hindustan Petroleum Corporation Limited        151.45285        ✓ Most Efficient  [pctile=0%]
+    🥈  Bharat Petroleum Corporation Limited           258.24653          [pctile=25%]
+    🥉  Indian Oil Corporation Limited                 378.87768          [pctile=50%]
+       #4  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  686.00176          [pctile=75%]
+       #5  Reliance Industries Limited                    864.45457        ✗ Least Efficient  [pctile=100%]
 
-  GHG_tCO2e_perRevCr  [↓ lowest = best]
+  GHG_tCO2e_perRevCr  [↓ lowest = best]  Q1=18.015  median  Q3=60.662
     🥇  Hindustan Petroleum Corporation Limited        14.45846         ✓ Most Efficient  [pctile=0%]
-    🥈  Bharat Petroleum Corporation Limited           21.57058           [pctile=50%]
-    🥉  Indian Oil Corporation Limited                 26.64654         ✗ Least Efficient  [pctile=100%]
+    🥈  Bharat Petroleum Corporation Limited           21.57058           [pctile=25%]
+    🥉  Indian Oil Corporation Limited                 26.64654           [pctile=50%]
+       #4  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  53.24819           [pctile=75%]
+       #5  Reliance Industries Limited                    68.07595         ✗ Least Efficient  [pctile=100%]
 
-  Waste_MT_perRevCr  [↓ lowest = best]
-    🥇  Hindustan Petroleum Corporation Limited        0.28992          ✓ Most Efficient  [pctile=0%]
-    🥈  Bharat Petroleum Corporation Limited           0.37096            [pctile=50%]
-    🥉  Indian Oil Corporation Limited                 0.54921          ✗ Least Efficient  [pctile=100%]
+  Waste_MT_perRevCr  [↓ lowest = best]  Q1=0.215  median  Q3=0.957
+    🥇  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  0.13951          ✓ Most Efficient  [pctile=0%]
+    🥈  Hindustan Petroleum Corporation Limited        0.28992            [pctile=25%]
+    🥉  Bharat Petroleum Corporation Limited           0.37096            [pctile=50%]
+       #4  Indian Oil Corporation Limited                 0.54921            [pctile=75%]
+       #5  Reliance Industries Limited                    1.36427          ✗ Least Efficient  [pctile=100%]
 
-  Water_KL_perRevCr  [↓ lowest = best]
+  Water_KL_perRevCr  [↓ lowest = best]  Q1=57.409  median  Q3=288.322
     🥇  Hindustan Petroleum Corporation Limited        42.70090         ✓ Most Efficient  [pctile=0%]
-    🥈  Bharat Petroleum Corporation Limited           72.11751           [pctile=50%]
-    🥉  Indian Oil Corporation Limited                 180.86732        ✗ Least Efficient  [pctile=100%]
+    🥈  Bharat Petroleum Corporation Limited           72.11751           [pctile=25%]
+    🥉  Indian Oil Corporation Limited                 180.86732          [pctile=50%]
+       #4  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  202.48864          [pctile=75%]
+       #5  Reliance Industries Limited                    374.15522        ✗ Least Efficient  [pctile=100%]
 
   ── ESG Policy — higher = better ↑ ──
 
-  RenewableEnergyShare_Pct  [↑ highest = best]
-    🥇  Hindustan Petroleum Corporation Limited        0.42000          ✓ Leader  [pctile=100%]
-    🥈  Indian Oil Corporation Limited                 0.17000            [pctile=50%]
-    🥉  Bharat Petroleum Corporation Limited           0.16000          ✗ Laggard  [pctile=0%]
+  RenewableEnergyShare_Pct  [↑ highest = best]  Q1=0.165  median  Q3=0.765
+    🥇  Reliance Industries Limited                    1.11000          ✓ Leader  [pctile=100%]
+    🥈  Hindustan Petroleum Corporation Limited        0.42000            [pctile=75%]
+    🥉  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  0.27000            [pctile=50%]
+       #4  Indian Oil Corporation Limited                 0.17000            [pctile=25%]
+       #5  Bharat Petroleum Corporation Limited           0.16000          ✗ Laggard  [pctile=0%]
 
-  WasteRecoveryRate_Pct  [↑ highest = best]
-    🥇  Bharat Petroleum Corporation Limited           84.40000         ✓ Leader  [pctile=100%]
-    🥈  Indian Oil Corporation Limited                 71.10000           [pctile=50%]
-    🥉  Hindustan Petroleum Corporation Limited        11.68000         ✗ Laggard  [pctile=0%]
+  WasteRecoveryRate_Pct  [↑ highest = best]  Q1=41.390  median  Q3=90.740
+    🥇  Reliance Industries Limited                    97.08000         ✓ Leader  [pctile=100%]
+    🥈  Bharat Petroleum Corporation Limited           84.40000           [pctile=75%]
+    🥉  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  78.57000           [pctile=50%]
+       #4  Indian Oil Corporation Limited                 71.10000           [pctile=25%]
+       #5  Hindustan Petroleum Corporation Limited        11.68000         ✗ Laggard  [pctile=0%]
 
   ── Social — higher = better ↑ ──
 
-  Female_Ratio_AllEmployees  [↑ highest = best]
+  Female_Ratio_AllEmployees  [↑ highest = best]  Q1=6.025  median  Q3=11.890
     🥇  Hindustan Petroleum Corporation Limited        13.10000         ✓ Leader  [pctile=100%]
-    🥈  Indian Oil Corporation Limited                 10.68000           [pctile=50%]
-    🥉  Bharat Petroleum Corporation Limited           9.96000          ✗ Laggard  [pctile=0%]
+    🥈  Indian Oil Corporation Limited                 10.68000           [pctile=75%]
+    🥉  Bharat Petroleum Corporation Limited           9.96000            [pctile=50%]
+       #4  Reliance Industries Limited                    6.03000            [pctile=25%]
+       #5  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  6.02000          ✗ Laggard  [pctile=0%]
 
-  Female_Ratio_AllWorkers  [↑ highest = best]
-    🥇  Bharat Petroleum Corporation Limited           3.57000          ✓ Leader  [pctile=100%]
-    🥈  Hindustan Petroleum Corporation Limited        3.36000            [pctile=50%]
-    🥉  Indian Oil Corporation Limited                 2.29000          ✗ Laggard  [pctile=0%]
+  Female_Ratio_AllWorkers  [↑ highest = best]  Q1=1.880  median  Q3=5.990
+    🥇  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  8.41000          ✓ Leader  [pctile=100%]
+    🥈  Bharat Petroleum Corporation Limited           3.57000            [pctile=75%]
+    🥉  Hindustan Petroleum Corporation Limited        3.36000            [pctile=50%]
+       #4  Indian Oil Corporation Limited                 2.29000            [pctile=25%]
+       #5  Reliance Industries Limited                    1.47000          ✗ Laggard  [pctile=0%]
 
-  Female_Ratio_ContractWorkers  [↑ highest = best]
-    🥇  Bharat Petroleum Corporation Limited           3.49000          ✓ Leader  [pctile=100%]
-    🥈  Hindustan Petroleum Corporation Limited        3.19000            [pctile=50%]
-    🥉  Indian Oil Corporation Limited                 1.97000          ✗ Laggard  [pctile=0%]
+  Female_Ratio_ContractWorkers  [↑ highest = best]  Q1=2.580  median  Q3=5.450
+    🥇  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  7.41000          ✓ Leader  [pctile=100%]
+    🥈  Bharat Petroleum Corporation Limited           3.49000            [pctile=67%]
+    🥉  Hindustan Petroleum Corporation Limited        3.19000            [pctile=33%]
+       #4  Indian Oil Corporation Limited                 1.97000          ✗ Laggard  [pctile=0%]
 
-  Female_Ratio_PermanentEmp  [↑ highest = best]
+  Female_Ratio_PermanentEmp  [↑ highest = best]  Q1=6.255  median  Q3=11.550
     🥇  Hindustan Petroleum Corporation Limited        12.41000         ✓ Leader  [pctile=100%]
-    🥈  Indian Oil Corporation Limited                 10.69000           [pctile=50%]
-    🥉  Bharat Petroleum Corporation Limited           9.94000          ✗ Laggard  [pctile=0%]
+    🥈  Indian Oil Corporation Limited                 10.69000           [pctile=75%]
+    🥉  Bharat Petroleum Corporation Limited           9.94000            [pctile=50%]
+       #4  Reliance Industries Limited                    6.49000            [pctile=25%]
+       #5  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  6.02000          ✗ Laggard  [pctile=0%]
 
-  Female_Ratio_PermanentWorkers  [↑ highest = best]
-    🥇  Hindustan Petroleum Corporation Limited        6.42000          ✓ Leader  [pctile=100%]
-    🥈  Indian Oil Corporation Limited                 5.88000            [pctile=50%]
-    🥉  Bharat Petroleum Corporation Limited           4.43000          ✗ Laggard  [pctile=0%]
+  Female_Ratio_PermanentWorkers  [↑ highest = best]  Q1=2.950  median  Q3=8.910
+    🥇  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  11.40000         ✓ Leader  [pctile=100%]
+    🥈  Hindustan Petroleum Corporation Limited        6.42000            [pctile=75%]
+    🥉  Indian Oil Corporation Limited                 5.88000            [pctile=50%]
+       #4  Bharat Petroleum Corporation Limited           4.43000            [pctile=25%]
+       #5  Reliance Industries Limited                    1.47000          ✗ Laggard  [pctile=0%]
 
   ── Safety — lower = better ↓ ──
 
@@ -218,116 +268,169 @@
 
   Complaints_Filed  [No data available for ranking]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   SECTION 3 — GAP ANALYSIS
   Benchmark: industry median  |  Scoring: percentile-based (top/bottom 25%)
   Operational scale metrics excluded
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Bharat Petroleum Corporation Limited
   ──────────────────────────────────────────────────────────────────────
-  ✓ Good:  2  |  ~ Average: 12  |  ✗ Below Average:  3
+  ✓ Good:  5  |  ~ Average:  4  |  ✗ Below Average:  8
 
   Areas needing improvement:
-    ✗  Female_Ratio_PermanentWorkers                  val=4.4300  median=5.8800  Δ=-1.4500  [moderately below median — needs improvement]  [pctile=0%]
-    ✗  Waste_MT_perEmployee                           val=21.2205  median=16.7219  Δ=+4.4986  [significantly higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
-    ✗  GHG_tCO2e_perEmployee                          val=1233.9429  median=833.9291  Δ=+400.0138  [significantly higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
+    ✓  Water_KL_perRevCr                              val=72.1175  median=180.8673  Δ=-108.7498  [substantially lower than median → lower intensity = better environmental efficiency]  [pctile=25%]
+    ✗  RenewableEnergyShare_Pct                       val=0.1600  median=0.2700  Δ=-0.1100  [significantly below median — needs improvement]  [pctile=0%]
+    ✓  Energy_GJ_perRevCr                             val=258.2465  median=378.8777  Δ=-120.6311  [significantly lower than median → lower intensity = better environmental efficiency]  [pctile=25%]
+    ✗  Female_Ratio_PermanentWorkers                  val=4.4300  median=5.8800  Δ=-1.4500  [moderately below median — needs improvement]  [pctile=25%]
+    ✓  Water_KL_perEmployee                           val=4125.4750  median=5107.5671  Δ=-982.0921  [moderately lower than median → lower intensity = better environmental efficiency]  [pctile=25%]
+    ✓  GHG_tCO2e_perRevCr                             val=21.5706  median=26.6465  Δ=-5.0760  [moderately lower than median → lower intensity = better environmental efficiency]  [pctile=25%]
+    ~  Complaints_Filed                               val=N/A  median=N/A  Δ=+0.0000  [at industry median]  [pctile=0%]
+    ~  Fatalities                                     val=N/A  median=N/A  Δ=+0.0000  [at industry median]  [pctile=0%]
 
   Areas of strength:
-    ✓  WasteRecoveryRate_Pct                          val=84.4000  median=71.1000  Δ=+13.3000  [moderately above median — outperforming]  [pctile=100%]
-    ✓  Energy_GJ_perRevCr                             val=0.2582  median=0.3789  Δ=-0.1206  [significantly lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
+    ✗  Waste_MT_perEmployee                           val=21.2205  median=16.7219  Δ=+4.4986  [significantly higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
+    ✗  GHG_tCO2e_perEmployee                          val=1233.9429  median=1015.5941  Δ=+218.3488  [moderately higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=75%]
+    ✗  Energy_GJ_perEmployee                          val=14772.9667  median=12896.4028  Δ=+1876.5639  [moderately higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=75%]
+    ✓  WasteRecoveryRate_Pct                          val=84.4000  median=78.5700  Δ=+5.8300  [marginally above median — outperforming]  [pctile=75%]
+    ✓  Female_Ratio_AllWorkers                        val=3.5700  median=3.3600  Δ=+0.2100  [marginally above median — outperforming]  [pctile=75%]
 
   On-target KPIs (within benchmark band):
-    ~  GHG_tCO2e_perRevCr                             val=21.5706  median=21.5706
-    ~  Energy_GJ_perEmployee                          val=14.7730  median=14.7730
-    ~  Female_Ratio_PermanentEmp                      val=9.9400  median=10.6900
-    ~  Water_KL_perEmployee                           val=4125.4750  median=4125.4750
-    ~  Complaints_Filed                               val=N/A  median=0.0000
-    ~  Water_KL_perRevCr                              val=72.1175  median=72.1175
-    ~  Female_Ratio_AllWorkers                        val=3.5700  median=3.3600
-    ~  Waste_MT_perRevCr                              val=0.3710  median=0.3710
-    ~  RenewableEnergyShare_Pct                       val=0.1600  median=0.1700
-    ~  Female_Ratio_AllEmployees                      val=9.9600  median=10.6800
-    ~  Fatalities                                     val=N/A  median=0.0000
-    ~  Female_Ratio_ContractWorkers                   val=3.4900  median=3.1900
+    ~  Waste_MT_perRevCr                              val=0.3710  median=0.3710  [Q1=0.215  Q3=0.957]
+    ~  Female_Ratio_PermanentEmp                      val=9.9400  median=9.9400  [Q1=6.255  Q3=11.550]
+    ~  Female_Ratio_AllEmployees                      val=9.9600  median=9.9600  [Q1=6.025  Q3=11.890]
+    ~  Female_Ratio_ContractWorkers                   val=3.4900  median=3.3400  [Q1=2.580  Q3=5.450]
 
   Hindustan Petroleum Corporation Limited
   ──────────────────────────────────────────────────────────────────────
-  ✓ Good:  7  |  ~ Average:  7  |  ✗ Below Average:  3
+  ✓ Good:  4  |  ~ Average:  3  |  ✗ Below Average: 10
 
   Areas needing improvement:
-    ✗  WasteRecoveryRate_Pct                          val=11.6800  median=71.1000  Δ=-59.4200  [substantially below median — needs improvement]  [pctile=0%]
-    ✗  Energy_GJ_perRevCr                             val=151.4528  median=0.3789  Δ=+151.0740  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
-    ✗  Energy_GJ_perEmployee                          val=8735.4360  median=14.7730  Δ=+8720.6630  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
+    ✗  WasteRecoveryRate_Pct                          val=11.6800  median=78.5700  Δ=-66.8900  [substantially below median — needs improvement]  [pctile=0%]
+    ✓  Water_KL_perRevCr                              val=42.7009  median=180.8673  Δ=-138.1664  [substantially lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
+    ✓  Energy_GJ_perRevCr                             val=151.4528  median=378.8777  Δ=-227.4248  [substantially lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
+    ✓  Water_KL_perEmployee                           val=2462.8855  median=5107.5671  Δ=-2644.6816  [substantially lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
+    ✓  GHG_tCO2e_perRevCr                             val=14.4585  median=26.6465  Δ=-12.1881  [significantly lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
+    ✓  Energy_GJ_perEmployee                          val=8735.4360  median=12896.4028  Δ=-4160.9668  [significantly lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
+    ✓  Waste_MT_perRevCr                              val=0.2899  median=0.3710  Δ=-0.0810  [moderately lower than median → lower intensity = better environmental efficiency]  [pctile=25%]
+    ✓  GHG_tCO2e_perEmployee                          val=833.9291  median=1015.5941  Δ=-181.6650  [moderately lower than median → lower intensity = better environmental efficiency]  [pctile=25%]
+    ~  Complaints_Filed                               val=N/A  median=N/A  Δ=+0.0000  [at industry median]  [pctile=25%]
+    ~  Fatalities                                     val=N/A  median=N/A  Δ=+0.0000  [at industry median]  [pctile=25%]
 
   Areas of strength:
-    ✓  RenewableEnergyShare_Pct                       val=0.4200  median=0.1700  Δ=+0.2500  [substantially above median — outperforming]  [pctile=100%]
-    ✓  Female_Ratio_AllEmployees                      val=13.1000  median=10.6800  Δ=+2.4200  [moderately above median — outperforming]  [pctile=100%]
-    ✓  Female_Ratio_PermanentEmp                      val=12.4100  median=10.6900  Δ=+1.7200  [moderately above median — outperforming]  [pctile=100%]
-    ✓  Waste_MT_perRevCr                              val=0.2899  median=0.3710  Δ=-0.0810  [moderately lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
-    ✓  GHG_tCO2e_perRevCr                             val=14.4585  median=21.5706  Δ=-7.1121  [significantly lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
-    ✓  Water_KL_perEmployee                           val=2462.8855  median=4125.4750  Δ=-1662.5895  [significantly lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
-    ✓  Water_KL_perRevCr                              val=42.7009  median=72.1175  Δ=-29.4166  [significantly lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
+    ✓  RenewableEnergyShare_Pct                       val=0.4200  median=0.2700  Δ=+0.1500  [substantially above median — outperforming]  [pctile=75%]
+    ✓  Female_Ratio_AllEmployees                      val=13.1000  median=9.9600  Δ=+3.1400  [significantly above median — outperforming]  [pctile=100%]
+    ✓  Female_Ratio_PermanentEmp                      val=12.4100  median=9.9400  Δ=+2.4700  [moderately above median — outperforming]  [pctile=100%]
+    ✓  Female_Ratio_PermanentWorkers                  val=6.4200  median=5.8800  Δ=+0.5400  [marginally above median — outperforming]  [pctile=75%]
 
   On-target KPIs (within benchmark band):
-    ~  Waste_MT_perEmployee                           val=16.7219  median=16.7219
-    ~  Female_Ratio_PermanentWorkers                  val=6.4200  median=5.8800
-    ~  Complaints_Filed                               val=N/A  median=0.0000
-    ~  Female_Ratio_AllWorkers                        val=3.3600  median=3.3600
-    ~  Fatalities                                     val=N/A  median=0.0000
-    ~  GHG_tCO2e_perEmployee                          val=833.9291  median=833.9291
-    ~  Female_Ratio_ContractWorkers                   val=3.1900  median=3.1900
+    ~  Waste_MT_perEmployee                           val=16.7219  median=16.7219  [Q1=10.768  Q3=20.787]
+    ~  Female_Ratio_AllWorkers                        val=3.3600  median=3.3600  [Q1=1.880  Q3=5.990]
+    ~  Female_Ratio_ContractWorkers                   val=3.1900  median=3.3400  [Q1=2.580  Q3=5.450]
 
   Indian Oil Corporation Limited
   ──────────────────────────────────────────────────────────────────────
-  ✓ Good:  1  |  ~ Average: 10  |  ✗ Below Average:  6
+  ✓ Good:  3  |  ~ Average:  7  |  ✗ Below Average:  7
 
   Areas needing improvement:
-    ✗  Female_Ratio_ContractWorkers                   val=1.9700  median=3.1900  Δ=-1.2200  [significantly below median — needs improvement]  [pctile=0%]
-    ✗  Female_Ratio_AllWorkers                        val=2.2900  median=3.3600  Δ=-1.0700  [significantly below median — needs improvement]  [pctile=0%]
-    ✗  GHG_tCO2e_perRevCr                             val=26.6465  median=21.5706  Δ=+5.0760  [moderately higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
-    ✗  Water_KL_perEmployee                           val=5107.5671  median=4125.4750  Δ=+982.0921  [moderately higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
-    ✗  Waste_MT_perRevCr                              val=0.5492  median=0.3710  Δ=+0.1783  [significantly higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
-    ✗  Water_KL_perRevCr                              val=180.8673  median=72.1175  Δ=+108.7498  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
+    ✗  Female_Ratio_ContractWorkers                   val=1.9700  median=3.3400  Δ=-1.3700  [significantly below median — needs improvement]  [pctile=0%]
+    ✗  RenewableEnergyShare_Pct                       val=0.1700  median=0.2700  Δ=-0.1000  [significantly below median — needs improvement]  [pctile=25%]
+    ✗  Female_Ratio_AllWorkers                        val=2.2900  median=3.3600  Δ=-1.0700  [significantly below median — needs improvement]  [pctile=25%]
+    ✓  GHG_tCO2e_perEmployee                          val=752.4799  median=1015.5941  Δ=-263.1142  [significantly lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
+    ✓  Energy_GJ_perEmployee                          val=10699.2418  median=12896.4028  Δ=-2197.1610  [moderately lower than median → lower intensity = better environmental efficiency]  [pctile=25%]
+    ✗  WasteRecoveryRate_Pct                          val=71.1000  median=78.5700  Δ=-7.4700  [marginally below median — needs improvement]  [pctile=25%]
+    ✓  Waste_MT_perEmployee                           val=15.5092  median=16.7219  Δ=-1.2127  [marginally lower than median → lower intensity = better environmental efficiency]  [pctile=25%]
 
   Areas of strength:
-    ✓  Energy_GJ_perEmployee                          val=10.6992  median=14.7730  Δ=-4.0738  [significantly lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
+    ✗  Waste_MT_perRevCr                              val=0.5492  median=0.3710  Δ=+0.1783  [significantly higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=75%]
+    ✓  Female_Ratio_PermanentEmp                      val=10.6900  median=9.9400  Δ=+0.7500  [marginally above median — outperforming]  [pctile=75%]
+    ✓  Female_Ratio_AllEmployees                      val=10.6800  median=9.9600  Δ=+0.7200  [marginally above median — outperforming]  [pctile=75%]
 
   On-target KPIs (within benchmark band):
-    ~  Female_Ratio_PermanentEmp                      val=10.6900  median=10.6900
-    ~  Energy_GJ_perRevCr                             val=0.3789  median=0.3789
-    ~  Waste_MT_perEmployee                           val=15.5092  median=16.7219
-    ~  Female_Ratio_PermanentWorkers                  val=5.8800  median=5.8800
-    ~  Complaints_Filed                               val=N/A  median=0.0000
-    ~  RenewableEnergyShare_Pct                       val=0.1700  median=0.1700
-    ~  Female_Ratio_AllEmployees                      val=10.6800  median=10.6800
-    ~  Fatalities                                     val=N/A  median=0.0000
-    ~  GHG_tCO2e_perEmployee                          val=752.4799  median=833.9291
-    ~  WasteRecoveryRate_Pct                          val=71.1000  median=71.1000
+    ~  GHG_tCO2e_perRevCr                             val=26.6465  median=26.6465  [Q1=18.015  Q3=60.662]
+    ~  Complaints_Filed                               val=N/A  median=0.0000  [Q1=0.000  Q3=0.000]
+    ~  Female_Ratio_PermanentWorkers                  val=5.8800  median=5.8800  [Q1=2.950  Q3=8.910]
+    ~  Water_KL_perEmployee                           val=5107.5671  median=5107.5671  [Q1=3294.180  Q3=7163.939]
+    ~  Energy_GJ_perRevCr                             val=378.8777  median=378.8777  [Q1=204.850  Q3=775.228]
+    ~  Water_KL_perRevCr                              val=180.8673  median=180.8673  [Q1=57.409  Q3=288.322]
+    ~  Fatalities                                     val=N/A  median=0.0000  [Q1=0.000  Q3=0.000]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  MANGALORE REFINERY AND PETROCHEMICALS LIMITED
+  ──────────────────────────────────────────────────────────────────────
+  ✓ Good: 11  |  ~ Average:  2  |  ✗ Below Average:  4
+
+  Areas needing improvement:
+    ✓  Waste_MT_perEmployee                           val=6.0257  median=16.7219  Δ=-10.6962  [substantially lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
+    ✓  Waste_MT_perRevCr                              val=0.1395  median=0.3710  Δ=-0.2314  [substantially lower than median → lower intensity = better environmental efficiency]  [pctile=0%]
+    ✗  Female_Ratio_AllEmployees                      val=6.0200  median=9.9600  Δ=-3.9400  [significantly below median — needs improvement]  [pctile=0%]
+    ✗  Female_Ratio_PermanentEmp                      val=6.0200  median=9.9400  Δ=-3.9200  [significantly below median — needs improvement]  [pctile=0%]
+
+  Areas of strength:
+    ✓  Female_Ratio_AllWorkers                        val=8.4100  median=3.3600  Δ=+5.0500  [substantially above median — outperforming]  [pctile=100%]
+    ✗  Energy_GJ_perEmployee                          val=29630.2569  median=12896.4028  Δ=+16733.8541  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
+    ✗  GHG_tCO2e_perEmployee                          val=2299.9324  median=1015.5941  Δ=+1284.3383  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
+    ✓  Female_Ratio_ContractWorkers                   val=7.4100  median=3.3400  Δ=+4.0700  [substantially above median — outperforming]  [pctile=100%]
+    ✗  GHG_tCO2e_perRevCr                             val=53.2482  median=26.6465  Δ=+26.6016  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=75%]
+    ✓  Female_Ratio_PermanentWorkers                  val=11.4000  median=5.8800  Δ=+5.5200  [substantially above median — outperforming]  [pctile=100%]
+    ✗  Energy_GJ_perRevCr                             val=686.0018  median=378.8777  Δ=+307.1241  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=75%]
+    ✗  Water_KL_perEmployee                           val=8746.0277  median=5107.5671  Δ=+3638.4606  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
+    ✗  Water_KL_perRevCr                              val=202.4886  median=180.8673  Δ=+21.6213  [moderately higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=75%]
+    ~  Complaints_Filed                               val=N/A  median=N/A  Δ=+0.0000  [at industry median]  [pctile=75%]
+    ~  Fatalities                                     val=N/A  median=N/A  Δ=+0.0000  [at industry median]  [pctile=75%]
+
+  On-target KPIs (within benchmark band):
+    ~  WasteRecoveryRate_Pct                          val=78.5700  median=78.5700  [Q1=41.390  Q3=90.740]
+    ~  RenewableEnergyShare_Pct                       val=0.2700  median=0.2700  [Q1=0.165  Q3=0.765]
+
+  Reliance Industries Limited
+  ──────────────────────────────────────────────────────────────────────
+  ✓ Good: 10  |  ~ Average:  2  |  ✗ Below Average:  4
+
+  Areas needing improvement:
+    ✗  Female_Ratio_PermanentWorkers                  val=1.4700  median=5.8800  Δ=-4.4100  [substantially below median — needs improvement]  [pctile=0%]
+    ✗  Female_Ratio_AllWorkers                        val=1.4700  median=3.3600  Δ=-1.8900  [substantially below median — needs improvement]  [pctile=0%]
+    ✗  Female_Ratio_AllEmployees                      val=6.0300  median=9.9600  Δ=-3.9300  [significantly below median — needs improvement]  [pctile=25%]
+    ✗  Female_Ratio_PermanentEmp                      val=6.4900  median=9.9400  Δ=-3.4500  [significantly below median — needs improvement]  [pctile=25%]
+
+  Areas of strength:
+    ✓  RenewableEnergyShare_Pct                       val=1.1100  median=0.2700  Δ=+0.8400  [substantially above median — outperforming]  [pctile=100%]
+    ✗  Waste_MT_perRevCr                              val=1.3643  median=0.3710  Δ=+0.9933  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
+    ✗  GHG_tCO2e_perRevCr                             val=68.0760  median=26.6465  Δ=+41.4294  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
+    ✗  Energy_GJ_perRevCr                             val=864.4546  median=378.8777  Δ=+485.5769  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
+    ✗  Water_KL_perRevCr                              val=374.1552  median=180.8673  Δ=+193.2879  [substantially higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=100%]
+    ✓  WasteRecoveryRate_Pct                          val=97.0800  median=78.5700  Δ=+18.5100  [moderately above median — outperforming]  [pctile=100%]
+    ✗  Waste_MT_perEmployee                           val=20.3530  median=16.7219  Δ=+3.6311  [moderately higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=75%]
+    ✗  Water_KL_perEmployee                           val=5581.8508  median=5107.5671  Δ=+474.2837  [marginally higher than median → higher intensity — reduce per-employee or per-revenue consumption]  [pctile=75%]
+    ~  Complaints_Filed                               val=N/A  median=N/A  Δ=+0.0000  [at industry median]  [pctile=100%]
+    ~  Fatalities                                     val=N/A  median=N/A  Δ=+0.0000  [at industry median]  [pctile=100%]
+
+  On-target KPIs (within benchmark band):
+    ~  GHG_tCO2e_perEmployee                          val=1015.5941  median=1015.5941  [Q1=793.205  Q3=1766.938]
+    ~  Energy_GJ_perEmployee                          val=12896.4028  median=12896.4028  [Q1=9717.339  Q3=22201.612]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   SECTION 4 — COMPANY COMPARISON
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  Bharat Petroleum Corporation Limited  |  Hindustan Petroleum Corporation Limited  |  Indian Oil Corporation Limited
+  Bharat Petroleum Corporation Limited  |  Hindustan Petroleum Corporation Limited  |  Indian Oil Corporation Limited  |  MANGALORE REFINERY AND PETROCHEMICALS LIMITED  |  Reliance Industries Limited
 
   KPI Leaders per Metric
   ──────────────────────────────────────────────────────────────────────
   Complaints_Filed                                     Most Efficient: Bharat Petroleum Corporation Limited (N/A)
-  Energy_GJ_perEmployee                                Most Efficient (lowest intensity): Indian Oil Corporation Limited (10.69920)
-  Energy_GJ_perRevCr                                   Most Efficient (lowest intensity): Bharat Petroleum Corporation Limited (0.25825)
+  Energy_GJ_perEmployee                                Most Efficient (lowest intensity): Hindustan Petroleum Corporation Limited (8735.43600)
+  Energy_GJ_perRevCr                                   Most Efficient (lowest intensity): Hindustan Petroleum Corporation Limited (151.45285)
   Fatalities                                           Most Efficient: Bharat Petroleum Corporation Limited (N/A)
   Female_Ratio_AllEmployees                            Leader: Hindustan Petroleum Corporation Limited (13.10000)
-  Female_Ratio_AllWorkers                              Leader: Bharat Petroleum Corporation Limited (3.57000)
-  Female_Ratio_ContractWorkers                         Leader: Bharat Petroleum Corporation Limited (3.49000)
+  Female_Ratio_AllWorkers                              Leader: MANGALORE REFINERY AND PETROCHEMICALS LIMITED (8.41000)
+  Female_Ratio_ContractWorkers                         Leader: MANGALORE REFINERY AND PETROCHEMICALS LIMITED (7.41000)
   Female_Ratio_PermanentEmp                            Leader: Hindustan Petroleum Corporation Limited (12.41000)
-  Female_Ratio_PermanentWorkers                        Leader: Hindustan Petroleum Corporation Limited (6.42000)
+  Female_Ratio_PermanentWorkers                        Leader: MANGALORE REFINERY AND PETROCHEMICALS LIMITED (11.40000)
   GHG_tCO2e_perEmployee                                Most Efficient (lowest intensity): Indian Oil Corporation Limited (752.47990)
   GHG_tCO2e_perRevCr                                   Most Efficient (lowest intensity): Hindustan Petroleum Corporation Limited (14.45846)
-  RenewableEnergyShare_Pct                             Leader: Hindustan Petroleum Corporation Limited (0.42000)
-  WasteRecoveryRate_Pct                                Leader: Bharat Petroleum Corporation Limited (84.40000)
-  Waste_MT_perEmployee                                 Most Efficient (lowest intensity): Indian Oil Corporation Limited (15.50920)
-  Waste_MT_perRevCr                                    Most Efficient (lowest intensity): Hindustan Petroleum Corporation Limited (0.28992)
+  RenewableEnergyShare_Pct                             Leader: Reliance Industries Limited (1.11000)
+  WasteRecoveryRate_Pct                                Leader: Reliance Industries Limited (97.08000)
+  Waste_MT_perEmployee                                 Most Efficient (lowest intensity): MANGALORE REFINERY AND PETROCHEMICALS LIMITED (6.02570)
+  Waste_MT_perRevCr                                    Most Efficient (lowest intensity): MANGALORE REFINERY AND PETROCHEMICALS LIMITED (0.13951)
   Water_KL_perEmployee                                 Most Efficient (lowest intensity): Hindustan Petroleum Corporation Limited (2462.88550)
   Water_KL_perRevCr                                    Most Efficient (lowest intensity): Hindustan Petroleum Corporation Limited (42.70090)
 
@@ -335,118 +438,279 @@
   ──────────────────────────────────────────────────────────────────────
 
   Bharat Petroleum Corporation Limited
-    ✓ WasteRecoveryRate_Pct                            val=84.4000  median=71.1000  [moderately above median]
-    ✓ Energy_GJ_perRevCr                               val=0.2582  median=0.3789  [significantly lower than median (more efficient)]
+    ✓ Waste_MT_perEmployee                             val=21.2205  median=16.7219  [significantly higher than median (less efficient)]
+    ✓ GHG_tCO2e_perEmployee                            val=1233.9429  median=1015.5941  [moderately higher than median (less efficient)]
+    ✓ Energy_GJ_perEmployee                            val=14772.9667  median=12896.4028  [moderately higher than median (less efficient)]
+    ✓ WasteRecoveryRate_Pct                            val=84.4000  median=78.5700  [marginally above median]
+    ✓ Female_Ratio_AllWorkers                          val=3.5700  median=3.3600  [marginally above median]
 
   Hindustan Petroleum Corporation Limited
-    ✓ RenewableEnergyShare_Pct                         val=0.4200  median=0.1700  [substantially above median]
-    ✓ Female_Ratio_AllEmployees                        val=13.1000  median=10.6800  [moderately above median]
-    ✓ Female_Ratio_PermanentEmp                        val=12.4100  median=10.6900  [moderately above median]
-    ✓ Waste_MT_perRevCr                                val=0.2899  median=0.3710  [moderately lower than median (more efficient)]
-    ✓ GHG_tCO2e_perRevCr                               val=14.4585  median=21.5706  [significantly lower than median (more efficient)]
-    ✓ Water_KL_perEmployee                             val=2462.8855  median=4125.4750  [significantly lower than median (more efficient)]
-    ✓ Water_KL_perRevCr                                val=42.7009  median=72.1175  [significantly lower than median (more efficient)]
+    ✓ RenewableEnergyShare_Pct                         val=0.4200  median=0.2700  [substantially above median]
+    ✓ Female_Ratio_AllEmployees                        val=13.1000  median=9.9600  [significantly above median]
+    ✓ Female_Ratio_PermanentEmp                        val=12.4100  median=9.9400  [moderately above median]
+    ✓ Female_Ratio_PermanentWorkers                    val=6.4200  median=5.8800  [marginally above median]
 
   Indian Oil Corporation Limited
-    ✓ Energy_GJ_perEmployee                            val=10.6992  median=14.7730  [significantly lower than median (more efficient)]
+    ✓ Waste_MT_perRevCr                                val=0.5492  median=0.3710  [significantly higher than median (less efficient)]
+    ✓ Female_Ratio_PermanentEmp                        val=10.6900  median=9.9400  [marginally above median]
+    ✓ Female_Ratio_AllEmployees                        val=10.6800  median=9.9600  [marginally above median]
+
+  MANGALORE REFINERY AND PETROCHEMICALS LIMITED
+    ✓ Female_Ratio_AllWorkers                          val=8.4100  median=3.3600  [substantially above median]
+    ✓ Energy_GJ_perEmployee                            val=29630.2569  median=12896.4028  [substantially higher than median (less efficient)]
+    ✓ GHG_tCO2e_perEmployee                            val=2299.9324  median=1015.5941  [substantially higher than median (less efficient)]
+    ✓ Female_Ratio_ContractWorkers                     val=7.4100  median=3.3400  [substantially above median]
+    ✓ GHG_tCO2e_perRevCr                               val=53.2482  median=26.6465  [substantially higher than median (less efficient)]
+    ✓ Female_Ratio_PermanentWorkers                    val=11.4000  median=5.8800  [substantially above median]
+    ✓ Energy_GJ_perRevCr                               val=686.0018  median=378.8777  [substantially higher than median (less efficient)]
+    ✓ Water_KL_perEmployee                             val=8746.0277  median=5107.5671  [substantially higher than median (less efficient)]
+    ✓ Water_KL_perRevCr                                val=202.4886  median=180.8673  [moderately higher than median (less efficient)]
+    ✓ Complaints_Filed                                 val=N/A  median=N/A  [marginally higher than median (less efficient)]
+    ✓ Fatalities                                       val=N/A  median=N/A  [marginally higher than median (less efficient)]
+
+  Reliance Industries Limited
+    ✓ RenewableEnergyShare_Pct                         val=1.1100  median=0.2700  [substantially above median]
+    ✓ Waste_MT_perRevCr                                val=1.3643  median=0.3710  [substantially higher than median (less efficient)]
+    ✓ GHG_tCO2e_perRevCr                               val=68.0760  median=26.6465  [substantially higher than median (less efficient)]
+    ✓ Energy_GJ_perRevCr                               val=864.4546  median=378.8777  [substantially higher than median (less efficient)]
+    ✓ Water_KL_perRevCr                                val=374.1552  median=180.8673  [substantially higher than median (less efficient)]
+    ✓ WasteRecoveryRate_Pct                            val=97.0800  median=78.5700  [moderately above median]
+    ✓ Waste_MT_perEmployee                             val=20.3530  median=16.7219  [moderately higher than median (less efficient)]
+    ✓ Water_KL_perEmployee                             val=5581.8508  median=5107.5671  [marginally higher than median (less efficient)]
+    ✓ Complaints_Filed                                 val=N/A  median=N/A  [marginally higher than median (less efficient)]
+    ✓ Fatalities                                       val=N/A  median=N/A  [marginally higher than median (less efficient)]
 
   ESG Weaknesses  (Below Average — bottom quartile vs benchmark)
   ──────────────────────────────────────────────────────────────────────
 
   Bharat Petroleum Corporation Limited
+    ✗ Water_KL_perRevCr                                val=72.1175  median=180.8673  [substantially lower than median (more efficient)]  → reduce water intensity
+    ✗ RenewableEnergyShare_Pct                         val=0.1600  median=0.2700  [significantly below median]  → improve energy efficiency
+    ✗ Energy_GJ_perRevCr                               val=258.2465  median=378.8777  [significantly lower than median (more efficient)]  → improve energy efficiency
     ✗ Female_Ratio_PermanentWorkers                    val=4.4300  median=5.8800  [moderately below median]  → increase female representation
-    ✗ Waste_MT_perEmployee                             val=21.2205  median=16.7219  [significantly higher than median (less efficient)]  → reduce waste generation
-    ✗ GHG_tCO2e_perEmployee                            val=1233.9429  median=833.9291  [significantly higher than median (less efficient)]  → reduce GHG intensity
+    ✗ Water_KL_perEmployee                             val=4125.4750  median=5107.5671  [moderately lower than median (more efficient)]  → reduce water intensity
+    ✗ GHG_tCO2e_perRevCr                               val=21.5706  median=26.6465  [moderately lower than median (more efficient)]  → reduce GHG intensity
+    ✗ Complaints_Filed                                 val=N/A  median=N/A  [marginally higher than median (less efficient)]  → resolve complaints
+    ✗ Fatalities                                       val=N/A  median=N/A  [marginally higher than median (less efficient)]  → improve safety
 
   Hindustan Petroleum Corporation Limited
-    ✗ WasteRecoveryRate_Pct                            val=11.6800  median=71.1000  [substantially below median]  → improve waste recovery
-    ✗ Energy_GJ_perRevCr                               val=151.4528  median=0.3789  [substantially higher than median (less efficient)]  → improve energy efficiency
-    ✗ Energy_GJ_perEmployee                            val=8735.4360  median=14.7730  [substantially higher than median (less efficient)]  → improve energy efficiency
+    ✗ WasteRecoveryRate_Pct                            val=11.6800  median=78.5700  [substantially below median]  → improve waste recovery
+    ✗ Water_KL_perRevCr                                val=42.7009  median=180.8673  [substantially lower than median (more efficient)]  → reduce water intensity
+    ✗ Energy_GJ_perRevCr                               val=151.4528  median=378.8777  [substantially lower than median (more efficient)]  → improve energy efficiency
+    ✗ Water_KL_perEmployee                             val=2462.8855  median=5107.5671  [substantially lower than median (more efficient)]  → reduce water intensity
+    ✗ GHG_tCO2e_perRevCr                               val=14.4585  median=26.6465  [significantly lower than median (more efficient)]  → reduce GHG intensity
+    ✗ Energy_GJ_perEmployee                            val=8735.4360  median=12896.4028  [significantly lower than median (more efficient)]  → improve energy efficiency
+    ✗ Waste_MT_perRevCr                                val=0.2899  median=0.3710  [moderately lower than median (more efficient)]  → reduce waste generation
+    ✗ GHG_tCO2e_perEmployee                            val=833.9291  median=1015.5941  [moderately lower than median (more efficient)]  → reduce GHG intensity
+    ✗ Complaints_Filed                                 val=N/A  median=N/A  [marginally higher than median (less efficient)]  → resolve complaints
+    ✗ Fatalities                                       val=N/A  median=N/A  [marginally higher than median (less efficient)]  → improve safety
 
   Indian Oil Corporation Limited
-    ✗ Female_Ratio_ContractWorkers                     val=1.9700  median=3.1900  [significantly below median]  → increase female representation
+    ✗ Female_Ratio_ContractWorkers                     val=1.9700  median=3.3400  [significantly below median]  → increase female representation
+    ✗ RenewableEnergyShare_Pct                         val=0.1700  median=0.2700  [significantly below median]  → improve energy efficiency
     ✗ Female_Ratio_AllWorkers                          val=2.2900  median=3.3600  [significantly below median]  → increase female representation
-    ✗ GHG_tCO2e_perRevCr                               val=26.6465  median=21.5706  [moderately higher than median (less efficient)]  → reduce GHG intensity
-    ✗ Water_KL_perEmployee                             val=5107.5671  median=4125.4750  [moderately higher than median (less efficient)]  → reduce water intensity
-    ✗ Waste_MT_perRevCr                                val=0.5492  median=0.3710  [significantly higher than median (less efficient)]  → reduce waste generation
-    ✗ Water_KL_perRevCr                                val=180.8673  median=72.1175  [substantially higher than median (less efficient)]  → reduce water intensity
+    ✗ GHG_tCO2e_perEmployee                            val=752.4799  median=1015.5941  [significantly lower than median (more efficient)]  → reduce GHG intensity
+    ✗ Energy_GJ_perEmployee                            val=10699.2418  median=12896.4028  [moderately lower than median (more efficient)]  → improve energy efficiency
+    ✗ WasteRecoveryRate_Pct                            val=71.1000  median=78.5700  [marginally below median]  → improve waste recovery
+    ✗ Waste_MT_perEmployee                             val=15.5092  median=16.7219  [marginally lower than median (more efficient)]  → reduce waste generation
+
+  MANGALORE REFINERY AND PETROCHEMICALS LIMITED
+    ✗ Waste_MT_perEmployee                             val=6.0257  median=16.7219  [substantially lower than median (more efficient)]  → reduce waste generation
+    ✗ Waste_MT_perRevCr                                val=0.1395  median=0.3710  [substantially lower than median (more efficient)]  → reduce waste generation
+    ✗ Female_Ratio_AllEmployees                        val=6.0200  median=9.9600  [significantly below median]  → increase female representation
+    ✗ Female_Ratio_PermanentEmp                        val=6.0200  median=9.9400  [significantly below median]  → increase female representation
+
+  Reliance Industries Limited
+    ✗ Female_Ratio_PermanentWorkers                    val=1.4700  median=5.8800  [substantially below median]  → increase female representation
+    ✗ Female_Ratio_AllWorkers                          val=1.4700  median=3.3600  [substantially below median]  → increase female representation
+    ✗ Female_Ratio_AllEmployees                        val=6.0300  median=9.9600  [significantly below median]  → increase female representation
+    ✗ Female_Ratio_PermanentEmp                        val=6.4900  median=9.9400  [significantly below median]  → increase female representation
 
   ESG Efficiency Metrics  [these are the metrics used for ESG comparison]
   ──────────────────────────────────────────────────────────────────────
-  Metric                                        Bharat Petroleum Corporation  Hindustan Petroleum Corporat  Indian Oil Corporation Limit  
-  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  GHG / Employee (tCO2e)  ↓                     1233.9429                     833.9291                      752.4799                      
-  GHG / ₹Cr Revenue (tCO2e)  ↓                  21.5706                       14.4585                       26.6465                       
-  Energy / Employee (GJ)  ↓                     14.7730                       8735.4360                     10.6992                       
-  Energy / ₹Cr Revenue (GJ)  ↓                  0.2582                        151.4528                      0.3789                        
-  Water / Employee (KL)  ↓                      4125.4750                     2462.8855                     5107.5671                     
-  Water / ₹Cr Revenue (KL)  ↓                   72.1175                       42.7009                       180.8673                      
-  Waste / Employee (MT)  ↓                      21.2205                       16.7219                       15.5092                       
-  Waste / ₹Cr Revenue (MT)  ↓                   0.3710                        0.2899                        0.5492                        
-  Renewable Energy Share (%)  ↑                 0.1600                        0.4200                        0.1700                        
-  Waste Recovery Rate (%)  ↑                    84.4000                       11.6800                       71.1000                       
+  Metric                                        Bharat Petroleum Corporation  Hindustan Petroleum Corporat  Indian Oil Corporation Limit  MANGALORE REFINERY AND PETRO  Reliance Industries Limited   
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  GHG / Employee (tCO2e)  ↓                     1233.9429                     833.9291                      752.4799                      2299.9324                     1015.5941                     
+  GHG / ₹Cr Revenue (tCO2e)  ↓                  21.5706                       14.4585                       26.6465                       53.2482                       68.0760                       
+  Energy / Employee (GJ)  ↓                     14772.9667                    8735.4360                     10699.2418                    29630.2569                    12896.4028                    
+  Energy / ₹Cr Revenue (GJ)  ↓                  258.2465                      151.4528                      378.8777                      686.0018                      864.4546                      
+  Water / Employee (KL)  ↓                      4125.4750                     2462.8855                     5107.5671                     8746.0277                     5581.8508                     
+  Water / ₹Cr Revenue (KL)  ↓                   72.1175                       42.7009                       180.8673                      202.4886                      374.1552                      
+  Waste / Employee (MT)  ↓                      21.2205                       16.7219                       15.5092                       6.0257                        20.3530                       
+  Waste / ₹Cr Revenue (MT)  ↓                   0.3710                        0.2899                        0.5492                        0.1395                        1.3643                        
+  Renewable Energy Share (%)  ↑                 0.1600                        0.4200                        0.1700                        0.2700                        1.1100                        
+  Waste Recovery Rate (%)  ↑                    84.4000                       11.6800                       71.1000                       78.5700                       97.0800                       
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   SECTION 5 — OPERATIONAL SCALE & ENVIRONMENTAL IMPACT
   ⚠  These are SIZE indicators, NOT ESG performance metrics.
      A larger company will naturally have higher absolute totals.
      Compare per-employee and per-revenue intensity metrics for ESG.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  Metric                                            Bharat Petroleum Corporation  Hindustan Petroleum Corporat  Indian Oil Corporation Limit  
-  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  Permanent Employees                               6196.0000                     6009.0000                     18740.0000                    
-  Total Workers                                     30180.0000                    39014.0000                    135834.0000                   
-  Annual Turnover (INR)                             ₹5,003,712,500,000            ₹4,642,469,600,000            ₹8,455,130,000,000            
-  Net Worth (INR)                                   ₹809,600,900,000              ₹459,583,000,000              ₹1,508,627,000,000            
-  National Plants                                   253.0000                      216.0000                      626.0000                      
-  Total Energy (GJ)  ← scales with operations       129219.1400                   70311524.0000                 320346.0000                   
-  Total GHG Scope1+2 (tCO2e)  ← scales with ops     10793298.6500                 6712295.0000                  22530000.0000                 
-  Water Consumption (KL)  ← scales with ops         36085530.0000                 19823765.0000                 152925668.0000                
-  Waste Generated (MT)  ← scales with ops           185615.6900                   134594.2000                   464362.0000                   
+  Metric                                            Bharat Petroleum Corporation  Hindustan Petroleum Corporat  Indian Oil Corporation Limit  MANGALORE REFINERY AND PETRO  Reliance Industries Limited   
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Permanent Employees                               6196.0000                     6009.0000                     18740.0000                    1162.0000                     33802.0000                    
+  Total Workers                                     30180.0000                    39014.0000                    135834.0000                   5457.0000                     3545.0000                     
+  Annual Turnover (INR)                             ₹5,003,712,500,000            ₹4,642,469,600,000            ₹8,455,130,000,000            ₹1,092,774,900,000            ₹5,571,628,286,326            
+  Net Worth (INR)                                   ₹809,600,900,000              ₹459,583,000,000              ₹1,508,627,000,000            ₹129,337,800,000              ₹4,968,899,014,702            
+  National Plants                                   253.0000                      216.0000                      626.0000                      1.0000                        15.0000                       
+  Total Energy (GJ)  ← scales with operations       129219140.0000                70311524.0000                 320346000.0000                74964550.0000                 481641954.0000                
+  Total GHG Scope1+2 (tCO2e)  ← scales with ops     10793298.6500                 6712295.0000                  22530000.0000                 5818829.0000                  37929391.0000                 
+  Water Consumption (KL)  ← scales with ops         36085530.0000                 19823765.0000                 152925668.0000                22127450.0000                 208465383.0000                
+  Waste Generated (MT)  ← scales with ops           185615.6900                   134594.2000                   464362.0000                   15244.9000                    760123.0000                   
 
   Scale comparison (for context):
-    Revenue: Indian Oil Corporation Limited is 1.8× larger than Hindustan Petroleum Corporation Limited
-    Headcount: Indian Oil Corporation Limited is 3.1× larger than Hindustan Petroleum Corporation Limited
-    Total GHG: Indian Oil Corporation Limited is 3.4× larger than Hindustan Petroleum Corporation Limited — higher GHG is expected for the larger company; see GHG/employee and GHG/₹Cr for ESG performance comparison
+    Revenue: Indian Oil Corporation Limited is 7.7× larger than MANGALORE REFINERY AND PETROCHEMICALS LIMITED
+    Headcount: Reliance Industries Limited is 29.1× larger than MANGALORE REFINERY AND PETROCHEMICALS LIMITED
+    Total GHG: Reliance Industries Limited is 6.5× larger than MANGALORE REFINERY AND PETROCHEMICALS LIMITED — higher GHG is expected for the larger company; see GHG/employee and GHG/₹Cr for ESG performance comparison
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  SECTION 6 — KEY ESG INSIGHTS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 6 — DATA QUALITY WARNINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✓ All data quality checks passed. No issues detected.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 7 — UNIT NORMALISATION AUDIT
+  All values converted to canonical units before benchmarking.
+  LLM used ONLY to detect units from text — all arithmetic is deterministic.
+  Detection sources: xbrl_unit_ref → revenue_heuristic → label_regex → llm_detected → assumed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Bharat Petroleum Corporation Limited
+  ──────────────────────────────────────────────────────────────────────
+  Detection summary: assumed (no unit found): 1 | XBRL tag: 54
+
+  Revenue Metrics — Unit Audit:
+  Metric                                  Raw Value Detected Unit                 × Factor      Canonical (INR) Source
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Turnover_INR                   5,003,712,500,000.00 INR                           1.00e+00    5,003,712,500,000  XBRL tag
+  NetWorth_INR                   809,600,900,000.00 INR                           1.00e+00      809,600,900,000  XBRL tag
+
+  Applied unit conversions (non-trivial factor):
+  Metric                                              Raw Raw Unit                  ×Factor        Canonical Canonical Unit Source
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  TotalEnergy_GJ                              129219.1400 Terajoule             1000.000000 129219140.000000 GJ             XBRL tag
+  RenewableEnergy_GJ                             212.2400 Terajoule             1000.000000    212240.000000 GJ             XBRL tag
+  NonRenewableEnergy_GJ                       129006.9000 Terajoule             1000.000000 129006900.000000 GJ             XBRL tag
+  TotalElectricity_Renewable                     212.2400 Terajoule             1000.000000    212240.000000 GJ             XBRL tag
+  TotalElectricity_NonRenewable                 4245.7300 Terajoule             1000.000000   4245730.000000 GJ             XBRL tag
+  TotalFuel_Renewable                              0.0000 Terajoule             1000.000000         0.000000 GJ             XBRL tag
+  TotalFuel_NonRenewable                      124761.1700 Terajoule             1000.000000 124761170.000000 GJ             XBRL tag
+  EnergyIntensity_Physical                      2464.2100 Terajoule             1000.000000   2464210.000000 GJ             XBRL tag
+
+  Hindustan Petroleum Corporation Limited
+  ──────────────────────────────────────────────────────────────────────
+  Detection summary: XBRL tag: 55
+
+  Revenue Metrics — Unit Audit:
+  Metric                                  Raw Value Detected Unit                 × Factor      Canonical (INR) Source
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Turnover_INR                   4,642,469,600,000.00 INR                           1.00e+00    4,642,469,600,000  XBRL tag
+  NetWorth_INR                   459,583,000,000.00 INR                           1.00e+00      459,583,000,000  XBRL tag
+
+  Indian Oil Corporation Limited
+  ──────────────────────────────────────────────────────────────────────
+  Detection summary: assumed (no unit found): 5 | XBRL tag: 50
+
+  Revenue Metrics — Unit Audit:
+  Metric                                  Raw Value Detected Unit                 × Factor      Canonical (INR) Source
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Turnover_INR                   8,455,130,000,000.00 INR                           1.00e+00    8,455,130,000,000  XBRL tag
+  NetWorth_INR                   1,508,627,000,000.00 INR                           1.00e+00    1,508,627,000,000  XBRL tag
+
+  Applied unit conversions (non-trivial factor):
+  Metric                                              Raw Raw Unit                  ×Factor        Canonical Canonical Unit Source
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  TotalEnergy_GJ                              320346.0000 Terajoule             1000.000000 320346000.000000 GJ             XBRL tag
+  RenewableEnergy_GJ                             556.0000 Terajoule             1000.000000    556000.000000 GJ             XBRL tag
+  NonRenewableEnergy_GJ                       319790.0000 Terajoule             1000.000000 319790000.000000 GJ             XBRL tag
+  TotalElectricity_Renewable                     556.0000 Terajoule             1000.000000    556000.000000 GJ             XBRL tag
+  TotalElectricity_NonRenewable                 6419.0000 Terajoule             1000.000000   6419000.000000 GJ             XBRL tag
+  TotalFuel_Renewable                              0.0000 Terajoule             1000.000000         0.000000 GJ             XBRL tag
+  TotalFuel_NonRenewable                      313371.0000 Terajoule             1000.000000 313371000.000000 GJ             XBRL tag
+  EnergyIntensity_Physical                         4.4800 Terajoule             1000.000000      4480.000000 GJ             XBRL tag
+
+  ⚠  2 metric(s) with assumed units (no XBRL unit_ref, no label match — verify manually):
+    ~  Scope1_tCO2e                             assumed canonical: tCO2e
+    ~  Scope2_tCO2e                             assumed canonical: tCO2e
+
+  MANGALORE REFINERY AND PETROCHEMICALS LIMITED
+  ──────────────────────────────────────────────────────────────────────
+  Detection summary: XBRL tag: 55
+
+  Revenue Metrics — Unit Audit:
+  Metric                                  Raw Value Detected Unit                 × Factor      Canonical (INR) Source
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Turnover_INR                   1,092,774,900,000.00 INR                           1.00e+00    1,092,774,900,000  XBRL tag
+  NetWorth_INR                   129,337,800,000.00 INR                           1.00e+00      129,337,800,000  XBRL tag
+
+  Reliance Industries Limited
+  ──────────────────────────────────────────────────────────────────────
+  Detection summary: XBRL tag: 55
+
+  Revenue Metrics — Unit Audit:
+  Metric                                  Raw Value Detected Unit                 × Factor      Canonical (INR) Source
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Turnover_INR                   5,571,628,286,325.76 INR                           1.00e+00    5,571,628,286,326  XBRL tag
+  NetWorth_INR                   4,968,899,014,702.44 INR                           1.00e+00    4,968,899,014,702  XBRL tag
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 8 — KEY ESG INSIGHTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ## KEY INSIGHTS
-* Bharat Petroleum Corporation Limited has a significantly lower Energy_GJ_perRevCr intensity, indicating better efficiency compared to the industry median.
-* Hindustan Petroleum Corporation Limited has substantially higher RenewableEnergyShare_Pct, indicating a stronger commitment to renewable energy compared to the industry median.
-* Indian Oil Corporation Limited has a significantly lower Energy_GJ_perEmployee intensity, indicating better efficiency compared to the industry median.
-* Note that the Governance pillar is missing for all companies, which may impact the overall ESG composite scores.
+* The companies have varying levels of ESG performance, with some exceling in certain areas and struggling in others.
+* Hindustan Petroleum Corporation Limited has the highest ESG composite score, with a score of 73.6 and a grade of A.
+* Reliance Industries Limited has the lowest ESG composite score, with a score of 30.4 and a grade of C.
+* There is no scale warning present in the data.
 
 ## STRENGTHS BY COMPANY
-* Bharat Petroleum Corporation Limited has a moderately higher WasteRecoveryRate_Pct, indicating a stronger waste management policy compared to the industry median.
-* Hindustan Petroleum Corporation Limited has a substantially higher RenewableEnergyShare_Pct, indicating a stronger commitment to renewable energy compared to the industry median, and a significantly lower GHG_tCO2e_perRevCr intensity, indicating better environmental efficiency.
-* Indian Oil Corporation Limited has a significantly lower Energy_GJ_perEmployee intensity, indicating better efficiency compared to the industry median.
+* **Hindustan Petroleum Corporation Limited**:
+  * Observation: Energy intensity per employee is 8735.44 GJ/employee.
+  * Benchmark comparison: The industry median is 12896.40 GJ/employee.
+  * Gap magnitude: Energy intensity is significantly lower than the industry median.
+* **MANGALORE REFINERY AND PETROCHEMICALS LIMITED**:
+  * Observation: Female ratio of all workers is 8.41%.
+  * Benchmark comparison: The industry median is 3.36%.
+  * Gap magnitude: Female ratio of all workers is substantially above the industry median.
+* **Reliance Industries Limited**:
+  * Observation: Renewable energy share is 1.11%.
+  * Benchmark comparison: The industry median is 0.27%.
+  * Gap magnitude: Renewable energy share is substantially above the industry median.
 
 ## GAPS & IMPROVEMENT AREAS
-* Bharat Petroleum Corporation Limited needs to improve its Female_Ratio_PermanentWorkers, which is moderately below the industry median, and reduce its Waste_MT_perEmployee and GHG_tCO2e_perEmployee intensities, which are significantly higher than the industry median.
-* Hindustan Petroleum Corporation Limited needs to improve its WasteRecoveryRate_Pct, which is substantially below the industry median, and reduce its Energy_GJ_perRevCr and Energy_GJ_perEmployee intensities, which are substantially higher than the industry median.
-* Indian Oil Corporation Limited needs to improve its Female_Ratio_ContractWorkers and Female_Ratio_AllWorkers, which are significantly below the industry median, and reduce its GHG_tCO2e_perRevCr, Water_KL_perEmployee, Waste_MT_perRevCr, and Water_KL_perRevCr intensities, which are moderately to substantially higher than the industry median.
+* **Bharat Petroleum Corporation Limited**:
+  * Observation: Water intensity per revenue is 72.12 KL/₹Cr.
+  * Benchmark comparison: The industry median is 180.87 KL/₹Cr.
+  * Gap magnitude: Water intensity is substantially higher than the industry median.
+* **Hindustan Petroleum Corporation Limited**:
+  * Observation: Waste recovery rate is 11.68%.
+  * Benchmark comparison: The industry median is 78.57%.
+  * Gap magnitude: Waste recovery rate is substantially below the industry median.
+* **Reliance Industries Limited**:
+  * Observation: Female ratio of permanent workers is 1.47%.
+  * Benchmark comparison: The industry median is 5.88%.
+  * Gap magnitude: Female ratio of permanent workers is substantially below the industry median.
 
 ## ENVIRONMENTAL PERFORMANCE
-* Bharat Petroleum Corporation Limited has a significantly lower Energy_GJ_perRevCr intensity and a moderately higher WasteRecoveryRate_Pct compared to the industry median.
-* Hindustan Petroleum Corporation Limited has a significantly lower GHG_tCO2e_perRevCr intensity and a substantially higher RenewableEnergyShare_Pct compared to the industry median.
-* Indian Oil Corporation Limited has a significantly lower Energy_GJ_perEmployee intensity compared to the industry median.
-* Note that the operational scale context for each company is provided, with Indian Oil Corporation Limited having the largest total GHG emissions and water consumption due to its significantly larger scale.
+* Energy intensity per employee and revenue are key metrics for environmental performance.
+* Companies with lower energy intensity per employee and revenue are considered to have better environmental performance.
+* Water intensity per employee and revenue are also important metrics, with lower intensity indicating better performance.
 
 ## ESG COMPOSITE SCORES
-* Bharat Petroleum Corporation Limited has an ESG composite score of 42.2, with a Grade of C, and a confidence level of High, based on 15 valid KPIs.
-* Hindustan Petroleum Corporation Limited has an ESG composite score of 62.9, with a Grade of B, and a confidence level of High, based on 15 valid KPIs.
-* Indian Oil Corporation Limited has an ESG composite score of 45.0, with a Grade of C, and a confidence level of High, based on 15 valid KPIs.
-* Note that the Governance pillar is missing for all companies, which may impact the overall ESG composite scores.
+* **Bharat Petroleum Corporation Limited**: ESG composite score is 47.9, with a grade of C. The effective weights are Environment (57.14%) and Social (42.86%), based on fixed configuration weights (E=40% S=30% G=30%).
+* **Hindustan Petroleum Corporation Limited**: ESG composite score is 73.6, with a grade of A. The effective weights are Environment (57.14%) and Social (42.86%), based on fixed configuration weights (E=40% S=30% G=30%).
+* **Indian Oil Corporation Limited**: ESG composite score is 51.4, with a grade of B. The effective weights are Environment (57.14%) and Social (42.86%), based on fixed configuration weights (E=40% S=30% G=30%).
+* **MANGALORE REFINERY AND PETROCHEMICALS LIMITED**: ESG composite score is 43.5, with a grade of C. The effective weights are Environment (57.14%) and Social (42.86%), based on fixed configuration weights (E=40% S=30% G=30%).
+* **Reliance Industries Limited**: ESG composite score is 30.4, with a grade of C. The effective weights are Environment (57.14%) and Social (42.86%), based on fixed configuration weights (E=40% S=30% G=30%).
 
 ## OVERALL ESG RANKING
-* Based on the ESG composite scores, Hindustan Petroleum Corporation Limited ranks first, with a Grade of B, followed by Indian Oil Corporation Limited and Bharat Petroleum Corporation Limited, both with a Grade of C.
-* The ranking is influenced by the companies' environmental performance, social policies, and operational efficiency, with Hindustan Petroleum Corporation Limited showing strengths in renewable energy and waste management, and Indian Oil Corporation Limited showing strengths in energy efficiency.
-* Note that the missing Governance pillar may impact the overall ranking, and further analysis is needed to fully assess the companies' ESG performance.
+* **Hindustan Petroleum Corporation Limited** is ranked first, with an ESG composite score of 73.6 and a grade of A.
+* **Indian Oil Corporation Limited** is ranked second, with an ESG composite score of 51.4 and a grade of B.
+* **Bharat Petroleum Corporation Limited**, **MANGALORE REFINERY AND PETROCHEMICALS LIMITED**, and **Reliance Industries Limited** are ranked third, fourth, and fifth, respectively, with ESG composite scores of 47.9, 43.5, and 30.4, and grades of C.
 
-================================================================================================================================================
+============================================================================================================================================================================================================
   END OF REPORT
-================================================================================================================================================
+============================================================================================================================================================================================================

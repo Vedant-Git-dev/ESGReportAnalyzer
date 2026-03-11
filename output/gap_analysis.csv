@@ -1,52 +1,85 @@
-Company,KPI,KPI_Type,Value,Benchmark,Q1,Q3,Gap,Gap_Pct,Status,Rating,Percentile
-Bharat Petroleum Corporation Limited,GHG_tCO2e_perRevCr,ESG Efficiency,21.570581,21.570581,,,0.0,0.0,Aligned,Average,50.0
-Bharat Petroleum Corporation Limited,Energy_GJ_perEmployee,ESG Efficiency,14.773,14.773,,,0.0,0.0,Aligned,Average,50.0
-Bharat Petroleum Corporation Limited,Female_Ratio_PermanentEmp,Social,9.94,10.69,,,-0.75,-7.0,Below,Average,0.0
-Bharat Petroleum Corporation Limited,Water_KL_perEmployee,ESG Efficiency,4125.475,4125.475,,,0.0,0.0,Aligned,Average,50.0
-Bharat Petroleum Corporation Limited,Energy_GJ_perRevCr,ESG Efficiency,0.258247,0.378878,,,-0.120631,-31.8,Above,Good,0.0
-Bharat Petroleum Corporation Limited,Waste_MT_perEmployee,ESG Efficiency,21.2205,16.7219,,,4.4986,26.9,Below,Below Average,100.0
-Bharat Petroleum Corporation Limited,Female_Ratio_PermanentWorkers,Social,4.43,5.88,,,-1.45,-24.7,Below,Below Average,0.0
-Bharat Petroleum Corporation Limited,Complaints_Filed,Governance,0.0,0.0,,,0.0,,Aligned,Average,0.0
-Bharat Petroleum Corporation Limited,Water_KL_perRevCr,ESG Efficiency,72.117513,72.117513,,,0.0,0.0,Aligned,Average,50.0
-Bharat Petroleum Corporation Limited,Female_Ratio_AllWorkers,Social,3.57,3.36,,,0.21,6.2,Above,Average,100.0
-Bharat Petroleum Corporation Limited,Waste_MT_perRevCr,ESG Efficiency,0.370956,0.370956,,,0.0,0.0,Aligned,Average,50.0
-Bharat Petroleum Corporation Limited,RenewableEnergyShare_Pct,ESG Policy,0.16,0.17,,,-0.01,-5.9,Below,Average,0.0
-Bharat Petroleum Corporation Limited,Female_Ratio_AllEmployees,Social,9.96,10.68,,,-0.72,-6.7,Below,Average,0.0
-Bharat Petroleum Corporation Limited,Fatalities,Safety,0.0,0.0,,,0.0,,Aligned,Average,0.0
-Bharat Petroleum Corporation Limited,GHG_tCO2e_perEmployee,ESG Efficiency,1233.9429,833.9291,,,400.0138,48.0,Below,Below Average,100.0
-Bharat Petroleum Corporation Limited,WasteRecoveryRate_Pct,ESG Policy,84.4,71.1,,,13.3,18.7,Above,Good,100.0
-Bharat Petroleum Corporation Limited,Female_Ratio_ContractWorkers,Social,3.49,3.19,,,0.3,9.4,Above,Average,100.0
-Hindustan Petroleum Corporation Limited,GHG_tCO2e_perRevCr,ESG Efficiency,14.458458,21.570581,,,-7.112123,-33.0,Above,Good,0.0
-Hindustan Petroleum Corporation Limited,Energy_GJ_perEmployee,ESG Efficiency,8735.436,14.773,,,8720.663,59031.1,Below,Below Average,100.0
-Hindustan Petroleum Corporation Limited,Female_Ratio_PermanentEmp,Social,12.41,10.69,,,1.72,16.1,Above,Good,100.0
-Hindustan Petroleum Corporation Limited,Water_KL_perEmployee,ESG Efficiency,2462.8855,4125.475,,,-1662.5895,-40.3,Above,Good,0.0
-Hindustan Petroleum Corporation Limited,Energy_GJ_perRevCr,ESG Efficiency,151.452847,0.378878,,,151.073969,39874.0,Below,Below Average,100.0
-Hindustan Petroleum Corporation Limited,Waste_MT_perEmployee,ESG Efficiency,16.7219,16.7219,,,0.0,0.0,Aligned,Average,50.0
-Hindustan Petroleum Corporation Limited,Female_Ratio_PermanentWorkers,Social,6.42,5.88,,,0.54,9.2,Above,Average,100.0
-Hindustan Petroleum Corporation Limited,Complaints_Filed,Governance,0.0,0.0,,,0.0,,Aligned,Average,50.0
-Hindustan Petroleum Corporation Limited,Water_KL_perRevCr,ESG Efficiency,42.700904,72.117513,,,-29.416609,-40.8,Above,Good,0.0
-Hindustan Petroleum Corporation Limited,Female_Ratio_AllWorkers,Social,3.36,3.36,,,0.0,0.0,Aligned,Average,50.0
-Hindustan Petroleum Corporation Limited,Waste_MT_perRevCr,ESG Efficiency,0.289919,0.370956,,,-0.081037,-21.8,Above,Good,0.0
-Hindustan Petroleum Corporation Limited,RenewableEnergyShare_Pct,ESG Policy,0.42,0.17,,,0.25,147.1,Above,Good,100.0
-Hindustan Petroleum Corporation Limited,Female_Ratio_AllEmployees,Social,13.1,10.68,,,2.42,22.7,Above,Good,100.0
-Hindustan Petroleum Corporation Limited,Fatalities,Safety,0.0,0.0,,,0.0,,Aligned,Average,50.0
-Hindustan Petroleum Corporation Limited,GHG_tCO2e_perEmployee,ESG Efficiency,833.9291,833.9291,,,0.0,0.0,Aligned,Average,50.0
-Hindustan Petroleum Corporation Limited,WasteRecoveryRate_Pct,ESG Policy,11.68,71.1,,,-59.42,-83.6,Below,Below Average,0.0
-Hindustan Petroleum Corporation Limited,Female_Ratio_ContractWorkers,Social,3.19,3.19,,,0.0,0.0,Aligned,Average,50.0
-Indian Oil Corporation Limited,GHG_tCO2e_perRevCr,ESG Efficiency,26.646545,21.570581,,,5.075964,23.5,Below,Below Average,100.0
-Indian Oil Corporation Limited,Energy_GJ_perEmployee,ESG Efficiency,10.6992,14.773,,,-4.0738,-27.6,Above,Good,0.0
-Indian Oil Corporation Limited,Female_Ratio_PermanentEmp,Social,10.69,10.69,,,0.0,0.0,Aligned,Average,50.0
-Indian Oil Corporation Limited,Water_KL_perEmployee,ESG Efficiency,5107.5671,4125.475,,,982.0921,23.8,Below,Below Average,100.0
-Indian Oil Corporation Limited,Energy_GJ_perRevCr,ESG Efficiency,0.378878,0.378878,,,0.0,0.0,Aligned,Average,50.0
-Indian Oil Corporation Limited,Waste_MT_perEmployee,ESG Efficiency,15.5092,16.7219,,,-1.2127,-7.3,Above,Average,0.0
-Indian Oil Corporation Limited,Female_Ratio_PermanentWorkers,Social,5.88,5.88,,,0.0,0.0,Aligned,Average,50.0
-Indian Oil Corporation Limited,Complaints_Filed,Governance,0.0,0.0,,,0.0,,Aligned,Average,100.0
-Indian Oil Corporation Limited,Water_KL_perRevCr,ESG Efficiency,180.867317,72.117513,,,108.749804,150.8,Below,Below Average,100.0
-Indian Oil Corporation Limited,Female_Ratio_AllWorkers,Social,2.29,3.36,,,-1.07,-31.8,Below,Below Average,0.0
-Indian Oil Corporation Limited,Waste_MT_perRevCr,ESG Efficiency,0.549207,0.370956,,,0.178251,48.1,Below,Below Average,100.0
-Indian Oil Corporation Limited,RenewableEnergyShare_Pct,ESG Policy,0.17,0.17,,,0.0,0.0,Aligned,Average,50.0
-Indian Oil Corporation Limited,Female_Ratio_AllEmployees,Social,10.68,10.68,,,0.0,0.0,Aligned,Average,50.0
-Indian Oil Corporation Limited,Fatalities,Safety,0.0,0.0,,,0.0,,Aligned,Average,100.0
-Indian Oil Corporation Limited,GHG_tCO2e_perEmployee,ESG Efficiency,752.4799,833.9291,,,-81.4492,-9.8,Above,Average,0.0
-Indian Oil Corporation Limited,WasteRecoveryRate_Pct,ESG Policy,71.1,71.1,,,0.0,0.0,Aligned,Average,50.0
-Indian Oil Corporation Limited,Female_Ratio_ContractWorkers,Social,1.97,3.19,,,-1.22,-38.2,Below,Below Average,0.0
+Company,KPI,KPI_Type,Value,Benchmark,Q1,Q3,Gap,Gap_Pct,Status,Rating,Percentile,Direction
+Bharat Petroleum Corporation Limited,Waste_MT_perRevCr,ESG Efficiency,0.370956,0.370956,0.2147,0.9567,0.0,0.0,Aligned,Average,50.0,lower_better
+Bharat Petroleum Corporation Limited,GHG_tCO2e_perRevCr,ESG Efficiency,21.570581,26.646545,18.0145,60.6621,-5.075964,-19.0,Above,Below Average,25.0,lower_better
+Bharat Petroleum Corporation Limited,Complaints_Filed,Governance,0.0,0.0,0.0,0.0,0.0,,Aligned,Below Average,0.0,lower_better
+Bharat Petroleum Corporation Limited,Female_Ratio_PermanentWorkers,Social,4.43,5.88,2.95,8.91,-1.45,-24.7,Below,Below Average,25.0,higher_better
+Bharat Petroleum Corporation Limited,Water_KL_perEmployee,ESG Efficiency,4125.475,5107.5671,3294.1803,7163.9393,-982.0921,-19.2,Above,Below Average,25.0,lower_better
+Bharat Petroleum Corporation Limited,Waste_MT_perEmployee,ESG Efficiency,21.2205,16.7219,10.7675,20.7868,4.4986,26.9,Below,Good,100.0,lower_better
+Bharat Petroleum Corporation Limited,WasteRecoveryRate_Pct,ESG Policy,84.4,78.57,41.39,90.74,5.83,7.4,Above,Good,75.0,higher_better
+Bharat Petroleum Corporation Limited,Female_Ratio_PermanentEmp,Social,9.94,9.94,6.255,11.55,0.0,0.0,Aligned,Average,50.0,higher_better
+Bharat Petroleum Corporation Limited,Energy_GJ_perRevCr,ESG Efficiency,258.246532,378.877675,204.8497,775.2282,-120.631143,-31.8,Above,Below Average,25.0,lower_better
+Bharat Petroleum Corporation Limited,Water_KL_perRevCr,ESG Efficiency,72.117513,180.867317,57.4092,288.3219,-108.749804,-60.1,Above,Below Average,25.0,lower_better
+Bharat Petroleum Corporation Limited,RenewableEnergyShare_Pct,ESG Policy,0.16,0.27,0.165,0.765,-0.11,-40.7,Below,Below Average,0.0,higher_better
+Bharat Petroleum Corporation Limited,Female_Ratio_AllEmployees,Social,9.96,9.96,6.025,11.89,0.0,0.0,Aligned,Average,50.0,higher_better
+Bharat Petroleum Corporation Limited,Female_Ratio_AllWorkers,Social,3.57,3.36,1.88,5.99,0.21,6.2,Above,Good,75.0,higher_better
+Bharat Petroleum Corporation Limited,GHG_tCO2e_perEmployee,ESG Efficiency,1233.9429,1015.5941,793.2045,1766.9377,218.3488,21.5,Below,Good,75.0,lower_better
+Bharat Petroleum Corporation Limited,Female_Ratio_ContractWorkers,Social,3.49,3.34,2.58,5.45,0.15,4.5,Above,Average,66.7,higher_better
+Bharat Petroleum Corporation Limited,Energy_GJ_perEmployee,ESG Efficiency,14772.9667,12896.4028,9717.3389,22201.6118,1876.5639,14.6,Below,Good,75.0,lower_better
+Bharat Petroleum Corporation Limited,Fatalities,Safety,0.0,0.0,0.0,0.0,0.0,,Aligned,Below Average,0.0,lower_better
+Hindustan Petroleum Corporation Limited,Waste_MT_perRevCr,ESG Efficiency,0.289919,0.370956,0.2147,0.9567,-0.081037,-21.8,Above,Below Average,25.0,lower_better
+Hindustan Petroleum Corporation Limited,GHG_tCO2e_perRevCr,ESG Efficiency,14.458458,26.646545,18.0145,60.6621,-12.188087,-45.7,Above,Below Average,0.0,lower_better
+Hindustan Petroleum Corporation Limited,Complaints_Filed,Governance,0.0,0.0,0.0,0.0,0.0,,Aligned,Below Average,25.0,lower_better
+Hindustan Petroleum Corporation Limited,Female_Ratio_PermanentWorkers,Social,6.42,5.88,2.95,8.91,0.54,9.2,Above,Good,75.0,higher_better
+Hindustan Petroleum Corporation Limited,Water_KL_perEmployee,ESG Efficiency,2462.8855,5107.5671,3294.1803,7163.9393,-2644.6816,-51.8,Above,Below Average,0.0,lower_better
+Hindustan Petroleum Corporation Limited,Waste_MT_perEmployee,ESG Efficiency,16.7219,16.7219,10.7675,20.7868,0.0,0.0,Aligned,Average,50.0,lower_better
+Hindustan Petroleum Corporation Limited,WasteRecoveryRate_Pct,ESG Policy,11.68,78.57,41.39,90.74,-66.89,-85.1,Below,Below Average,0.0,higher_better
+Hindustan Petroleum Corporation Limited,Female_Ratio_PermanentEmp,Social,12.41,9.94,6.255,11.55,2.47,24.8,Above,Good,100.0,higher_better
+Hindustan Petroleum Corporation Limited,Energy_GJ_perRevCr,ESG Efficiency,151.452847,378.877675,204.8497,775.2282,-227.424828,-60.0,Above,Below Average,0.0,lower_better
+Hindustan Petroleum Corporation Limited,Water_KL_perRevCr,ESG Efficiency,42.700904,180.867317,57.4092,288.3219,-138.166413,-76.4,Above,Below Average,0.0,lower_better
+Hindustan Petroleum Corporation Limited,RenewableEnergyShare_Pct,ESG Policy,0.42,0.27,0.165,0.765,0.15,55.6,Above,Good,75.0,higher_better
+Hindustan Petroleum Corporation Limited,Female_Ratio_AllEmployees,Social,13.1,9.96,6.025,11.89,3.14,31.5,Above,Good,100.0,higher_better
+Hindustan Petroleum Corporation Limited,Female_Ratio_AllWorkers,Social,3.36,3.36,1.88,5.99,0.0,0.0,Aligned,Average,50.0,higher_better
+Hindustan Petroleum Corporation Limited,GHG_tCO2e_perEmployee,ESG Efficiency,833.9291,1015.5941,793.2045,1766.9377,-181.665,-17.9,Above,Below Average,25.0,lower_better
+Hindustan Petroleum Corporation Limited,Female_Ratio_ContractWorkers,Social,3.19,3.34,2.58,5.45,-0.15,-4.5,Below,Average,33.3,higher_better
+Hindustan Petroleum Corporation Limited,Energy_GJ_perEmployee,ESG Efficiency,8735.436,12896.4028,9717.3389,22201.6118,-4160.9668,-32.3,Above,Below Average,0.0,lower_better
+Hindustan Petroleum Corporation Limited,Fatalities,Safety,0.0,0.0,0.0,0.0,0.0,,Aligned,Below Average,25.0,lower_better
+Indian Oil Corporation Limited,Waste_MT_perRevCr,ESG Efficiency,0.549207,0.370956,0.2147,0.9567,0.178251,48.1,Below,Good,75.0,lower_better
+Indian Oil Corporation Limited,GHG_tCO2e_perRevCr,ESG Efficiency,26.646545,26.646545,18.0145,60.6621,0.0,0.0,Aligned,Average,50.0,lower_better
+Indian Oil Corporation Limited,Complaints_Filed,Governance,0.0,0.0,0.0,0.0,0.0,,Aligned,Average,50.0,lower_better
+Indian Oil Corporation Limited,Female_Ratio_PermanentWorkers,Social,5.88,5.88,2.95,8.91,0.0,0.0,Aligned,Average,50.0,higher_better
+Indian Oil Corporation Limited,Water_KL_perEmployee,ESG Efficiency,5107.5671,5107.5671,3294.1803,7163.9393,0.0,0.0,Aligned,Average,50.0,lower_better
+Indian Oil Corporation Limited,Waste_MT_perEmployee,ESG Efficiency,15.5092,16.7219,10.7675,20.7868,-1.2127,-7.3,Above,Below Average,25.0,lower_better
+Indian Oil Corporation Limited,WasteRecoveryRate_Pct,ESG Policy,71.1,78.57,41.39,90.74,-7.47,-9.5,Below,Below Average,25.0,higher_better
+Indian Oil Corporation Limited,Female_Ratio_PermanentEmp,Social,10.69,9.94,6.255,11.55,0.75,7.5,Above,Good,75.0,higher_better
+Indian Oil Corporation Limited,Energy_GJ_perRevCr,ESG Efficiency,378.877675,378.877675,204.8497,775.2282,0.0,0.0,Aligned,Average,50.0,lower_better
+Indian Oil Corporation Limited,Water_KL_perRevCr,ESG Efficiency,180.867317,180.867317,57.4092,288.3219,0.0,0.0,Aligned,Average,50.0,lower_better
+Indian Oil Corporation Limited,RenewableEnergyShare_Pct,ESG Policy,0.17,0.27,0.165,0.765,-0.1,-37.0,Below,Below Average,25.0,higher_better
+Indian Oil Corporation Limited,Female_Ratio_AllEmployees,Social,10.68,9.96,6.025,11.89,0.72,7.2,Above,Good,75.0,higher_better
+Indian Oil Corporation Limited,Female_Ratio_AllWorkers,Social,2.29,3.36,1.88,5.99,-1.07,-31.8,Below,Below Average,25.0,higher_better
+Indian Oil Corporation Limited,GHG_tCO2e_perEmployee,ESG Efficiency,752.4799,1015.5941,793.2045,1766.9377,-263.1142,-25.9,Above,Below Average,0.0,lower_better
+Indian Oil Corporation Limited,Female_Ratio_ContractWorkers,Social,1.97,3.34,2.58,5.45,-1.37,-41.0,Below,Below Average,0.0,higher_better
+Indian Oil Corporation Limited,Energy_GJ_perEmployee,ESG Efficiency,10699.2418,12896.4028,9717.3389,22201.6118,-2197.161,-17.0,Above,Below Average,25.0,lower_better
+Indian Oil Corporation Limited,Fatalities,Safety,0.0,0.0,0.0,0.0,0.0,,Aligned,Average,50.0,lower_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Waste_MT_perRevCr,ESG Efficiency,0.139506,0.370956,0.2147,0.9567,-0.23145,-62.4,Above,Below Average,0.0,lower_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,GHG_tCO2e_perRevCr,ESG Efficiency,53.248194,26.646545,18.0145,60.6621,26.601649,99.8,Below,Good,75.0,lower_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Complaints_Filed,Governance,0.0,0.0,0.0,0.0,0.0,,Aligned,Good,75.0,lower_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Female_Ratio_PermanentWorkers,Social,11.4,5.88,2.95,8.91,5.52,93.9,Above,Good,100.0,higher_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Water_KL_perEmployee,ESG Efficiency,8746.0277,5107.5671,3294.1803,7163.9393,3638.4606,71.2,Below,Good,100.0,lower_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Waste_MT_perEmployee,ESG Efficiency,6.0257,16.7219,10.7675,20.7868,-10.6962,-64.0,Above,Below Average,0.0,lower_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WasteRecoveryRate_Pct,ESG Policy,78.57,78.57,41.39,90.74,0.0,0.0,Aligned,Average,50.0,higher_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Female_Ratio_PermanentEmp,Social,6.02,9.94,6.255,11.55,-3.92,-39.4,Below,Below Average,0.0,higher_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Energy_GJ_perRevCr,ESG Efficiency,686.001756,378.877675,204.8497,775.2282,307.124081,81.1,Below,Good,75.0,lower_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Water_KL_perRevCr,ESG Efficiency,202.488637,180.867317,57.4092,288.3219,21.62132,12.0,Below,Good,75.0,lower_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,RenewableEnergyShare_Pct,ESG Policy,0.27,0.27,0.165,0.765,0.0,0.0,Aligned,Average,50.0,higher_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Female_Ratio_AllEmployees,Social,6.02,9.96,6.025,11.89,-3.94,-39.6,Below,Below Average,0.0,higher_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Female_Ratio_AllWorkers,Social,8.41,3.36,1.88,5.99,5.05,150.3,Above,Good,100.0,higher_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,GHG_tCO2e_perEmployee,ESG Efficiency,2299.9324,1015.5941,793.2045,1766.9377,1284.3383,126.5,Below,Good,100.0,lower_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Female_Ratio_ContractWorkers,Social,7.41,3.34,2.58,5.45,4.07,121.9,Above,Good,100.0,higher_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Energy_GJ_perEmployee,ESG Efficiency,29630.2569,12896.4028,9717.3389,22201.6118,16733.8541,129.8,Below,Good,100.0,lower_better
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Fatalities,Safety,0.0,0.0,0.0,0.0,0.0,,Aligned,Good,75.0,lower_better
+Reliance Industries Limited,Waste_MT_perRevCr,ESG Efficiency,1.364274,0.370956,0.2147,0.9567,0.993318,267.8,Below,Good,100.0,lower_better
+Reliance Industries Limited,GHG_tCO2e_perRevCr,ESG Efficiency,68.075954,26.646545,18.0145,60.6621,41.429409,155.5,Below,Good,100.0,lower_better
+Reliance Industries Limited,Complaints_Filed,Governance,0.0,0.0,0.0,0.0,0.0,,Aligned,Good,100.0,lower_better
+Reliance Industries Limited,Female_Ratio_PermanentWorkers,Social,1.47,5.88,2.95,8.91,-4.41,-75.0,Below,Below Average,0.0,higher_better
+Reliance Industries Limited,Water_KL_perEmployee,ESG Efficiency,5581.8508,5107.5671,3294.1803,7163.9393,474.2837,9.3,Below,Good,75.0,lower_better
+Reliance Industries Limited,Waste_MT_perEmployee,ESG Efficiency,20.353,16.7219,10.7675,20.7868,3.6311,21.7,Below,Good,75.0,lower_better
+Reliance Industries Limited,WasteRecoveryRate_Pct,ESG Policy,97.08,78.57,41.39,90.74,18.51,23.6,Above,Good,100.0,higher_better
+Reliance Industries Limited,Female_Ratio_PermanentEmp,Social,6.49,9.94,6.255,11.55,-3.45,-34.7,Below,Below Average,25.0,higher_better
+Reliance Industries Limited,Energy_GJ_perRevCr,ESG Efficiency,864.454571,378.877675,204.8497,775.2282,485.576896,128.2,Below,Good,100.0,lower_better
+Reliance Industries Limited,Water_KL_perRevCr,ESG Efficiency,374.155224,180.867317,57.4092,288.3219,193.287907,106.9,Below,Good,100.0,lower_better
+Reliance Industries Limited,RenewableEnergyShare_Pct,ESG Policy,1.11,0.27,0.165,0.765,0.84,311.1,Above,Good,100.0,higher_better
+Reliance Industries Limited,Female_Ratio_AllEmployees,Social,6.03,9.96,6.025,11.89,-3.93,-39.5,Below,Below Average,25.0,higher_better
+Reliance Industries Limited,Female_Ratio_AllWorkers,Social,1.47,3.36,1.88,5.99,-1.89,-56.2,Below,Below Average,0.0,higher_better
+Reliance Industries Limited,GHG_tCO2e_perEmployee,ESG Efficiency,1015.5941,1015.5941,793.2045,1766.9377,0.0,0.0,Aligned,Average,50.0,lower_better
+Reliance Industries Limited,Energy_GJ_perEmployee,ESG Efficiency,12896.4028,12896.4028,9717.3389,22201.6118,0.0,0.0,Aligned,Average,50.0,lower_better
+Reliance Industries Limited,Fatalities,Safety,0.0,0.0,0.0,0.0,0.0,,Aligned,Good,100.0,lower_better

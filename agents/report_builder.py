@@ -76,7 +76,10 @@ class ReportBuilder:
         benchmark_result: dict,
         insights: str,
         output_dir: str,
-        esg_scores: Optional[dict] = None,
+        esg_scores:       Optional[dict] = None,
+        conversion_logs:  Optional[dict] = None,
+        anomaly_logs:     Optional[dict] = None,
+        validation_result:Optional[dict] = None,   # Fix 5: DataValidationAgent output
     ) -> str:
         os.makedirs(output_dir, exist_ok=True)
 
@@ -114,7 +117,12 @@ class ReportBuilder:
             companies, gap_df, rankings_df, names, W, COL_W,
             benchmark_result["mode_info"])
         lines += self._section_scale(companies, names, W, COL_W)
-        lines += [hr(), "  SECTION 6 — KEY ESG INSIGHTS", hr(), "", insights, ""]
+        lines += self._section_data_quality(
+            names, W, validation_result or {},
+            benchmark_result.get("insufficient_safety", []))
+        lines += self._section_unit_audit(
+            names, W, conversion_logs or {}, anomaly_logs or {})
+        lines += [hr(), "  SECTION 8 — KEY ESG INSIGHTS", hr(), "", insights, ""]
         lines += ["=" * W, "  END OF REPORT", "=" * W]
 
         report = "\n".join(lines)
@@ -187,18 +195,22 @@ class ReportBuilder:
 
         # ── ESG Composite Scores ──────────────────────────────────────────────
         if esg_scores:
-            # Build effective-weight note (may differ from nominal if pillars missing)
-            # Use the first company's effective weights as a representative display
             first_sc    = next(iter(esg_scores.values()), {})
             eff_w       = first_sc.get("Effective_Weights", {})
             miss_p      = first_sc.get("Missing_Pillars", [])
-            weight_note = "  ".join(
+            weight_basis= first_sc.get("Weight_Basis", "Fixed configuration weights")
+            cfg_w       = first_sc.get("Weight_Config", {"Environment":40,"Social":30,"Governance":30})
+            # Show config weights then effective if different
+            cfg_str     = "  ".join(f"{p[0]}={w}%" for p,w in cfg_w.items())
+            eff_str     = ("  ".join(
                 f"{p[0]}={round(w*100):.0f}%"
                 for p, w in eff_w.items()
-            ) if eff_w else "E=40% · S=30% · G=30%"
+            ) if eff_w else cfg_str)
             miss_note   = (f"  ⚠ Excluded (no data): {', '.join(miss_p)}"
                            if miss_p else "")
-            lines += ["", f"  ESG Composite Scores  ({weight_note}){miss_note}"]
+            lines += ["", f"  ESG Composite Scores"]
+            lines.append(f"  Weight basis: {weight_basis}")
+            lines.append(f"  Config weights: {cfg_str}  |  Effective weights: {eff_str}{miss_note}")
             lines.append("  " + "─" * (38 + COL_W * len(names)))
 
             for pillar in ["Environment", "Social", "Governance", "Composite"]:
@@ -765,3 +777,223 @@ class ReportBuilder:
                 f"{d:>+10.4f} {dp:>+7.1f}%  {winner}")
         lines.append("")
         return lines
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # DATA QUALITY WARNINGS (Fix 5)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _section_data_quality(
+        self,
+        names: list,
+        W: int,
+        validation_result: dict,
+        insufficient_safety: list,
+    ) -> list[str]:
+        def hr(ch="━"): return ch * W
+        lines = [
+            hr(),
+            "  SECTION 6 — DATA QUALITY WARNINGS",
+            hr(), "",
+        ]
+
+        warnings = validation_result.get("warnings", [])
+        rev_corr  = validation_result.get("revenue_corrections", {})
+        n_errors  = validation_result.get("n_errors", 0)
+        n_warns   = validation_result.get("n_warnings", 0)
+
+        if not warnings and not insufficient_safety:
+            lines += ["  ✓ All data quality checks passed. No issues detected.", ""]
+            return lines
+
+        lines.append(f"  Found {n_errors} ERROR(s) and {n_warns} WARNING(s).")
+        lines.append("")
+
+        # Revenue corrections
+        if rev_corr:
+            lines.append("  Revenue Scale Corrections Applied:")
+            lines.append("  " + "─" * 80)
+            for company, corr in rev_corr.items():
+                lines.append(f"  {company}:")
+                lines.append(f"    Raw value    : {corr['original_INR']:>20,.0f}")
+                lines.append(f"    Unit assumed : {corr['unit_assumed']}")
+                lines.append(f"    Factor used  : × {corr['factor_applied']:.0e}")
+                lines.append(f"    Corrected INR: {corr['corrected_INR']:>20,.0f}")
+                lines.append(f"    Confidence   : {corr['confidence']}")
+                lines.append(f"    Action       : All perRevCr intensities recomputed")
+            lines.append("")
+
+        # Safety/governance insufficient data (Fix 7)
+        if insufficient_safety:
+            lines.append("  Safety / Governance — Insufficient Data for Benchmarking:")
+            lines.append("  " + "─" * 60)
+            for metric in insufficient_safety:
+                lines.append(f"    ⚠  {metric}: Insufficient data for benchmarking "
+                             f"(requires ≥2 companies with valid values)")
+            lines.append("")
+
+        # All other warnings grouped by severity
+        errors   = [w for w in warnings if w["severity"] == "ERROR"
+                    and w["check"] != "revenue_scale_normalization"]
+        warningz = [w for w in warnings if w["severity"] == "WARNING"]
+
+        if errors:
+            lines.append("  ERRORS (data excluded from rankings):")
+            lines.append("  " + "─" * 80)
+            for w in errors:
+                lines.append(f"  ✗ [{w['company']}] {w['check']}")
+                lines.append(f"    Metric  : {w['metric']} = {w.get('value')}")
+                lines.append(f"    Detail  : {w['detail']}")
+                if w.get("suggested_correction"):
+                    lines.append(f"    Fix     : Use {w['suggested_correction']:,.2f} instead")
+            lines.append("")
+
+        if warningz:
+            lines.append("  WARNINGS (verify but included in analysis):")
+            lines.append("  " + "─" * 80)
+            for w in warningz:
+                lines.append(f"  ⚠ [{w['company']}] {w['check']}")
+                lines.append(f"    Metric  : {w['metric']} = {w.get('value')}")
+                lines.append(f"    Detail  : {w['detail']}")
+            lines.append("")
+
+        return lines
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # SECTION 7 — Unit Conversion Audit (Fixes 1, 9 — revenue audit added)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _section_unit_audit(
+        self,
+        names: list,
+        W: int,
+        conversion_logs: dict,
+        anomaly_logs: dict,
+    ) -> list[str]:
+        def hr(ch="━"): return ch * W
+        lines = [
+            hr(),
+            "  SECTION 7 — UNIT NORMALISATION AUDIT",
+            "  All values converted to canonical units before benchmarking.",
+            "  LLM used ONLY to detect units from text — all arithmetic is deterministic.",
+            "  Detection sources: xbrl_unit_ref → revenue_heuristic → label_regex → llm_detected → assumed",
+            hr(), "",
+        ]
+
+        SOURCE_LABELS = {
+            "xbrl_unit_ref":      "XBRL tag",
+            "revenue_heuristic":  "Revenue magnitude heuristic",
+            "label_regex":        "label pattern",
+            "llm_detected":       "LLM (unit name only)",
+            "assumed":            "assumed (no unit found)",
+            "assumed_revenue_INR":"assumed INR (verify!)",
+        }
+
+        has_any = False
+        for company in names:
+            records  = conversion_logs.get(company, [])
+            anomalies = anomaly_logs.get(company, {})
+            if not records:
+                continue
+            has_any = True
+
+            from collections import Counter
+            src_counts = Counter(r.source for r in records)
+            lines.append(f"  {company}")
+            lines.append("  " + "─" * 70)
+
+            # Summary counts
+            summary_parts = [
+                f"{SOURCE_LABELS.get(src, src)}: {n}"
+                for src, n in sorted(src_counts.items())
+            ]
+            lines.append(f"  Detection summary: {' | '.join(summary_parts)}")
+            if self._unit_converter_info(records):
+                lines.append(f"  LLM unit detections: "
+                             f"{self._unit_converter_info(records)}")
+
+            # Fix 9: Revenue unit audit — dedicated sub-section
+            rev_records = [
+                r for r in records
+                if r.metric in ("Turnover_INR", "NetWorth_INR", "PaidUpCapital_INR")
+            ]
+            if rev_records:
+                lines.append("\n  Revenue Metrics — Unit Audit:")
+                lines.append(
+                    f"  {'Metric':<30} {'Raw Value':>18} {'Detected Unit':<25} "
+                    f"{'× Factor':>12} {'Canonical (INR)':>20} Source")
+                lines.append("  " + "─" * 110)
+                for r in rev_records:
+                    src_label = SOURCE_LABELS.get(r.source, r.source)
+                    flag = "  ⚠ VERIFY" if r.source in ("assumed", "assumed_revenue_INR") else ""
+                    heur = f" [{r.raw_unit}]" if "heuristic" in r.source else ""
+                    lines.append(
+                        f"  {r.metric:<30} {r.raw_value:>18,.2f} "
+                        f"{r.raw_unit + heur:<25} {r.factor:>12.2e} "
+                        f"{r.converted_value:>20,.0f}  {src_label}{flag}"
+                    )
+
+            # Conversions that involved a non-trivial factor
+            converted_rows = [
+                r for r in records
+                if isinstance(r.factor, (int, float))
+                and r.factor not in (1.0, 0.0, "")
+                and r.source != "assumed"
+            ]
+            if converted_rows:
+                lines.append("\n  Applied unit conversions (non-trivial factor):")
+                lines.append(
+                    f"  {'Metric':<40} {'Raw':>14} {'Raw Unit':<20} "
+                    f"{'×Factor':>12} {'Canonical':>16} {'Canonical Unit':<14} Source")
+                lines.append("  " + "─" * 120)
+                for r in converted_rows:
+                    src_label = SOURCE_LABELS.get(r.source, r.source)
+                    conf_str  = (f" (LLM conf={r.llm_confidence:.2f})"
+                                 if r.llm_confidence else "")
+                    raw_unit  = r.raw_unit[:18] if len(r.raw_unit) > 18 else r.raw_unit
+                    lines.append(
+                        f"  {r.metric:<40} {r.raw_value:>14.4f} {raw_unit:<20} "
+                        f"{r.factor:>12.6f} {r.converted_value:>16.6f} "
+                        f"{r.canonical_unit:<14} {src_label}{conf_str}"
+                    )
+
+            # Anomaly warnings
+            if anomalies:
+                lines.append("\n  ⚠  Anomaly flags (metrics excluded from ranking):")
+                for metric, info in anomalies.items():
+                    lines.append(f"    ✗ {metric}")
+                    lines.append(f"       Value    : {info['value']:.4f}")
+                    lines.append(f"       Threshold: {info['threshold']:,.0f}")
+                    lines.append(f"       Reason   : {info['reason']}")
+                    lines.append(f"       Action   : metric and derived intensities "
+                                 f"set to None, excluded from all rankings")
+
+            # Metrics with assumed units (no source found — flag for manual check)
+            assumed = [r for r in records if r.source == "assumed"
+                       and r.canonical_unit not in ("pure", "unknown", "")]
+            if assumed:
+                lines.append(f"\n  ⚠  {len(assumed)} metric(s) with assumed units "
+                             f"(no XBRL unit_ref, no label match — verify manually):")
+                for r in assumed[:8]:   # cap at 8 to avoid flood
+                    lines.append(f"    ~  {r.metric:<40} assumed canonical: "
+                                 f"{r.canonical_unit}")
+
+            lines.append("")
+
+        if not has_any:
+            lines.append("  No conversion records available (single-step pipeline).")
+            lines.append("")
+
+        return lines
+
+    @staticmethod
+    def _unit_converter_info(records) -> str:
+        """Summary string for LLM-detected units in a record list."""
+        llm = [r for r in records if r.source == "llm_detected"]
+        if not llm:
+            return ""
+        confs = [r.llm_confidence for r in llm if r.llm_confidence]
+        avg_c = sum(confs) / len(confs) if confs else 0
+        units = [r.raw_unit.replace("llm:", "") for r in llm]
+        return (f"{len(llm)} detections  "
+                f"avg confidence={avg_c:.2f}  "
+                f"units={units}")

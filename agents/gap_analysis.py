@@ -8,27 +8,30 @@ Classifies each company-KPI pair vs its benchmark.
 Scoring logic (in priority order)
 ----------------------------------
 1. Percentile-based (preferred, used when ≥4 peers exist):
+     For LOWER_IS_BETTER:  rank 1 (lowest value) = 100th percentile (best)
+     For HIGHER_IS_BETTER: rank 1 (lowest value) = 0th percentile (worst)
      Percentile ≥ PERCENTILE_GOOD (75) → Good
      Percentile ≤ PERCENTILE_BAD  (25) → Below Average
      Otherwise → Average
-   Direction-aware: for lower-is-better KPIs percentile rank is inverted
-   so rank 1 (lowest value) = 100th percentile.
 
 2. Gap-threshold fallback (used when < 4 peers or static benchmark):
-     GOOD         : ≥ +10% better than benchmark
+     GOOD         : value is ≥10% BETTER than benchmark (direction-aware)
      AVERAGE      : within ±10%
-     BELOW AVERAGE: ≥ 10% worse than benchmark
+     BELOW AVERAGE: value is ≥10% WORSE than benchmark (direction-aware)
 
-Critical rules
+Critical rules (Fixes 2, 3, 4)
 --------------
 • OPERATIONAL_SCALE_METRICS NEVER appear in gap analysis.
-• None values and _UNRELIABLE ratios are excluded.
-• For LOWER_IS_BETTER: val < benchmark → Status='Above' (better).
+• None values are EXCLUDED — they are never ranked (Fix 4).
+• _UNRELIABLE ratios are excluded.
+• Direction is strictly from LOWER_IS_BETTER — strength = top quartile
+  considering direction (Fix 2 + 3).
+• Direction column added to each row for downstream audit.
 
 Output columns
 --------------
 Company, KPI, KPI_Type, Value, Benchmark, Q1, Q3,
-Gap, Gap_Pct, Status, Rating, Percentile
+Gap, Gap_Pct, Status, Rating, Percentile, Direction
 """
 
 from __future__ import annotations
@@ -62,7 +65,13 @@ def _rating_from_percentile(percentile: float) -> str:
 
 
 def _rating_from_gap(gap_pct: float | None, lower: bool) -> str:
-    """±10% threshold fallback when < 4 peers."""
+    """
+    Direction-aware ±10% threshold fallback (< 4 peers).
+
+    perf_pct > 0 means outperforming benchmark (direction-corrected):
+      lower_better: gap_pct < 0  → value < benchmark → outperforming
+      higher_better: gap_pct > 0 → value > benchmark → outperforming
+    """
     if gap_pct is None:
         return "Average"
     perf_pct = -gap_pct if lower else gap_pct
@@ -71,6 +80,20 @@ def _rating_from_gap(gap_pct: float | None, lower: bool) -> str:
     if perf_pct <= -BAD_THRESHOLD * 100:
         return "Below Average"
     return "Average"
+
+
+def _is_valid_for_ranking(val, kpi: str, metrics_dict: dict) -> bool:
+    """
+    Fix Issue 4: N/A values must never be ranked.
+    Returns True only when value is a genuine, usable numeric observation.
+    """
+    if val is None:
+        return False
+    if not isinstance(val, (int, float)):
+        return False
+    if metrics_dict.get(kpi + "_UNRELIABLE"):
+        return False
+    return True
 
 
 class GapAnalysisAgent:
@@ -109,10 +132,11 @@ class GapAnalysisAgent:
                     continue
 
                 val = metrics.get(kpi)
-                if val is None or not isinstance(val, (int, float)):
+
+                # Fix Issue 4: exclude N/A — never rank missing values
+                if not _is_valid_for_ranking(val, kpi, metrics):
                     continue
-                if metrics.get(kpi + "_UNRELIABLE"):
-                    continue
+
                 if benchmark is None or not isinstance(benchmark, (int, float)):
                     continue
 
@@ -120,14 +144,15 @@ class GapAnalysisAgent:
                 gap     = round(val - benchmark, 6)
                 pct_gap = round(gap / benchmark * 100, 1) if benchmark != 0 else None
 
+                # Status: which side of benchmark (direction-aware label)
                 if abs(gap) < 1e-9:
                     status = "Aligned"
                 elif (gap > 0 and not lower) or (gap < 0 and lower):
-                    status = "Above"
+                    status = "Above"    # better than benchmark
                 else:
-                    status = "Below"
+                    status = "Below"    # worse than benchmark
 
-                # Choose rating method
+                # Fix Issues 2+3: strictly direction-aware rating
                 percentile = pctile_map.get((company, kpi))
                 n          = peer_counts.get(kpi, 0)
 
@@ -151,6 +176,7 @@ class GapAnalysisAgent:
                     Status=status,
                     Rating=rating,
                     Percentile=percentile,
+                    Direction="lower_better" if lower else "higher_better",
                 ))
 
         df = pd.DataFrame(rows)

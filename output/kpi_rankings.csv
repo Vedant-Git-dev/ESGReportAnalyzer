@@ -1,52 +1,85 @@
 KPI,Rank,Company,Value,Higher_is_Better,Percentile,Q1,Q3
-Complaints_Filed,1,Bharat Petroleum Corporation Limited,0.0,False,0.0,,
-Complaints_Filed,2,Hindustan Petroleum Corporation Limited,0.0,False,50.0,,
-Complaints_Filed,3,Indian Oil Corporation Limited,0.0,False,100.0,,
-Energy_GJ_perEmployee,1,Indian Oil Corporation Limited,10.6992,False,0.0,,
-Energy_GJ_perEmployee,2,Bharat Petroleum Corporation Limited,14.773,False,50.0,,
-Energy_GJ_perEmployee,3,Hindustan Petroleum Corporation Limited,8735.436,False,100.0,,
-Energy_GJ_perRevCr,1,Bharat Petroleum Corporation Limited,0.258247,False,0.0,,
-Energy_GJ_perRevCr,2,Indian Oil Corporation Limited,0.378878,False,50.0,,
-Energy_GJ_perRevCr,3,Hindustan Petroleum Corporation Limited,151.452847,False,100.0,,
-Fatalities,1,Bharat Petroleum Corporation Limited,0.0,False,0.0,,
-Fatalities,2,Hindustan Petroleum Corporation Limited,0.0,False,50.0,,
-Fatalities,3,Indian Oil Corporation Limited,0.0,False,100.0,,
-Female_Ratio_AllEmployees,1,Hindustan Petroleum Corporation Limited,13.1,True,100.0,,
-Female_Ratio_AllEmployees,2,Indian Oil Corporation Limited,10.68,True,50.0,,
-Female_Ratio_AllEmployees,3,Bharat Petroleum Corporation Limited,9.96,True,0.0,,
-Female_Ratio_AllWorkers,1,Bharat Petroleum Corporation Limited,3.57,True,100.0,,
-Female_Ratio_AllWorkers,2,Hindustan Petroleum Corporation Limited,3.36,True,50.0,,
-Female_Ratio_AllWorkers,3,Indian Oil Corporation Limited,2.29,True,0.0,,
-Female_Ratio_ContractWorkers,1,Bharat Petroleum Corporation Limited,3.49,True,100.0,,
-Female_Ratio_ContractWorkers,2,Hindustan Petroleum Corporation Limited,3.19,True,50.0,,
-Female_Ratio_ContractWorkers,3,Indian Oil Corporation Limited,1.97,True,0.0,,
-Female_Ratio_PermanentEmp,1,Hindustan Petroleum Corporation Limited,12.41,True,100.0,,
-Female_Ratio_PermanentEmp,2,Indian Oil Corporation Limited,10.69,True,50.0,,
-Female_Ratio_PermanentEmp,3,Bharat Petroleum Corporation Limited,9.94,True,0.0,,
-Female_Ratio_PermanentWorkers,1,Hindustan Petroleum Corporation Limited,6.42,True,100.0,,
-Female_Ratio_PermanentWorkers,2,Indian Oil Corporation Limited,5.88,True,50.0,,
-Female_Ratio_PermanentWorkers,3,Bharat Petroleum Corporation Limited,4.43,True,0.0,,
-GHG_tCO2e_perEmployee,1,Indian Oil Corporation Limited,752.4799,False,0.0,,
-GHG_tCO2e_perEmployee,2,Hindustan Petroleum Corporation Limited,833.9291,False,50.0,,
-GHG_tCO2e_perEmployee,3,Bharat Petroleum Corporation Limited,1233.9429,False,100.0,,
-GHG_tCO2e_perRevCr,1,Hindustan Petroleum Corporation Limited,14.458458,False,0.0,,
-GHG_tCO2e_perRevCr,2,Bharat Petroleum Corporation Limited,21.570581,False,50.0,,
-GHG_tCO2e_perRevCr,3,Indian Oil Corporation Limited,26.646545,False,100.0,,
-RenewableEnergyShare_Pct,1,Hindustan Petroleum Corporation Limited,0.42,True,100.0,,
-RenewableEnergyShare_Pct,2,Indian Oil Corporation Limited,0.17,True,50.0,,
-RenewableEnergyShare_Pct,3,Bharat Petroleum Corporation Limited,0.16,True,0.0,,
-WasteRecoveryRate_Pct,1,Bharat Petroleum Corporation Limited,84.4,True,100.0,,
-WasteRecoveryRate_Pct,2,Indian Oil Corporation Limited,71.1,True,50.0,,
-WasteRecoveryRate_Pct,3,Hindustan Petroleum Corporation Limited,11.68,True,0.0,,
-Waste_MT_perEmployee,1,Indian Oil Corporation Limited,15.5092,False,0.0,,
-Waste_MT_perEmployee,2,Hindustan Petroleum Corporation Limited,16.7219,False,50.0,,
-Waste_MT_perEmployee,3,Bharat Petroleum Corporation Limited,21.2205,False,100.0,,
-Waste_MT_perRevCr,1,Hindustan Petroleum Corporation Limited,0.289919,False,0.0,,
-Waste_MT_perRevCr,2,Bharat Petroleum Corporation Limited,0.370956,False,50.0,,
-Waste_MT_perRevCr,3,Indian Oil Corporation Limited,0.549207,False,100.0,,
-Water_KL_perEmployee,1,Hindustan Petroleum Corporation Limited,2462.8855,False,0.0,,
-Water_KL_perEmployee,2,Bharat Petroleum Corporation Limited,4125.475,False,50.0,,
-Water_KL_perEmployee,3,Indian Oil Corporation Limited,5107.5671,False,100.0,,
-Water_KL_perRevCr,1,Hindustan Petroleum Corporation Limited,42.700904,False,0.0,,
-Water_KL_perRevCr,2,Bharat Petroleum Corporation Limited,72.117513,False,50.0,,
-Water_KL_perRevCr,3,Indian Oil Corporation Limited,180.867317,False,100.0,,
+Complaints_Filed,1,Bharat Petroleum Corporation Limited,0.0,False,0.0,0.0,0.0
+Complaints_Filed,2,Hindustan Petroleum Corporation Limited,0.0,False,25.0,0.0,0.0
+Complaints_Filed,3,Indian Oil Corporation Limited,0.0,False,50.0,0.0,0.0
+Complaints_Filed,4,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,0.0,False,75.0,0.0,0.0
+Complaints_Filed,5,Reliance Industries Limited,0.0,False,100.0,0.0,0.0
+Energy_GJ_perEmployee,1,Hindustan Petroleum Corporation Limited,8735.436,False,0.0,9717.338899999999,22201.6118
+Energy_GJ_perEmployee,2,Indian Oil Corporation Limited,10699.2418,False,25.0,9717.338899999999,22201.6118
+Energy_GJ_perEmployee,3,Reliance Industries Limited,12896.4028,False,50.0,9717.338899999999,22201.6118
+Energy_GJ_perEmployee,4,Bharat Petroleum Corporation Limited,14772.9667,False,75.0,9717.338899999999,22201.6118
+Energy_GJ_perEmployee,5,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,29630.2569,False,100.0,9717.338899999999,22201.6118
+Energy_GJ_perRevCr,1,Hindustan Petroleum Corporation Limited,151.452847,False,0.0,204.8496895,775.2281634999999
+Energy_GJ_perRevCr,2,Bharat Petroleum Corporation Limited,258.246532,False,25.0,204.8496895,775.2281634999999
+Energy_GJ_perRevCr,3,Indian Oil Corporation Limited,378.877675,False,50.0,204.8496895,775.2281634999999
+Energy_GJ_perRevCr,4,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,686.001756,False,75.0,204.8496895,775.2281634999999
+Energy_GJ_perRevCr,5,Reliance Industries Limited,864.454571,False,100.0,204.8496895,775.2281634999999
+Fatalities,1,Bharat Petroleum Corporation Limited,0.0,False,0.0,0.0,0.0
+Fatalities,2,Hindustan Petroleum Corporation Limited,0.0,False,25.0,0.0,0.0
+Fatalities,3,Indian Oil Corporation Limited,0.0,False,50.0,0.0,0.0
+Fatalities,4,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,0.0,False,75.0,0.0,0.0
+Fatalities,5,Reliance Industries Limited,0.0,False,100.0,0.0,0.0
+Female_Ratio_AllEmployees,1,Hindustan Petroleum Corporation Limited,13.1,True,100.0,6.025,11.89
+Female_Ratio_AllEmployees,2,Indian Oil Corporation Limited,10.68,True,75.0,6.025,11.89
+Female_Ratio_AllEmployees,3,Bharat Petroleum Corporation Limited,9.96,True,50.0,6.025,11.89
+Female_Ratio_AllEmployees,4,Reliance Industries Limited,6.03,True,25.0,6.025,11.89
+Female_Ratio_AllEmployees,5,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,6.02,True,0.0,6.025,11.89
+Female_Ratio_AllWorkers,1,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,8.41,True,100.0,1.88,5.99
+Female_Ratio_AllWorkers,2,Bharat Petroleum Corporation Limited,3.57,True,75.0,1.88,5.99
+Female_Ratio_AllWorkers,3,Hindustan Petroleum Corporation Limited,3.36,True,50.0,1.88,5.99
+Female_Ratio_AllWorkers,4,Indian Oil Corporation Limited,2.29,True,25.0,1.88,5.99
+Female_Ratio_AllWorkers,5,Reliance Industries Limited,1.47,True,0.0,1.88,5.99
+Female_Ratio_ContractWorkers,1,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,7.41,True,100.0,2.58,5.45
+Female_Ratio_ContractWorkers,2,Bharat Petroleum Corporation Limited,3.49,True,66.7,2.58,5.45
+Female_Ratio_ContractWorkers,3,Hindustan Petroleum Corporation Limited,3.19,True,33.3,2.58,5.45
+Female_Ratio_ContractWorkers,4,Indian Oil Corporation Limited,1.97,True,0.0,2.58,5.45
+Female_Ratio_PermanentEmp,1,Hindustan Petroleum Corporation Limited,12.41,True,100.0,6.255,11.55
+Female_Ratio_PermanentEmp,2,Indian Oil Corporation Limited,10.69,True,75.0,6.255,11.55
+Female_Ratio_PermanentEmp,3,Bharat Petroleum Corporation Limited,9.94,True,50.0,6.255,11.55
+Female_Ratio_PermanentEmp,4,Reliance Industries Limited,6.49,True,25.0,6.255,11.55
+Female_Ratio_PermanentEmp,5,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,6.02,True,0.0,6.255,11.55
+Female_Ratio_PermanentWorkers,1,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,11.4,True,100.0,2.9499999999999997,8.91
+Female_Ratio_PermanentWorkers,2,Hindustan Petroleum Corporation Limited,6.42,True,75.0,2.9499999999999997,8.91
+Female_Ratio_PermanentWorkers,3,Indian Oil Corporation Limited,5.88,True,50.0,2.9499999999999997,8.91
+Female_Ratio_PermanentWorkers,4,Bharat Petroleum Corporation Limited,4.43,True,25.0,2.9499999999999997,8.91
+Female_Ratio_PermanentWorkers,5,Reliance Industries Limited,1.47,True,0.0,2.9499999999999997,8.91
+GHG_tCO2e_perEmployee,1,Indian Oil Corporation Limited,752.4799,False,0.0,793.2045,1766.93765
+GHG_tCO2e_perEmployee,2,Hindustan Petroleum Corporation Limited,833.9291,False,25.0,793.2045,1766.93765
+GHG_tCO2e_perEmployee,3,Reliance Industries Limited,1015.5941,False,50.0,793.2045,1766.93765
+GHG_tCO2e_perEmployee,4,Bharat Petroleum Corporation Limited,1233.9429,False,75.0,793.2045,1766.93765
+GHG_tCO2e_perEmployee,5,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,2299.9324,False,100.0,793.2045,1766.93765
+GHG_tCO2e_perRevCr,1,Hindustan Petroleum Corporation Limited,14.458458,False,0.0,18.0145195,60.662074
+GHG_tCO2e_perRevCr,2,Bharat Petroleum Corporation Limited,21.570581,False,25.0,18.0145195,60.662074
+GHG_tCO2e_perRevCr,3,Indian Oil Corporation Limited,26.646545,False,50.0,18.0145195,60.662074
+GHG_tCO2e_perRevCr,4,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,53.248194,False,75.0,18.0145195,60.662074
+GHG_tCO2e_perRevCr,5,Reliance Industries Limited,68.075954,False,100.0,18.0145195,60.662074
+RenewableEnergyShare_Pct,1,Reliance Industries Limited,1.11,True,100.0,0.165,0.765
+RenewableEnergyShare_Pct,2,Hindustan Petroleum Corporation Limited,0.42,True,75.0,0.165,0.765
+RenewableEnergyShare_Pct,3,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,0.27,True,50.0,0.165,0.765
+RenewableEnergyShare_Pct,4,Indian Oil Corporation Limited,0.17,True,25.0,0.165,0.765
+RenewableEnergyShare_Pct,5,Bharat Petroleum Corporation Limited,0.16,True,0.0,0.165,0.765
+WasteRecoveryRate_Pct,1,Reliance Industries Limited,97.08,True,100.0,41.39,90.74000000000001
+WasteRecoveryRate_Pct,2,Bharat Petroleum Corporation Limited,84.4,True,75.0,41.39,90.74000000000001
+WasteRecoveryRate_Pct,3,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,78.57,True,50.0,41.39,90.74000000000001
+WasteRecoveryRate_Pct,4,Indian Oil Corporation Limited,71.1,True,25.0,41.39,90.74000000000001
+WasteRecoveryRate_Pct,5,Hindustan Petroleum Corporation Limited,11.68,True,0.0,41.39,90.74000000000001
+Waste_MT_perEmployee,1,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,6.0257,False,0.0,10.76745,20.78675
+Waste_MT_perEmployee,2,Indian Oil Corporation Limited,15.5092,False,25.0,10.76745,20.78675
+Waste_MT_perEmployee,3,Hindustan Petroleum Corporation Limited,16.7219,False,50.0,10.76745,20.78675
+Waste_MT_perEmployee,4,Reliance Industries Limited,20.353,False,75.0,10.76745,20.78675
+Waste_MT_perEmployee,5,Bharat Petroleum Corporation Limited,21.2205,False,100.0,10.76745,20.78675
+Waste_MT_perRevCr,1,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,0.139506,False,0.0,0.21471249999999997,0.9567405
+Waste_MT_perRevCr,2,Hindustan Petroleum Corporation Limited,0.289919,False,25.0,0.21471249999999997,0.9567405
+Waste_MT_perRevCr,3,Bharat Petroleum Corporation Limited,0.370956,False,50.0,0.21471249999999997,0.9567405
+Waste_MT_perRevCr,4,Indian Oil Corporation Limited,0.549207,False,75.0,0.21471249999999997,0.9567405
+Waste_MT_perRevCr,5,Reliance Industries Limited,1.364274,False,100.0,0.21471249999999997,0.9567405
+Water_KL_perEmployee,1,Hindustan Petroleum Corporation Limited,2462.8855,False,0.0,3294.1802500000003,7163.93925
+Water_KL_perEmployee,2,Bharat Petroleum Corporation Limited,4125.475,False,25.0,3294.1802500000003,7163.93925
+Water_KL_perEmployee,3,Indian Oil Corporation Limited,5107.5671,False,50.0,3294.1802500000003,7163.93925
+Water_KL_perEmployee,4,Reliance Industries Limited,5581.8508,False,75.0,3294.1802500000003,7163.93925
+Water_KL_perEmployee,5,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,8746.0277,False,100.0,3294.1802500000003,7163.93925
+Water_KL_perRevCr,1,Hindustan Petroleum Corporation Limited,42.700904,False,0.0,57.409208500000005,288.3219305
+Water_KL_perRevCr,2,Bharat Petroleum Corporation Limited,72.117513,False,25.0,57.409208500000005,288.3219305
+Water_KL_perRevCr,3,Indian Oil Corporation Limited,180.867317,False,50.0,57.409208500000005,288.3219305
+Water_KL_perRevCr,4,MANGALORE REFINERY AND PETROCHEMICALS LIMITED,202.488637,False,75.0,57.409208500000005,288.3219305
+Water_KL_perRevCr,5,Reliance Industries Limited,374.155224,False,100.0,57.409208500000005,288.3219305

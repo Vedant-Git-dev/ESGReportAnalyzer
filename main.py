@@ -13,10 +13,12 @@ from engine import ESGBenchmarkingEngine
 
 # ── Input XML files (add / remove as needed) ─────────────────────────────────
 FILES = [
-    # "./data/castrol.xml",
     "./data/bpcl.xml",
     "./data/hp.xml",
-    "./data/indianoil.xml"
+    "./data/indianoil.xml",
+    # "./data/cpcl.xml",
+    "./data/mrpl.xml",
+    "./data/reliance.xml",
 ]
 
 # ── Natural-language queries (rule-based or Groq-powered) ────────────────────

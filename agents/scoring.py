@@ -165,13 +165,20 @@ class ESGScoringAgent:
 
             result[company] = {
                 **{p: pillar_scores.get(p) for p in ESG_WEIGHTS},
-                "Composite":       composite,
-                "Effective_Weights": eff_w,
-                "Grade":           _grade(composite),
-                "Confidence":      _confidence(valid_kpi_count),
-                "Valid_KPI_Count": valid_kpi_count,
-                "Missing_Pillars": missing_pillars,
-                "KPI_scores":      kpi_scores[company],
+                "Composite":          composite,
+                "Effective_Weights":  eff_w,
+                "Grade":              _grade(composite),
+                "Confidence":         _confidence(valid_kpi_count),
+                "Valid_KPI_Count":    valid_kpi_count,
+                "Missing_Pillars":    missing_pillars,
+                "KPI_scores":         kpi_scores[company],
+                # Fix Issue 6: transparent weight explanation
+                "Weight_Basis":       "Fixed configuration weights (E=40% S=30% G=30%)",
+                "Weight_Config":      {p: round(w*100) for p, w in ESG_WEIGHTS.items()},
+                "KPI_Counts_per_Pillar": {
+                    p: len(pillar_kpi_used.get(p, []))
+                    for p in ESG_WEIGHTS
+                },
             }
 
         names_str = ", ".join(

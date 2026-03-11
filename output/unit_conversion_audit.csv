@@ -1,0 +1,276 @@
+Company,Metric,Raw_Value,Raw_Unit,Factor,Canonical_Value,Canonical_Unit,Detection_Source,LLM_Confidence,Anomaly,Anomaly_Reason,Excluded
+Bharat Petroleum Corporation Limited,perm_emp_male,5580.0,pure,1.0,5580.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,perm_emp_female,616.0,pure,1.0,616.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,perm_emp_other,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,perm_emp_total,6196.0,pure,1.0,6196.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,nonperm_emp_male,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,nonperm_emp_female,1.0,pure,1.0,1.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,nonperm_emp_total,1.0,pure,1.0,1.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,total_emp_male,5580.0,pure,1.0,5580.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,total_emp_female,617.0,pure,1.0,617.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,total_emp_total,6197.0,pure,1.0,6197.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,perm_wkr_male,2438.0,pure,1.0,2438.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,perm_wkr_female,113.0,pure,1.0,113.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,perm_wkr_total,2551.0,pure,1.0,2551.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,contract_wkr_male,26665.0,pure,1.0,26665.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,contract_wkr_female,964.0,pure,1.0,964.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,contract_wkr_total,27629.0,pure,1.0,27629.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,total_wkr_male,29103.0,pure,1.0,29103.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,total_wkr_female,1077.0,pure,1.0,1077.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,total_wkr_total,30180.0,pure,1.0,30180.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,plants_national,253.0,pure,1.0,253.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,plants_intl,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,offices_national,5.0,pure,1.0,5.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,offices_intl,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,Turnover_INR,5003712500000.0,INR,1.0,5003712500000.0,INR,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,NetWorth_INR,809600900000.0,INR,1.0,809600900000.0,INR,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,TotalEnergy_GJ,129219.14,Terajoule,1000.0,129219140.0,GJ,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,RenewableEnergy_GJ,212.24,Terajoule,1000.0,212240.0,GJ,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,NonRenewableEnergy_GJ,129006.9,Terajoule,1000.0,129006900.0,GJ,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,TotalElectricity_Renewable,212.24,Terajoule,1000.0,212240.0,GJ,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,TotalElectricity_NonRenewable,4245.73,Terajoule,1000.0,4245730.0,GJ,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,TotalFuel_Renewable,0.0,Terajoule,1000.0,0.0,GJ,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,TotalFuel_NonRenewable,124761.17,Terajoule,1000.0,124761170.0,GJ,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,EnergyIntensity_perRupee,2.58e-08,TerajoulePerINR,1.0,2.58e-08,unknown,assumed,,False,,False
+Bharat Petroleum Corporation Limited,EnergyIntensity_Physical,2464.21,Terajoule,1000.0,2464210.0,GJ,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,Scope1_tCO2e,9935959.52,MtCO2e,1.0,9935959.52,tCO2e,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,Scope2_tCO2e,857339.13,MtCO2e,1.0,857339.13,tCO2e,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,GHGIntensity_perRupee,2.1571e-06,MtCO2ePerINR,1.0,2.16e-06,tCO2e/INR,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,GHGIntensity_Physical,0.21,MtCO2e,1.0,0.21,tCO2e,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,WaterWithdrawal_KL,56966350.0,Kiloliters,1.0,56966350.0,KL,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,WaterConsumption_KL,36085530.0,Kiloliters,1.0,36085530.0,KL,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,WaterDischarged_KL,20880830.0,Kiloliters,1.0,20880830.0,KL,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,WaterIntensity_perRupee,7.2118e-06,KilolitersPerINR,1.0,7.21e-06,KL/INR,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,WasteGenerated_MT,185615.69,Tonne,1.0,185615.69,MT,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,WasteRecovered_MT,156655.15,Tonne,1.0,156655.15,MT,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,WasteDisposed_MT,9294.28,Tonne,1.0,9294.28,MT,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,WasteDisposed_Incineration,351.68,Tonne,1.0,351.68,MT,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,WasteDisposed_Landfill,3113.06,Tonne,1.0,3113.06,MT,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,WasteIntensity_perRupee,3.71e-08,TonnePerINR,1.0,4e-08,MT/INR,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,WasteIntensity_Physical,3539.7,Tonne,1.0,3539.7,MT,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,PlasticWaste_MT,5637.45,Tonne,1.0,5637.45,MT,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,EWaste_MT,3.91,Tonne,1.0,3.91,MT,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,HazardousWaste_MT,52106.0,Tonne,1.0,52106.0,MT,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,NonHazardousWaste_MT,127767.89,Tonne,1.0,127767.89,MT,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,Fatalities,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Bharat Petroleum Corporation Limited,Complaints_Filed,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,perm_emp_male,5263.0,pure,1.0,5263.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,perm_emp_female,746.0,pure,1.0,746.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,perm_emp_other,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,perm_emp_total,6009.0,pure,1.0,6009.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,nonperm_emp_male,88.0,pure,1.0,88.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,nonperm_emp_female,61.0,pure,1.0,61.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,nonperm_emp_total,149.0,pure,1.0,149.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,total_emp_male,5351.0,pure,1.0,5351.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,total_emp_female,807.0,pure,1.0,807.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,total_emp_total,6158.0,pure,1.0,6158.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,perm_wkr_male,1909.0,pure,1.0,1909.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,perm_wkr_female,131.0,pure,1.0,131.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,perm_wkr_total,2040.0,pure,1.0,2040.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,contract_wkr_male,35795.0,pure,1.0,35795.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,contract_wkr_female,1179.0,pure,1.0,1179.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,contract_wkr_total,36974.0,pure,1.0,36974.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,total_wkr_male,37704.0,pure,1.0,37704.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,total_wkr_female,1310.0,pure,1.0,1310.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,total_wkr_total,39014.0,pure,1.0,39014.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,plants_national,216.0,pure,1.0,216.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,plants_intl,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,offices_national,177.0,pure,1.0,177.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,offices_intl,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,Turnover_INR,4642469600000.0,INR,1.0,4642469600000.0,INR,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,NetWorth_INR,459583000000.0,INR,1.0,459583000000.0,INR,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,TotalEnergy_GJ,70311524.0,Gigajoule,1.0,70311524.0,GJ,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,RenewableEnergy_GJ,297182.0,Gigajoule,1.0,297182.0,GJ,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,NonRenewableEnergy_GJ,70014342.0,Gigajoule,1.0,70014342.0,GJ,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,TotalElectricity_Renewable,280157.0,Gigajoule,1.0,280157.0,GJ,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,TotalElectricity_NonRenewable,5874620.0,Gigajoule,1.0,5874620.0,GJ,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,TotalFuel_Renewable,17025.0,Gigajoule,1.0,17025.0,GJ,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,TotalFuel_NonRenewable,64139722.0,Gigajoule,1.0,64139722.0,GJ,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,EnergyIntensity_perRupee,1.51453e-05,GigajoulePerINR,1.0,1.515e-05,GJ/INR,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,EnergyIntensity_Physical,1.41,Gigajoule,1.0,1.41,GJ,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,Scope1_tCO2e,5513044.0,MtCO2e,1.0,5513044.0,tCO2e,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,Scope2_tCO2e,1199251.0,MtCO2e,1.0,1199251.0,tCO2e,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,GHGIntensity_perRupee,1.4458e-06,MtCO2ePerINR,1.0,1.45e-06,tCO2e/INR,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,GHGIntensity_Physical,0.13,MtCO2e,1.0,0.13,tCO2e,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,WaterWithdrawal_KL,56497276.0,Kiloliters,1.0,56497276.0,KL,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,WaterConsumption_KL,19823765.0,Kiloliters,1.0,19823765.0,KL,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,WaterDischarged_KL,36673512.0,Kiloliters,1.0,36673512.0,KL,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,WaterIntensity_perRupee,4.2701e-06,KilolitersPerINR,1.0,4.27e-06,KL/INR,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,WasteGenerated_MT,134594.2,Tonne,1.0,134594.2,MT,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,WasteRecovered_MT,15721.8,Tonne,1.0,15721.8,MT,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,WasteDisposed_MT,124071.0,Tonne,1.0,124071.0,MT,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,WasteDisposed_Incineration,254.6,Tonne,1.0,254.6,MT,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,WasteDisposed_Landfill,100576.3,Tonne,1.0,100576.3,MT,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,WasteIntensity_perRupee,2.9e-08,TonnePerINR,1.0,3e-08,MT/INR,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,WasteIntensity_Physical,0.0027,Tonne,1.0,0.0027,MT,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,PlasticWaste_MT,137.9,Tonne,1.0,137.9,MT,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,EWaste_MT,8.7,Tonne,1.0,8.7,MT,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,HazardousWaste_MT,6999.0,Tonne,1.0,6999.0,MT,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,NonHazardousWaste_MT,17442.5,Tonne,1.0,17442.5,MT,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,Fatalities,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Hindustan Petroleum Corporation Limited,Complaints_Filed,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,perm_emp_male,16736.0,pure,1.0,16736.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,perm_emp_female,2004.0,pure,1.0,2004.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,perm_emp_other,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,perm_emp_total,18740.0,pure,1.0,18740.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,nonperm_emp_male,351.0,pure,1.0,351.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,nonperm_emp_female,40.0,pure,1.0,40.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,nonperm_emp_total,391.0,pure,1.0,391.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,total_emp_male,17087.0,pure,1.0,17087.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,total_emp_female,2044.0,pure,1.0,2044.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,total_emp_total,19131.0,pure,1.0,19131.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,perm_wkr_male,10542.0,pure,1.0,10542.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,perm_wkr_female,659.0,pure,1.0,659.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,perm_wkr_total,11201.0,pure,1.0,11201.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,contract_wkr_male,122175.0,pure,1.0,122175.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,contract_wkr_female,2458.0,pure,1.0,2458.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,contract_wkr_total,124633.0,pure,1.0,124633.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,total_wkr_male,132717.0,pure,1.0,132717.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,total_wkr_female,3117.0,pure,1.0,3117.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,total_wkr_total,135834.0,pure,1.0,135834.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,plants_national,626.0,pure,1.0,626.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,plants_intl,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,offices_national,226.0,pure,1.0,226.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,offices_intl,12.0,pure,1.0,12.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,Turnover_INR,8455130000000.0,INR,1.0,8455130000000.0,INR,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,NetWorth_INR,1508627000000.0,INR,1.0,1508627000000.0,INR,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,TotalEnergy_GJ,320346.0,Terajoule,1000.0,320346000.0,GJ,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,RenewableEnergy_GJ,556.0,Terajoule,1000.0,556000.0,GJ,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,NonRenewableEnergy_GJ,319790.0,Terajoule,1000.0,319790000.0,GJ,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,TotalElectricity_Renewable,556.0,Terajoule,1000.0,556000.0,GJ,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,TotalElectricity_NonRenewable,6419.0,Terajoule,1000.0,6419000.0,GJ,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,TotalFuel_Renewable,0.0,Terajoule,1000.0,0.0,GJ,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,TotalFuel_NonRenewable,313371.0,Terajoule,1000.0,313371000.0,GJ,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,EnergyIntensity_perRupee,3.79e-08,TerajoulePerINR,1.0,3.79e-08,unknown,assumed,,False,,False
+Indian Oil Corporation Limited,EnergyIntensity_Physical,4.48,Terajoule,1000.0,4480.0,GJ,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,Scope1_tCO2e,21240000.0,tCO2e,1.0,21240000.0,tCO2e,assumed,,False,,False
+Indian Oil Corporation Limited,Scope2_tCO2e,1290000.0,tCO2e,1.0,1290000.0,tCO2e,assumed,,False,,False
+Indian Oil Corporation Limited,GHGIntensity_perRupee,2.6647e-06,tCO2ePerINR,1.0,2.6647e-06,unknown,assumed,,False,,False
+Indian Oil Corporation Limited,GHGIntensity_Physical,0.315,tCO2e,1.0,0.315,unknown,assumed,,False,,False
+Indian Oil Corporation Limited,WaterWithdrawal_KL,117305900.0,Kiloliters,1.0,117305900.0,KL,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,WaterConsumption_KL,152925668.0,Kiloliters,1.0,152925668.0,KL,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,WaterDischarged_KL,5007983.0,Kiloliters,1.0,5007983.0,KL,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,WaterIntensity_perRupee,1.80867e-05,KilolitersPerINR,1.0,1.809e-05,KL/INR,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,WasteGenerated_MT,464362.0,Tonne,1.0,464362.0,MT,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,WasteRecovered_MT,330174.0,Tonne,1.0,330174.0,MT,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,WasteDisposed_MT,133005.0,Tonne,1.0,133005.0,MT,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,WasteDisposed_Incineration,22929.0,Tonne,1.0,22929.0,MT,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,WasteDisposed_Landfill,16730.0,Tonne,1.0,16730.0,MT,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,WasteIntensity_perRupee,5.49e-08,TonnePerINR,1.0,5e-08,MT/INR,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,WasteIntensity_Physical,0.006,Tonne,1.0,0.006,MT,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,PlasticWaste_MT,780.0,Tonne,1.0,780.0,MT,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,EWaste_MT,311.0,Tonne,1.0,311.0,MT,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,HazardousWaste_MT,362944.0,Tonne,1.0,362944.0,MT,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,NonHazardousWaste_MT,90261.0,Tonne,1.0,90261.0,MT,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,Fatalities,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Indian Oil Corporation Limited,Complaints_Filed,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,perm_emp_male,1092.0,pure,1.0,1092.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,perm_emp_female,70.0,pure,1.0,70.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,perm_emp_other,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,perm_emp_total,1162.0,pure,1.0,1162.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,nonperm_emp_male,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,nonperm_emp_female,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,nonperm_emp_total,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,total_emp_male,1092.0,pure,1.0,1092.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,total_emp_female,70.0,pure,1.0,70.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,total_emp_total,1162.0,pure,1.0,1162.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,perm_wkr_male,1212.0,pure,1.0,1212.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,perm_wkr_female,156.0,pure,1.0,156.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,perm_wkr_total,1368.0,pure,1.0,1368.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,contract_wkr_male,3786.0,pure,1.0,3786.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,contract_wkr_female,303.0,pure,1.0,303.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,contract_wkr_total,4089.0,pure,1.0,4089.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,total_wkr_male,4998.0,pure,1.0,4998.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,total_wkr_female,459.0,pure,1.0,459.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,total_wkr_total,5457.0,pure,1.0,5457.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,plants_national,1.0,pure,1.0,1.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,plants_intl,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,offices_national,12.0,pure,1.0,12.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,offices_intl,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Turnover_INR,1092774900000.0,INR,1.0,1092774900000.0,INR,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,NetWorth_INR,129337800000.0,INR,1.0,129337800000.0,INR,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,TotalEnergy_GJ,74964550.0,Gigajoule,1.0,74964550.0,GJ,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,RenewableEnergy_GJ,204225.0,Gigajoule,1.0,204225.0,GJ,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,NonRenewableEnergy_GJ,74760325.0,Gigajoule,1.0,74760325.0,GJ,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,TotalElectricity_Renewable,204225.0,Gigajoule,1.0,204225.0,GJ,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,TotalElectricity_NonRenewable,640058.0,Gigajoule,1.0,640058.0,GJ,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,TotalFuel_Renewable,0.0,Gigajoule,1.0,0.0,GJ,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,TotalFuel_NonRenewable,74120267.0,Gigajoule,1.0,74120267.0,GJ,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,EnergyIntensity_perRupee,6.86002e-05,GigajoulePerINR,1.0,6.86e-05,GJ/INR,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,EnergyIntensity_Physical,4.15,Gigajoule,1.0,4.15,GJ,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Scope1_tCO2e,5675575.0,MtCO2e,1.0,5675575.0,tCO2e,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Scope2_tCO2e,143254.0,MtCO2e,1.0,143254.0,tCO2e,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,GHGIntensity_perRupee,5.3248e-06,MtCO2ePerINR,1.0,5.32e-06,tCO2e/INR,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,GHGIntensity_Physical,0.32,MtCO2e,1.0,0.32,tCO2e,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WaterWithdrawal_KL,25165814.0,Kiloliters,1.0,25165814.0,KL,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WaterConsumption_KL,22127450.0,Kiloliters,1.0,22127450.0,KL,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WaterDischarged_KL,6947003.0,Kiloliters,1.0,6947003.0,KL,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WaterIntensity_perRupee,2.02489e-05,KilolitersPerINR,1.0,2.025e-05,KL/INR,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WasteGenerated_MT,15244.9,Tonne,1.0,15244.9,MT,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WasteRecovered_MT,11978.0,Tonne,1.0,11978.0,MT,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WasteDisposed_MT,3416.0,Tonne,1.0,3416.0,MT,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WasteDisposed_Incineration,8.9,Tonne,1.0,8.9,MT,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WasteDisposed_Landfill,24.1,Tonne,1.0,24.1,MT,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WasteIntensity_perRupee,1.4e-08,TonnePerINR,1.0,1e-08,MT/INR,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,WasteIntensity_Physical,0.00085,Tonne,1.0,0.00085,MT,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,PlasticWaste_MT,2434.0,Tonne,1.0,2434.0,MT,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,EWaste_MT,213.0,Tonne,1.0,213.0,MT,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,HazardousWaste_MT,9356.0,Tonne,1.0,9356.0,MT,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,NonHazardousWaste_MT,3223.0,Tonne,1.0,3223.0,MT,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Fatalities,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED,Complaints_Filed,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,perm_emp_male,31608.0,pure,1.0,31608.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,perm_emp_female,2194.0,pure,1.0,2194.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,perm_emp_other,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,perm_emp_total,33802.0,pure,1.0,33802.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,nonperm_emp_male,5188.0,pure,1.0,5188.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,nonperm_emp_female,168.0,pure,1.0,168.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,nonperm_emp_total,5356.0,pure,1.0,5356.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,total_emp_male,36796.0,pure,1.0,36796.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,total_emp_female,2362.0,pure,1.0,2362.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,total_emp_total,39158.0,pure,1.0,39158.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,perm_wkr_male,3493.0,pure,1.0,3493.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,perm_wkr_female,52.0,pure,1.0,52.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,perm_wkr_total,3545.0,pure,1.0,3545.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,contract_wkr_male,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,contract_wkr_female,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,contract_wkr_total,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,total_wkr_male,3493.0,pure,1.0,3493.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,total_wkr_female,52.0,pure,1.0,52.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,total_wkr_total,3545.0,pure,1.0,3545.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,plants_national,15.0,pure,1.0,15.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,plants_intl,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,offices_national,62.0,pure,1.0,62.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,offices_intl,2.0,pure,1.0,2.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,Turnover_INR,5571628286325.76,INR,1.0,5571628286325.76,INR,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,NetWorth_INR,4968899014702.44,INR,1.0,4968899014702.44,INR,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,TotalEnergy_GJ,481641954.0,Gigajoule,1.0,481641954.0,GJ,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,RenewableEnergy_GJ,5344930.0,Gigajoule,1.0,5344930.0,GJ,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,NonRenewableEnergy_GJ,476297024.0,Gigajoule,1.0,476297024.0,GJ,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,TotalElectricity_Renewable,46312.0,Gigajoule,1.0,46312.0,GJ,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,TotalElectricity_NonRenewable,8748485.0,Gigajoule,1.0,8748485.0,GJ,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,TotalFuel_Renewable,5298618.0,Gigajoule,1.0,5298618.0,GJ,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,TotalFuel_NonRenewable,467548539.0,Gigajoule,1.0,467548539.0,GJ,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,EnergyIntensity_perRupee,8.64455e-05,GigajoulePerINR,1.0,8.645e-05,GJ/INR,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,EnergyIntensity_Physical,5.98,Gigajoule,1.0,5.98,GJ,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,Scope1_tCO2e,36459294.0,MtCO2e,1.0,36459294.0,tCO2e,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,Scope2_tCO2e,1470097.0,MtCO2e,1.0,1470097.0,tCO2e,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,GHGIntensity_perRupee,6.8076e-06,MtCO2ePerINR,1.0,6.81e-06,tCO2e/INR,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,GHGIntensity_Physical,0.471,MtCO2e,1.0,0.471,tCO2e,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,WaterWithdrawal_KL,208465383.0,Kiloliters,1.0,208465383.0,KL,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,WaterConsumption_KL,208465383.0,Kiloliters,1.0,208465383.0,KL,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,WaterDischarged_KL,35305823.0,Kiloliters,1.0,35305823.0,KL,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,WaterIntensity_perRupee,3.74155e-05,KilolitersPerINR,1.0,3.742e-05,KL/INR,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,WasteGenerated_MT,760123.0,Tonne,1.0,760123.0,MT,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,WasteRecovered_MT,737961.0,Tonne,1.0,737961.0,MT,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,WasteDisposed_MT,22162.0,Tonne,1.0,22162.0,MT,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,WasteDisposed_Incineration,14193.0,Tonne,1.0,14193.0,MT,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,WasteDisposed_Landfill,7959.0,Tonne,1.0,7959.0,MT,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,WasteIntensity_perRupee,1.364e-07,TonnePerINR,1.0,1.4e-07,MT/INR,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,WasteIntensity_Physical,0.0094,Tonne,1.0,0.0094,MT,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,PlasticWaste_MT,3689.0,Tonne,1.0,3689.0,MT,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,EWaste_MT,259.0,Tonne,1.0,259.0,MT,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,HazardousWaste_MT,121782.0,Tonne,1.0,121782.0,MT,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,NonHazardousWaste_MT,633727.0,Tonne,1.0,633727.0,MT,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,Fatalities,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False
+Reliance Industries Limited,Complaints_Filed,0.0,pure,1.0,0.0,pure,xbrl_unit_ref,,False,,False

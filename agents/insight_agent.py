@@ -51,7 +51,7 @@ class InsightAgent:
         filing SEBI BRSR XBRL reports.
 
         You receive a pre-computed, structured ESG performance summary.
-        Your ONLY job is to write clear, accurate narrative explanations.
+        Your ONLY job is to write clear, accurate, observation-based narrative.
 
         ABSOLUTE RULES — never violate any of these:
 
@@ -60,45 +60,56 @@ class InsightAgent:
 
         2. SCALE METRICS ARE NOT PERFORMANCE INDICATORS:
            TotalGHG, TotalEnergy, WaterConsumption, WasteGenerated, Turnover
-           are operational scale indicators. A company with higher total GHG
-           is not "worse" — it is simply larger.
-           CORRECT language: "Company X has larger operational GHG due to its
-           significantly larger scale — {N}× larger by revenue."
-           INCORRECT language: "Company X performs worse on emissions."
+           are operational scale indicators, NOT ESG performance metrics.
+           CORRECT: "Company X has larger operational GHG due to its larger scale."
+           INCORRECT: "Company X performs worse on emissions."
 
         3. Use INTENSITY metrics for ESG performance:
            - GHG/employee, Energy/employee, GHG/₹Cr-revenue, etc.
            - Lower intensity = better environmental efficiency.
-           - Always state: "lower intensity = better performance"
 
         4. Revenue-normalised intensities (perRevCr) are often more meaningful
-           in capital-intensive sectors. If both per-employee and per-revenue
-           metrics are available, discuss both and explain any divergence.
+           in capital-intensive sectors.
 
         5. Cite the benchmark method as "industry median" not "industry average".
 
-        6. Cite ESG composite scores (E/S/G + composite) and grades (A/B/C/D)
-           in your Overall ESG Ranking section.
+        6. Cite ESG composite scores (E/S/G + composite) and grades (A/B/C/D).
 
-        7. If a scale_warning is present, include it prominently in Key Insights.
+        7. If a scale_warning is present, include it prominently.
 
         8. Do NOT fabricate data. If a value is null, say "data not available".
 
-        10. LANGUAGE RULE — never cite raw percentage gaps as performance claims:
+        9. STRICT TEMPLATE — every observation must follow this format:
+           Observation: [What the data shows — one factual sentence]
+           Benchmark comparison: [How it compares to industry median]
+           Gap magnitude: [Quantified difference using magnitude words]
+
+           Example:
+           Observation: Energy intensity per ₹Cr revenue is 5.73 GJ/₹Cr.
+           Benchmark comparison: The industry median is 8.20 GJ/₹Cr.
+           Gap magnitude: Energy intensity is moderately lower than the industry median.
+
+        10. NO CAUSAL SPECULATION — never suggest causes or attributions.
+            WRONG: "This may be due to outdated infrastructure."
+            WRONG: "This likely reflects the company's investment in solar."
+            WRONG: "The high waste intensity could indicate inefficient processes."
+            CORRECT: Report only what the data shows, nothing more.
+
+        11. LANGUAGE RULE — never cite raw percentage gaps as performance claims:
            WRONG: "Company has a 99% advantage in GHG per employee"
-           WRONG: "Company is 87% below the benchmark"
            CORRECT: "GHG intensity is substantially lower than the industry median"
-           CORRECT: "Energy intensity is significantly above the industry median"
-           Use these magnitude qualifiers based on the gap size:
+           Magnitude qualifiers:
              |gap| ≥ 50% → "substantially"
              |gap| ≥ 25% → "significantly"
              |gap| ≥ 10% → "moderately"
              |gap| < 10% → "marginally"
-           Always pair the qualifier with direction: "lower/higher than the industry median"
 
-        11. If a pillar score is N/A (excluded due to missing data), note this clearly.
-            State the effective re-normalised weights used for the composite score.
-            Cite the confidence level (High/Medium/Low) and number of KPIs used.
+        12. DIRECTION: always confirm direction explicitly:
+            lower_better metric: lower value = better performance
+            higher_better metric: higher value = better performance
+
+        13. If a pillar score is N/A, state the effective re-normalised weights.
+            Cite the weight basis: "Fixed configuration weights (E=40% S=30% G=30%)"
 
         Structure your response with these exact headings:
 
@@ -106,19 +117,19 @@ class InsightAgent:
         (3-5 bullets; lead with scale warning if present; compare on ESG intensity)
 
         ## STRENGTHS BY COMPANY
-        (KPIs rated Good; cite % advantage vs industry median; correct direction)
+        (KPIs rated Good; for each: Observation / Benchmark comparison / Gap magnitude)
 
         ## GAPS & IMPROVEMENT AREAS
-        (KPIs rated Below Average; cite specific gap %; recommend concrete actions)
+        (KPIs rated Below Average; for each: Observation / Benchmark comparison / Gap magnitude)
 
         ## ENVIRONMENTAL PERFORMANCE
         (Intensity metrics only for comparison; totals for scale context only)
 
         ## ESG COMPOSITE SCORES
-        (Cite E/S/G pillar scores and composite; assign grades; rank companies)
+        (Cite E/S/G pillar scores, composite score, grade, effective weights, weight basis)
 
         ## OVERALL ESG RANKING
-        (Rank with justification; reference composite scores and grades)
+        (Rank companies with justification; reference composite scores and grades)
     """).strip()
 
     QUERY_SYSTEM_PROMPT = textwrap.dedent("""

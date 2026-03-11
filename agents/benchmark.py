@@ -142,7 +142,8 @@ class BenchmarkAgent:
 
         # ── KPI Rankings ──────────────────────────────────────────────────────
         rows = []
-        skipped_no_data = []
+        skipped_no_data      = []
+        skipped_insufficient = []   # Issue 7: safety/governance with <2 valid values
 
         for kpi in sorted(RANKABLE_KPIS):
             entries = []
@@ -160,6 +161,10 @@ class BenchmarkAgent:
                 skipped_no_data.append(kpi)
                 continue
             if len(entries) < 2:
+                # Issue 7: if it's a safety/governance metric, log as insufficient
+                from config.constants import SAFETY_METRICS, GOVERNANCE_METRICS
+                if kpi in SAFETY_METRICS or kpi in GOVERNANCE_METRICS:
+                    skipped_insufficient.append(kpi)
                 continue   # need ≥2 to rank
 
             reverse = kpi not in LOWER_IS_BETTER
@@ -188,6 +193,9 @@ class BenchmarkAgent:
         if skipped_no_data:
             print(f"    ⚠  No data for ranking (all values missing): "
                   f"{', '.join(skipped_no_data)}")
+        if skipped_insufficient:
+            print(f"    ⚠  Insufficient data for benchmarking (needs ≥2 companies): "
+                  f"{', '.join(skipped_insufficient)}")
 
         rankings_df = pd.DataFrame(rows)
         print(
@@ -201,4 +209,5 @@ class BenchmarkAgent:
             rankings=rankings_df,
             scale_warning=scale_warning,
             mode_info=mode_info,
+            insufficient_safety=skipped_insufficient,
         )
