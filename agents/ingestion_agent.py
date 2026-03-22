@@ -125,19 +125,14 @@ class IngestionAgent:
 
     # --- Discovery ------------------------------------------------------------
 
-    def discover_reports(self, company_name: str, year: int) -> SearchResult:
+    def discover_reports(self, company_name: str, year: int, report_type: str = "BRSR") -> SearchResult:
         """
         Run Tavily multi-query search and return discovered PDF links.
         Does NOT persist anything — caller decides which to download.
         """
-        logger.info("ingestion.discover_start", company=company_name, year=year)
-        result = search_reports(company_name, year)
-        logger.info(
-            "ingestion.discover_complete",
-            company=company_name,
-            year=year,
-            found=result.total_found,
-        )
+        logger.info("ingestion.discover_start", company=company_name, year=year, report_type=report_type)
+        result = search_reports(company_name, year, report_type=report_type)
+        logger.info("ingestion.discover_complete", company=company_name, year=year, found=result.total_found)
         return result
 
     # --- Persistence of discovered reports ------------------------------------
@@ -254,7 +249,7 @@ class IngestionAgent:
         logger.info("ingestion.run_start", company=company_data.name, year=year)
 
         company = self.get_or_create_company(company_data)
-        search_result = self.discover_reports(company_data.name, year)
+        search_result = self.discover_reports(company_data.name, year, report_type=report_type)
 
         registered: list[ReportRead] = []
         for disc in search_result.discovered:

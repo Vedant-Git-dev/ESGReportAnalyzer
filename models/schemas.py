@@ -44,6 +44,7 @@ class DiscoveredReport(BaseModel):
 class SearchResult(BaseModel):
     company_name: str
     year: int
+    report_type: str = "BRSR"
     discovered: list[DiscoveredReport] = []
     total_found: int = 0
     queries_run: int = 0

@@ -257,7 +257,9 @@ def main():
     ingest_p.add_argument("--year", type=int, required=True, help="Report year")
     ingest_p.add_argument("--ticker", default=None)
     ingest_p.add_argument("--sector", default=None)
-    ingest_p.add_argument("--report-type", default="ESG")
+    ingest_p.add_argument("--report-type", default="BRSR",
+                          choices=["BRSR", "ESG", "Sustainability", "Annual"],
+                          help="Report type to search for (default: BRSR)")
     ingest_p.add_argument("--no-download", action="store_true", help="Register but don't download")
     ingest_p.add_argument("--max-downloads", type=int, default=1)
 

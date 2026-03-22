@@ -2,51 +2,74 @@
 services/search_service.py
 
 Tavily-powered ESG report discovery.
-Generates 5 query variants, calls Tavily, filters PDF URLs, deduplicates.
+Supported report types (default: BRSR): BRSR | ESG | Sustainability | Annual
 """
 from __future__ import annotations
-
 import re
-from typing import Optional
-
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
-
 from core.config import get_settings
 from core.logging_config import get_logger
 from models.schemas import DiscoveredReport, SearchResult
 
 logger = get_logger(__name__)
-
 _PDF_RE = re.compile(r"\.pdf(\?.*)?$", re.IGNORECASE)
 _TAVILY_URL = "https://api.tavily.com/search"
 
+REPORT_QUERY_TEMPLATES: dict[str, list[str]] = {
+    "BRSR": [
+        "{company} BRSR report {year} PDF",
+        "{company} business responsibility sustainability report {year} filetype:pdf",
+        "{company} BRSR {year} download",
+        "{company} SEBI BRSR {year}",
+        "{company} annual report BRSR {year}",
+    ],
+    "ESG": [
+        "{company} ESG report {year} PDF",
+        "{company} sustainability report {year} filetype:pdf",
+        "{company} environmental social governance report {year}",
+        "{company} ESG {year} download",
+        "{company} annual report ESG {year}",
+    ],
+    "Sustainability": [
+        "{company} sustainability report {year} filetype:pdf",
+        "{company} sustainability report {year} download",
+        "{company} CSR report {year} PDF",
+        "{company} environmental report {year}",
+        "{company} sustainability {year} annual",
+    ],
+    "Annual": [
+        "{company} annual report {year} filetype:pdf",
+        "{company} annual report {year} download",
+        "{company} {year} annual report PDF",
+        "{company} AR {year} PDF",
+        "{company} yearly report {year}",
+    ],
+}
+
+DEFAULT_REPORT_TYPE = "BRSR"
+VALID_REPORT_TYPES = list(REPORT_QUERY_TEMPLATES.keys())
+
+
+def _normalise_type(report_type: str) -> str:
+    for key in REPORT_QUERY_TEMPLATES:
+        if key.lower() == report_type.lower():
+            return key
+    logger.warning("search_service.unknown_report_type", given=report_type, fallback=DEFAULT_REPORT_TYPE)
+    return DEFAULT_REPORT_TYPE
+
+
+def _build_queries(company: str, year: int, report_type: str = DEFAULT_REPORT_TYPE) -> list[str]:
+    key = _normalise_type(report_type)
+    return [t.format(company=company, year=year) for t in REPORT_QUERY_TEMPLATES[key]]
+
 
 def _is_pdf_url(url: str) -> bool:
-    """Heuristic: URL ends with .pdf (with optional query string)."""
     return bool(_PDF_RE.search(url))
-
-
-def _build_queries(company: str, year: int) -> list[str]:
-    """
-    5 query variants for maximum recall.
-    Keeps queries short — Tavily performs best with concise natural-language queries.
-    """
-    return [
-        f"{company} sustainability report {year} filetype:pdf",
-        f"{company} ESG report {year} PDF",
-        f"{company} BRSR report {year}",
-        f"{company} annual report ESG {year} download",
-        f"{company} environmental social governance report {year}",
-    ]
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 def _call_tavily(query: str, api_key: str, max_results: int = 10) -> list[dict]:
-    """
-    Single Tavily search call. Returns raw result list.
-    Retries up to 3 times with exponential backoff.
-    """
     payload = {
         "api_key": api_key,
         "query": query,
@@ -64,35 +87,27 @@ def _call_tavily(query: str, api_key: str, max_results: int = 10) -> list[dict]:
 def search_reports(
     company_name: str,
     year: int,
+    report_type: str = DEFAULT_REPORT_TYPE,
     max_results_per_query: int = 10,
     pdf_only: bool = True,
 ) -> SearchResult:
     """
-    Public interface for the ingestion agent.
-
-    1. Generates 5 query variants
-    2. Calls Tavily for each
-    3. Filters PDF links (when pdf_only=True)
-    4. Deduplicates by URL
-    5. Returns SearchResult with ranked DiscoveredReport list
+    Discover PDF reports for a company via Tavily.
 
     Args:
-        company_name: Full company name (e.g. "Infosys")
-        year: Report year (e.g. 2023)
+        company_name:  e.g. "Infosys"
+        year:          e.g. 2024
+        report_type:   BRSR | ESG | Sustainability | Annual  (default: BRSR)
         max_results_per_query: Tavily max_results per call
-        pdf_only: If True, drop non-PDF URLs
-
-    Returns:
-        SearchResult with all discovered PDF links
+        pdf_only:      Drop non-PDF URLs when True
     """
     settings = get_settings()
-
     if not settings.tavily_api_key:
-        logger.warning("search_service.no_api_key", note="Tavily key not set — returning empty results")
-        return SearchResult(company_name=company_name, year=year)
+        logger.warning("search_service.no_api_key")
+        return SearchResult(company_name=company_name, year=year, report_type=report_type)
 
-    queries = _build_queries(company_name, year)
-    logger.info("search_service.start", company=company_name, year=year, queries=len(queries))
+    queries = _build_queries(company_name, year, report_type)
+    logger.info("search_service.start", company=company_name, year=year, report_type=report_type)
 
     seen_urls: set[str] = set()
     discovered: list[DiscoveredReport] = []
@@ -106,41 +121,27 @@ def search_reports(
 
         for item in raw_results:
             url: str = item.get("url", "").strip()
-            if not url:
+            if not url or url in seen_urls:
                 continue
             if pdf_only and not _is_pdf_url(url):
                 continue
-            if url in seen_urls:
-                continue
-
             seen_urls.add(url)
-            discovered.append(
-                DiscoveredReport(
-                    url=url,
-                    title=item.get("title"),
-                    snippet=item.get("content", "")[:300],
-                    score=float(item.get("score", 0.0)),
-                    query_source=query,
-                )
-            )
+            discovered.append(DiscoveredReport(
+                url=url,
+                title=item.get("title"),
+                snippet=item.get("content", "")[:300],
+                score=float(item.get("score", 0.0)),
+                query_source=query,
+            ))
 
-        logger.debug("search_service.query_done", query=query, new_results=len(discovered))
-
-    # Sort by Tavily relevance score descending
     discovered.sort(key=lambda r: r.score, reverse=True)
-
     result = SearchResult(
         company_name=company_name,
         year=year,
+        report_type=report_type,
         discovered=discovered,
         total_found=len(discovered),
         queries_run=len(queries),
     )
-
-    logger.info(
-        "search_service.complete",
-        company=company_name,
-        year=year,
-        pdf_links=len(discovered),
-    )
+    logger.info("search_service.complete", company=company_name, pdf_links=len(discovered))
     return result
