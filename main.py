@@ -373,6 +373,273 @@ def cmd_parse_status(_args) -> None:
             )
 
 
+# ---------------------------------------------------------------------------
+# Phase 3 commands
+# ---------------------------------------------------------------------------
+
+def cmd_search_chunks(args) -> None:
+    """
+    Ad-hoc keyword search across chunks of a parsed document.
+    Use this to test retrieval before running full KPI extraction.
+    """
+    import uuid as _uuid
+    from core.database import get_db
+    from models.db_models import ParsedDocument
+    from services.retrieval_service import RetrievalService
+
+    report_id = _uuid.UUID(args.report_id)
+    keywords = [k.strip() for k in args.keywords.split(",")]
+
+    with get_db() as db:
+        parsed_doc = (
+            db.query(ParsedDocument)
+            .filter(ParsedDocument.report_id == report_id)
+            .order_by(ParsedDocument.parsed_at.desc())
+            .first()
+        )
+        if not parsed_doc:
+            print(f"No parse cache found for report {report_id}. Run: python main.py parse --report-id {report_id}")
+            return
+
+        service = RetrievalService()
+        chunk_types = [args.type] if args.type else None
+        results = service.retrieve_by_keywords(
+            parsed_document_id=parsed_doc.id,
+            keywords=keywords,
+            db=db,
+            top_k=args.top_k,
+            chunk_types=chunk_types,
+        )
+
+        # Extract all data while session is still open
+        rows = [
+            {
+                "score": sc.score,
+                "matched_keywords": sc.matched_keywords,
+                "chunk_index": sc.chunk.chunk_index,
+                "chunk_type": sc.chunk.chunk_type,
+                "page_number": sc.chunk.page_number,
+                "token_count": sc.chunk.token_count,
+                "content": sc.chunk.content,
+            }
+            for sc in results
+        ]
+
+    if not rows:
+        print(f"No chunks matched keywords: {keywords}")
+        return
+
+    print(f"\n=== Retrieval Results ===")
+    print(f"Keywords : {', '.join(keywords)}")
+    print(f"Returned : {len(rows)} chunk(s)\n")
+    print(f"{'Rank':<5} {'Score':<8} {'Type':<10} {'Page':<6} {'Tokens':<8} {'Keywords Hit':<30} Preview")
+    print("-" * 120)
+    for rank, row in enumerate(rows, 1):
+        preview = row["content"][:70].replace("\n", " ")
+        kw_hit = ", ".join(row["matched_keywords"][:4])
+        print(
+            f"{rank:<5} {row['score']:<8.3f} {row['chunk_type']:<10} "
+            f"{row['page_number'] or '?':<6} {row['token_count'] or '?':<8} "
+            f"{kw_hit:<30} {preview}"
+        )
+
+    if args.show_top:
+        top = rows[0]
+        print(f"\n{'='*60}")
+        print(f"Top chunk #{top['chunk_index']} | {top['chunk_type']} | page {top['page_number']} | score {top['score']:.3f}")
+        print(f"{'='*60}")
+        print(top["content"])
+
+
+def cmd_kpi_retrieve(args) -> None:
+    """
+    Retrieve top chunks for a specific KPI from a report's parse cache.
+    Shows exactly what will be sent to the LLM in Phase 4.
+    """
+    import uuid as _uuid
+    from core.database import get_db
+    from models.db_models import KPIDefinition, ParsedDocument
+    from services.retrieval_service import RetrievalService
+
+    report_id = _uuid.UUID(args.report_id)
+
+    with get_db() as db:
+        kpi = db.query(KPIDefinition).filter(KPIDefinition.name == args.kpi).first()
+        if not kpi:
+            print(f"KPI '{args.kpi}' not found. Run: python main.py list-kpis")
+            return
+
+        parsed_doc = (
+            db.query(ParsedDocument)
+            .filter(ParsedDocument.report_id == report_id)
+            .order_by(ParsedDocument.parsed_at.desc())
+            .first()
+        )
+        if not parsed_doc:
+            print(f"No parse cache found for report {report_id}")
+            return
+
+        service = RetrievalService()
+        results = service.retrieve(
+            parsed_document_id=parsed_doc.id,
+            kpi=kpi,
+            db=db,
+            top_k=args.top_k,
+        )
+
+        # Extract while session is open
+        kpi_display = kpi.display_name
+        kpi_unit = kpi.expected_unit
+        kpi_keywords = list(kpi.retrieval_keywords)
+        rows = [
+            {
+                "score": sc.score,
+                "chunk_index": sc.chunk.chunk_index,
+                "chunk_type": sc.chunk.chunk_type,
+                "page_number": sc.chunk.page_number,
+                "content": sc.chunk.content,
+            }
+            for sc in results
+        ]
+
+    if not rows:
+        print(f"No relevant chunks found for KPI: {args.kpi}")
+        return
+
+    print(f"\n=== KPI Retrieval: {kpi_display} ===")
+    print(f"Expected unit : {kpi_unit}")
+    print(f"Keywords used : {', '.join(kpi_keywords)}")
+    print(f"Chunks found  : {len(rows)}\n")
+
+    for rank, row in enumerate(rows, 1):
+        print(f"--- Rank {rank} | {row['chunk_type']} | page {row['page_number']} | score {row['score']:.3f} ---")
+        print(row["content"][:400])
+        print()
+
+
+def cmd_list_kpis(_args) -> None:
+    """List all KPI definitions in the database."""
+    from core.database import get_db
+    from models.db_models import KPIDefinition
+
+    with get_db() as db:
+        kpis = db.query(KPIDefinition).filter(KPIDefinition.is_active == True).order_by(KPIDefinition.category, KPIDefinition.name).all()
+        if not kpis:
+            print("No KPI definitions found. Run: python main.py seed-kpis")
+            return
+        print(f"\n{'Name':<35} {'Category':<15} {'Unit':<15} {'Keywords'}")
+        print("-" * 110)
+        for kpi in kpis:
+            kws = ", ".join(kpi.retrieval_keywords[:3])
+            print(f"{kpi.name:<35} {kpi.category:<15} {kpi.expected_unit:<15} {kws}")
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 commands
+# ---------------------------------------------------------------------------
+
+def cmd_extract(args) -> None:
+    """Run KPI extraction (regex → LLM → validation) on a parsed report."""
+    import uuid as _uuid
+    from core.database import get_db
+    from agents.extraction_agent import ExtractionAgent
+
+    report_id = _uuid.UUID(args.report_id)
+    kpi_names = [k.strip() for k in args.kpis.split(",")] if args.kpis else None
+
+    agent = ExtractionAgent()
+
+    print(f"Extracting KPIs for report {report_id} ...")
+    if kpi_names:
+        print(f"KPIs: {', '.join(kpi_names)}")
+    else:
+        print("KPIs: all active")
+
+    with get_db() as db:
+        results = agent.extract_all(
+            report_id=report_id,
+            db=db,
+            kpi_names=kpi_names,
+        )
+        # Snapshot while session open
+        rows = [
+            {
+                "kpi_name": r.kpi_name,
+                "value": r.normalized_value,
+                "unit": r.unit,
+                "method": r.extraction_method,
+                "confidence": r.confidence,
+                "valid": r.validation_passed,
+                "notes": r.validation_notes,
+            }
+            for r in results
+        ]
+
+    found = sum(1 for r in rows if r["value"] is not None)
+    print(f"\n=== Extraction Complete: {found}/{len(rows)} KPIs found ===\n")
+    print(f"{'KPI':<35} {'Value':<15} {'Unit':<12} {'Method':<8} {'Conf':<6} {'Valid':<6} Notes")
+    print("-" * 120)
+    for row in rows:
+        val = f"{row['value']:,.2f}" if row["value"] is not None else "NOT FOUND"
+        conf = f"{row['confidence']:.2f}" if row["confidence"] else "-"
+        valid = "✓" if row["valid"] else "✗"
+        notes = (row["notes"] or "")[:40]
+        print(
+            f"{row['kpi_name']:<35} {val:<15} {(row['unit'] or ''):<12} "
+            f"{row['method']:<8} {conf:<6} {valid:<6} {notes}"
+        )
+
+
+def cmd_list_kpi_records(args) -> None:
+    """Show extracted KPI records for a report."""
+    import uuid as _uuid
+    from core.database import get_db
+    from models.db_models import KPIRecord, KPIDefinition, Report, Company
+
+    report_id = _uuid.UUID(args.report_id)
+
+    with get_db() as db:
+        rows = (
+            db.query(KPIRecord, KPIDefinition.name, KPIDefinition.expected_unit, Company.name)
+            .join(KPIDefinition, KPIRecord.kpi_definition_id == KPIDefinition.id)
+            .join(Company, KPIRecord.company_id == Company.id)
+            .filter(KPIRecord.report_id == report_id)
+            .order_by(KPIDefinition.category, KPIDefinition.name, KPIRecord.extracted_at.desc())
+            .all()
+        )
+
+        if not rows:
+            print(f"No KPI records found for report {report_id}")
+            return
+
+        data = [
+            {
+                "kpi": kpi_name,
+                "value": r.normalized_value,
+                "unit": r.unit or expected_unit,
+                "method": r.extraction_method,
+                "confidence": r.confidence,
+                "valid": r.is_validated,
+                "year": r.report_year,
+                "company": company_name,
+                "extracted_at": r.extracted_at.strftime("%Y-%m-%d %H:%M"),
+            }
+            for r, kpi_name, expected_unit, company_name in rows
+        ]
+
+    print(f"\n=== KPI Records for report {report_id} ===")
+    print(f"{'KPI':<35} {'Value':>12} {'Unit':<12} {'Method':<8} {'Conf':<6} {'Valid'} {'Extracted'}")
+    print("-" * 110)
+    for d in data:
+        val = f"{d['value']:,.2f}" if d["value"] is not None else "—"
+        conf = f"{d['confidence']:.2f}" if d["confidence"] else "-"
+        valid = "✓" if d["valid"] else "✗"
+        print(
+            f"{d['kpi']:<35} {val:>12} {d['unit']:<12} {d['method']:<8} "
+            f"{conf:<6} {valid:<6} {d['extracted_at']}"
+        )
+
+
 def main():
     settings = get_settings()
     configure_logging(settings.log_level, settings.log_file)
@@ -419,6 +686,32 @@ def main():
     # Phase 2: parse-status
     sub.add_parser("parse-status", help="Show parse cache entries")
 
+    # Phase 3: search-chunks
+    sc_p = sub.add_parser("search-chunks", help="Ad-hoc keyword search across parsed chunks")
+    sc_p.add_argument("--report-id", required=True, help="UUID of the report")
+    sc_p.add_argument("--keywords", required=True, help="Comma-separated keywords e.g. 'scope 1,emissions,tCO2e'")
+    sc_p.add_argument("--top-k", type=int, default=7, help="Max chunks to return (default: 7)")
+    sc_p.add_argument("--type", default=None, choices=["text", "table", "footnote"], help="Filter chunk type")
+    sc_p.add_argument("--show-top", action="store_true", help="Print full content of top result")
+
+    # Phase 3: kpi-retrieve
+    kr_p = sub.add_parser("kpi-retrieve", help="Retrieve top chunks for a KPI (preview of Phase 4 input)")
+    kr_p.add_argument("--report-id", required=True, help="UUID of the report")
+    kr_p.add_argument("--kpi", required=True, help="KPI name e.g. scope_1_emissions")
+    kr_p.add_argument("--top-k", type=int, default=7)
+
+    # list-kpis
+    sub.add_parser("list-kpis", help="List all KPI definitions")
+
+    # Phase 4: extract
+    ex_p = sub.add_parser("extract", help="Extract KPIs from a parsed report (regex → LLM → validation)")
+    ex_p.add_argument("--report-id", required=True, help="UUID of a parsed report")
+    ex_p.add_argument("--kpis", default=None, help="Comma-separated KPI names to extract (default: all active)")
+
+    # Phase 4: list-kpi-records
+    rec_p = sub.add_parser("list-kpi-records", help="Show extracted KPI records for a report")
+    rec_p.add_argument("--report-id", required=True, help="UUID of the report")
+
     args = parser.parse_args()
 
     dispatch = {
@@ -429,6 +722,11 @@ def main():
         "list-chunks": cmd_list_chunks,
         "parse": cmd_parse,
         "parse-status": cmd_parse_status,
+        "search-chunks": cmd_search_chunks,
+        "kpi-retrieve": cmd_kpi_retrieve,
+        "list-kpis": cmd_list_kpis,
+        "extract": cmd_extract,
+        "list-kpi-records": cmd_list_kpi_records,
     }
 
     if args.command not in dispatch:
