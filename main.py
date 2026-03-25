@@ -45,12 +45,15 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Emissions",
             "expected_unit": "tCO2e",
             "regex_patterns": [
-                r"scope\s*1[^0-9]*?([\d,]+\.?\d*)\s*(tco2e|tco2|mt\s*co2|ktco2e)",
-                r"direct\s+emissions[^0-9]*?([\d,]+\.?\d*)\s*(tco2e|tco2)",
+                r"scope[\s\-]*1[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?|mt\s*co2e?|kt\s*co2e?|tonnes?\s*co2e?)",
+                r"direct\s+(?:ghg\s+)?emissions[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?|tonnes?\s*co2e?)",
+                r"([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?)\s*[\s\S]{0,40}?scope[\s\-]*1",
             ],
-            "retrieval_keywords": ["scope 1", "direct emissions", "tCO2e", "greenhouse gas"],
-            "valid_min": 0,
-            "valid_max": 1e9,
+            "retrieval_keywords": [
+                "scope 1", "direct emissions", "direct ghg", "tCO2e",
+                "stationary combustion", "fuel combustion", "fugitive", "owned vehicles",
+            ],
+            "valid_min": 0, "valid_max": 1e9,
         },
         {
             "name": "scope_2_emissions",
@@ -59,12 +62,15 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Emissions",
             "expected_unit": "tCO2e",
             "regex_patterns": [
-                r"scope\s*2[^0-9]*?([\d,]+\.?\d*)\s*(tco2e|tco2|mt\s*co2|ktco2e)",
-                r"indirect\s+emissions[^0-9]*?([\d,]+\.?\d*)\s*(tco2e|tco2)",
+                r"scope[\s\-]*2[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?|mt\s*co2e?|kt\s*co2e?|tonnes?\s*co2e?)",
+                r"indirect\s+(?:ghg\s+)?emissions[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?)",
+                r"purchased\s+electricity[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?)",
             ],
-            "retrieval_keywords": ["scope 2", "indirect emissions", "purchased electricity", "tCO2e"],
-            "valid_min": 0,
-            "valid_max": 1e9,
+            "retrieval_keywords": [
+                "scope 2", "indirect emissions", "purchased electricity",
+                "market-based", "location-based", "tCO2e", "electricity ghg",
+            ],
+            "valid_min": 0, "valid_max": 1e9,
         },
         {
             "name": "total_ghg_emissions",
@@ -73,12 +79,16 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Emissions",
             "expected_unit": "tCO2e",
             "regex_patterns": [
-                r"total\s+(?:ghg|greenhouse\s+gas)\s+emissions[^0-9]*?([\d,]+\.?\d*)\s*(tco2e|tco2)",
-                r"(?:ghg|greenhouse\s+gas)\s+footprint[^0-9]*?([\d,]+\.?\d*)\s*(tco2e|tco2)",
+                r"total\s+(?:ghg|greenhouse\s+gas)\s+emissions[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?|mt\s*co2e?)",
+                r"(?:scope\s*1\s*(?:and|&|\+)\s*2|scope\s*1\s*\+\s*scope\s*2)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?)",
+                r"(?:carbon|ghg)\s+footprint[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?|mt\s*co2e?)",
+                r"([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?)\s*[\s\S]{0,50}?(?:total|combined|overall)\s*(?:ghg|emissions)",
             ],
-            "retrieval_keywords": ["total GHG", "total emissions", "carbon footprint", "tCO2e"],
-            "valid_min": 0,
-            "valid_max": 1e10,
+            "retrieval_keywords": [
+                "total GHG", "total emissions", "scope 1 and 2", "carbon footprint",
+                "tCO2e", "greenhouse gas", "CO2 equivalent", "carbon neutral", "ghg inventory",
+            ],
+            "valid_min": 0, "valid_max": 1e10,
         },
         {
             "name": "energy_consumption",
@@ -87,12 +97,15 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Energy",
             "expected_unit": "GJ",
             "regex_patterns": [
-                r"total\s+energy\s+consumption[^0-9]*?([\d,]+\.?\d*)\s*(gj|mwh|gwh|tj)",
-                r"energy\s+consumed[^0-9]*?([\d,]+\.?\d*)\s*(gj|mwh|gwh|tj)",
+                r"total\s+energy\s+(?:consumption|consumed|use|used)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(gj|mwh|gwh|tj|pj)",
+                r"energy\s+(?:consumption|consumed|use|used)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(gj|mwh|gwh|tj)",
+                r"([\d,]+\.?\d*)\s*(gj|gwh|mwh|tj)\s*[\s\S]{0,40}?(?:total\s+)?energy",
             ],
-            "retrieval_keywords": ["energy consumption", "total energy", "GJ", "MWh", "GWh"],
-            "valid_min": 0,
-            "valid_max": 1e12,
+            "retrieval_keywords": [
+                "energy consumption", "total energy", "energy consumed", "energy use",
+                "GJ", "MWh", "GWh", "gigajoules", "megawatt", "fuel consumed",
+            ],
+            "valid_min": 0, "valid_max": 1e12,
         },
         {
             "name": "renewable_energy_percentage",
@@ -101,12 +114,16 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Energy",
             "expected_unit": "%",
             "regex_patterns": [
-                r"renewable\s+energy[^0-9]*?([\d]+\.?\d*)\s*%",
-                r"([\d]+\.?\d*)\s*%\s+(?:of\s+)?(?:energy\s+from\s+)?renewable",
+                r"renewable\s+energy[\s\S]{0,80}?([\d]+\.?\d*)\s*%",
+                r"([\d]+\.?\d*)\s*%[\s\S]{0,40}?(?:from\s+)?renewable",
+                r"(?:solar|wind|clean|green)\s+energy[\s\S]{0,80}?([\d]+\.?\d*)\s*%",
+                r"renewable[\s\S]{0,40}?([\d]+\.?\d*)\s*percent",
             ],
-            "retrieval_keywords": ["renewable energy", "solar", "wind", "clean energy", "%"],
-            "valid_min": 0,
-            "valid_max": 100,
+            "retrieval_keywords": [
+                "renewable energy", "solar", "wind", "clean energy", "green energy",
+                "non-fossil", "RE share", "renewable electricity", "percent renewable",
+            ],
+            "valid_min": 0, "valid_max": 100,
         },
         {
             "name": "water_consumption",
@@ -115,12 +132,15 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Water",
             "expected_unit": "KL",
             "regex_patterns": [
-                r"water\s+consumption[^0-9]*?([\d,]+\.?\d*)\s*(kl|kilolitr|m3|cubic\s+meter|ml)",
-                r"water\s+withdraw[^0-9]*?([\d,]+\.?\d*)\s*(kl|kilolitr|m3)",
+                r"water\s+(?:consumption|consumed|use|used|withdrawal|withdrawn)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(kl|kilolitr\w*|m3|cubic\s+met\w*|million\s+litr\w*)",
+                r"([\d,]+\.?\d*)\s*(kl|kilolitr\w*|m3)\s*[\s\S]{0,40}?water",
+                r"freshwater[\s\S]{0,60}?([\d,]+\.?\d*)\s*(kl|kilolitr\w*|m3)",
             ],
-            "retrieval_keywords": ["water consumption", "water withdrawal", "KL", "kilolitre"],
-            "valid_min": 0,
-            "valid_max": 1e12,
+            "retrieval_keywords": [
+                "water consumption", "water withdrawal", "water use", "water consumed",
+                "KL", "kilolitre", "freshwater", "water recycled", "water intensity",
+            ],
+            "valid_min": 0, "valid_max": 1e12,
         },
         {
             "name": "waste_generated",
@@ -129,12 +149,15 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Waste",
             "expected_unit": "MT",
             "regex_patterns": [
-                r"(?:total\s+)?waste\s+generated[^0-9]*?([\d,]+\.?\d*)\s*(mt|metric\s+ton|tonne|kg)",
-                r"waste\s+produced[^0-9]*?([\d,]+\.?\d*)\s*(mt|tonne|kg)",
+                r"(?:total\s+)?waste\s+(?:generated|produced|disposed)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(mt|metric\s*tonn?\w*|tonne\w*|kg)",
+                r"([\d,]+\.?\d*)\s*(mt|metric\s*tonn?\w*|tonne\w*)\s*[\s\S]{0,40}?waste",
+                r"hazardous\s+waste[\s\S]{0,60}?([\d,]+\.?\d*)\s*(mt|metric\s*tonn?\w*|tonne\w*|kg)",
             ],
-            "retrieval_keywords": ["waste generated", "waste produced", "metric tonnes", "MT"],
-            "valid_min": 0,
-            "valid_max": 1e9,
+            "retrieval_keywords": [
+                "waste generated", "total waste", "solid waste", "hazardous waste",
+                "non-hazardous", "metric tonnes", "MT", "waste disposed", "waste diverted",
+            ],
+            "valid_min": 0, "valid_max": 1e9,
         },
         {
             "name": "employee_count",
@@ -143,13 +166,16 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Workforce",
             "expected_unit": "headcount",
             "regex_patterns": [
-                r"total\s+employees[^0-9]*?([\d,]+)",
-                r"workforce\s+(?:size|strength)[^0-9]*?([\d,]+)",
-                r"([\d,]+)\s+employees",
+                r"total\s+(?:number\s+of\s+)?employees[\s\S]{0,40}?([\d,]+)\s*(?:nos|number|headcount|employees|$|\n)",
+                r"workforce\s+(?:size|strength|count|of)[\s\S]{0,40}?([\d,]+)",
+                r"([\d,]+)\s+(?:permanent\s+)?employees\s+(?:as\s+of|globally|worldwide|in\s+india)",
+                r"total\s+headcount[\s\S]{0,40}?([\d,]+)",
             ],
-            "retrieval_keywords": ["total employees", "workforce", "headcount", "FTE"],
-            "valid_min": 1,
-            "valid_max": 5e6,
+            "retrieval_keywords": [
+                "total employees", "workforce", "headcount", "FTE", "full-time",
+                "permanent employees", "employee strength", "number of employees",
+            ],
+            "valid_min": 1, "valid_max": 5e6,
         },
         {
             "name": "women_in_workforce_percentage",
@@ -158,13 +184,16 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Diversity",
             "expected_unit": "%",
             "regex_patterns": [
-                r"women[^0-9]*?([\d]+\.?\d*)\s*%",
-                r"female\s+employees[^0-9]*?([\d]+\.?\d*)\s*%",
-                r"([\d]+\.?\d*)\s*%\s+women",
+                r"women[\s\S]{0,60}?([\d]+\.?\d*)\s*%",
+                r"female[\s\S]{0,60}?([\d]+\.?\d*)\s*%",
+                r"([\d]+\.?\d*)\s*%[\s\S]{0,30}?(?:women|female)",
+                r"gender\s+(?:ratio|diversity|split)[\s\S]{0,80}?women[\s\S]{0,30}?([\d]+\.?\d*)\s*%",
             ],
-            "retrieval_keywords": ["women", "female", "gender diversity", "diversity"],
-            "valid_min": 0,
-            "valid_max": 100,
+            "retrieval_keywords": [
+                "women", "female", "gender diversity", "gender ratio",
+                "women employees", "female workforce", "women in leadership",
+            ],
+            "valid_min": 0, "valid_max": 100,
         },
         {
             "name": "csr_spend",
@@ -173,26 +202,36 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Community",
             "expected_unit": "INR Crore",
             "regex_patterns": [
-                r"csr\s+(?:expenditure|spend|investment)[^0-9]*?([\d,]+\.?\d*)\s*(?:crore|cr|lakh|inr)?",
-                r"social\s+investment[^0-9]*?([\d,]+\.?\d*)\s*(?:crore|cr)",
+                r"csr\s+(?:expenditure|spend|investment|amount\s+spent)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(?:crore|cr|lakh|inr)?",
+                r"(?:amount\s+spent|expenditure)\s+on\s+csr[\s\S]{0,60}?([\d,]+\.?\d*)\s*(?:crore|cr)",
+                r"([\d,]+\.?\d*)\s*(?:crore|cr)\s*[\s\S]{0,40}?csr",
             ],
-            "retrieval_keywords": ["CSR", "corporate social responsibility", "social spend", "crore"],
-            "valid_min": 0,
-            "valid_max": 1e6,
+            "retrieval_keywords": [
+                "CSR expenditure", "CSR spend", "CSR investment", "social spend",
+                "community investment", "corporate social responsibility", "crore",
+            ],
+            "valid_min": 0, "valid_max": 1e6,
         },
     ]
 
     with get_db() as db:
         added = 0
+        updated = 0
         for kpi_data in DEFAULT_KPIS:
             existing = db.query(KPIDefinition).filter(KPIDefinition.name == kpi_data["name"]).first()
             if existing:
-                continue
-            kpi = KPIDefinition(**kpi_data)
-            db.add(kpi)
-            added += 1
+                # Always update patterns and keywords to latest version
+                existing.regex_patterns = kpi_data["regex_patterns"]
+                existing.retrieval_keywords = kpi_data["retrieval_keywords"]
+                existing.valid_min = kpi_data.get("valid_min")
+                existing.valid_max = kpi_data.get("valid_max")
+                updated += 1
+            else:
+                kpi = KPIDefinition(**kpi_data)
+                db.add(kpi)
+                added += 1
         db.flush()
-        print(f"✓ Seeded {added} KPI definitions ({len(DEFAULT_KPIS) - added} already existed).")
+        print(f"✓ KPI definitions: {added} added, {updated} updated.")
 
 
 def cmd_ingest(args) -> None:

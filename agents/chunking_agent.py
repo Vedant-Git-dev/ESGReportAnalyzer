@@ -1,23 +1,20 @@
 """
 agents/chunking_agent.py
 
-Chunking Agent — Phase 3 (part of Phase 2 pipeline).
+Chunking Agent — Phase 2 (revised).
 
-Responsibilities:
-  1. Receive RawChunks from ParsingAgent
-  2. Split oversized text chunks into token-bounded segments (200–500 tokens)
-  3. Keep table chunks intact (never split tables)
-  4. Build a lowercase keyword index per chunk for retrieval
-  5. Persist DocumentChunk rows under a ParsedDocument
-
-Token counting uses a simple word-based approximation (1 token ≈ 0.75 words)
-to avoid a hard dependency on tiktoken in Phase 2. Can be swapped later.
+Key improvements over v1:
+  1. Sentence-boundary splitting — never cuts mid-sentence
+  2. Overlap stitching — each chunk includes 1 trailing sentence from
+     the previous chunk, so values split across chunk boundaries are captured
+  3. Numeric-density flag — chunks with numbers get a keyword tag "has_numbers"
+     so retrieval can boost them
+  4. Tables never split (unchanged)
 """
 from __future__ import annotations
 
 import re
 import uuid
-from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
@@ -26,15 +23,12 @@ from core.config import get_settings
 from core.logging_config import get_logger
 from models.db_models import DocumentChunk, ParsedDocument
 
-if TYPE_CHECKING:
-    pass
-
 logger = get_logger(__name__)
 
-# Approximate: 1 token ≈ 0.75 words  →  word_count = token_count * 0.75
 _WORDS_PER_TOKEN = 0.75
+_OVERLAP_SENTENCES = 1        # sentences to carry over between chunks
+_NUMBER_RE = re.compile(r"\b\d[\d,\.]*\b")
 
-# Stop-words excluded from keyword index
 _STOP_WORDS = {
     "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
     "of", "with", "by", "from", "is", "are", "was", "were", "be", "been",
@@ -43,14 +37,19 @@ _STOP_WORDS = {
     "we", "their", "they", "he", "she", "his", "her", "which", "who", "also",
 }
 
+# ESG-domain terms always kept in keyword index even if short
+_ESG_TERMS = {
+    "ghg", "co2", "nox", "sox", "esg", "kl", "mwh", "gwh", "gj", "tj",
+    "fte", "csr", "epi", "re", "pv",
+}
+
 
 # ---------------------------------------------------------------------------
 # Token estimation
 # ---------------------------------------------------------------------------
 
 def _estimate_tokens(text: str) -> int:
-    words = len(text.split())
-    return max(1, int(words / _WORDS_PER_TOKEN))
+    return max(1, int(len(text.split()) / _WORDS_PER_TOKEN))
 
 
 # ---------------------------------------------------------------------------
@@ -58,64 +57,87 @@ def _estimate_tokens(text: str) -> int:
 # ---------------------------------------------------------------------------
 
 def _extract_keywords(text: str) -> str:
-    """
-    Return space-separated lowercase keywords for fast ILIKE retrieval.
-    Filters stop-words and very short tokens.
-    """
     tokens = re.findall(r"[a-zA-Z0-9]+", text.lower())
-    keywords = {t for t in tokens if len(t) > 2 and t not in _STOP_WORDS}
+    keywords = {
+        t for t in tokens
+        if (len(t) > 2 and t not in _STOP_WORDS) or t in _ESG_TERMS
+    }
+    # Tag chunks that contain numbers — retrieval boosts these
+    if _NUMBER_RE.search(text):
+        keywords.add("has_numbers")
     return " ".join(sorted(keywords))
 
 
 # ---------------------------------------------------------------------------
-# Text splitter
+# Sentence splitter
 # ---------------------------------------------------------------------------
 
-def _split_text(text: str, max_tokens: int, min_tokens: int) -> list[str]:
+def _split_into_sentences(text: str) -> list[str]:
     """
-    Split text into segments within [min_tokens, max_tokens] token range.
-    Splits on paragraph boundaries first, then sentence boundaries.
-    Tries to keep semantic units together.
+    Split text into sentences on . ! ? followed by whitespace + capital.
+    Also splits on newlines that look like list items or table rows.
+    """
+    # Normalise line endings
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Split on sentence-ending punctuation
+    raw = re.split(r"(?<=[.!?])\s+(?=[A-Z\d])", text)
+
+    sentences: list[str] = []
+    for part in raw:
+        # Further split on newlines that start new logical lines
+        lines = part.split("\n")
+        for line in lines:
+            line = line.strip()
+            if line:
+                sentences.append(line)
+
+    return [s for s in sentences if s.strip()]
+
+
+# ---------------------------------------------------------------------------
+# Overlapping chunk builder
+# ---------------------------------------------------------------------------
+
+def _split_with_overlap(
+    text: str,
+    max_tokens: int,
+    min_tokens: int,
+    overlap: int = _OVERLAP_SENTENCES,
+) -> list[str]:
+    """
+    Split text into chunks bounded by [min_tokens, max_tokens].
+    Each chunk includes `overlap` trailing sentences from the previous chunk
+    so values split across a boundary are still captured in context.
     """
     max_words = int(max_tokens * _WORDS_PER_TOKEN)
     min_words = int(min_tokens * _WORDS_PER_TOKEN)
 
-    # Split on double newlines (paragraphs)
-    paragraphs = [p.strip() for p in re.split(r"\n\n+", text) if p.strip()]
+    sentences = _split_into_sentences(text)
+    if not sentences:
+        return [text] if text.strip() else []
 
-    segments: list[str] = []
+    chunks: list[str] = []
     current: list[str] = []
     current_words = 0
 
-    for para in paragraphs:
-        para_words = len(para.split())
+    for sent in sentences:
+        sent_words = len(sent.split())
 
-        if para_words > max_words:
-            # Para itself is too long — split by sentences
-            sentences = re.split(r"(?<=[.!?])\s+", para)
-            for sent in sentences:
-                sent_words = len(sent.split())
-                if current_words + sent_words > max_words and current_words >= min_words:
-                    segments.append(" ".join(current))
-                    current = [sent]
-                    current_words = sent_words
-                else:
-                    current.append(sent)
-                    current_words += sent_words
-        else:
-            if current_words + para_words > max_words and current_words >= min_words:
-                segments.append("\n\n".join(current))
-                current = [para]
-                current_words = para_words
-            else:
-                current.append(para)
-                current_words += para_words
+        if current_words + sent_words > max_words and current_words >= min_words:
+            # Save current chunk
+            chunks.append(" ".join(current))
+            # Carry over last N sentences as overlap into the next chunk
+            current = current[-overlap:] if overlap else []
+            current_words = sum(len(s.split()) for s in current)
+
+        current.append(sent)
+        current_words += sent_words
 
     if current:
-        segments.append("\n\n".join(current))
+        chunks.append(" ".join(current))
 
-    # Filter truly empty segments
-    return [s for s in segments if s.strip()]
+    return [c for c in chunks if c.strip()]
 
 
 # ---------------------------------------------------------------------------
@@ -123,10 +145,6 @@ def _split_text(text: str, max_tokens: int, min_tokens: int) -> list[str]:
 # ---------------------------------------------------------------------------
 
 class ChunkingAgent:
-    """
-    Converts RawChunks → DocumentChunk ORM rows stored in DB.
-    Tables are never split. Text is split to [min_chunk_tokens, max_chunk_tokens].
-    """
 
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -137,14 +155,6 @@ class ChunkingAgent:
         parsed_document: ParsedDocument,
         db: Session,
     ) -> list[DocumentChunk]:
-        """
-        Process all RawChunks for a ParsedDocument, persist to DB, return list.
-
-        Args:
-            raw_chunks:       Output of ParsingAgent.parse()
-            parsed_document:  Already-flushed ParsedDocument ORM object
-            db:               Active SQLAlchemy session (caller commits)
-        """
         max_t = self.settings.max_chunk_tokens
         min_t = self.settings.min_chunk_tokens
 
@@ -153,7 +163,7 @@ class ChunkingAgent:
 
         for raw in raw_chunks:
             if raw.chunk_type == "table":
-                # Tables are stored as single chunks — never split
+                # Tables: never split, store as-is
                 chunk = self._make_chunk(
                     parsed_document_id=parsed_document.id,
                     chunk_index=chunk_index,
@@ -166,12 +176,11 @@ class ChunkingAgent:
                 chunk_index += 1
 
             else:
-                # Text / footnote — split if over max_tokens
                 tokens = _estimate_tokens(raw.content)
                 if tokens <= max_t:
                     segments = [raw.content]
                 else:
-                    segments = _split_text(raw.content, max_t, min_t)
+                    segments = _split_with_overlap(raw.content, max_t, min_t)
 
                 for seg in segments:
                     if not seg.strip():
@@ -195,7 +204,6 @@ class ChunkingAgent:
             total_chunks=len(db_chunks),
             table_chunks=sum(1 for c in db_chunks if c.chunk_type == "table"),
             text_chunks=sum(1 for c in db_chunks if c.chunk_type == "text"),
-            footnote_chunks=sum(1 for c in db_chunks if c.chunk_type == "footnote"),
         )
         return db_chunks
 

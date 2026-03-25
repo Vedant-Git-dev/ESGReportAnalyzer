@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     pdf_storage_path: Path = Path("./storage/pdfs")
 
     # --- Pipeline ---
-    parser_version: str = "1.0.0"
+    parser_version: str = "1.1.0"
     max_chunk_tokens: int = 500
     min_chunk_tokens: int = 200
     retrieval_top_k: int = 7
