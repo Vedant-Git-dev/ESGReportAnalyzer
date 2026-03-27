@@ -107,6 +107,19 @@ class ParseOrchestrator:
             # --- Chunk and store ---
             db_chunks = chunking_agent.chunk_and_store(raw_chunks, parsed_doc, db)
 
+            # --- Compute embeddings (local model, zero API cost) ---
+            try:
+                from services.embedding_service import EmbeddingService
+                emb_service = EmbeddingService()
+                if emb_service.is_available():
+                    embedded = emb_service.embed_document(parsed_doc.id, db)
+                    logger.info("parse_orchestrator.embedded", chunks=embedded)
+                else:
+                    logger.warning("parse_orchestrator.embedding_skipped",
+                                  reason="model not available")
+            except Exception as exc:
+                logger.warning("parse_orchestrator.embedding_failed", error=str(exc))
+
             # Update meta with final chunk count
             parsed_doc.meta = {**meta, "chunk_count": len(db_chunks)}
 

@@ -56,18 +56,18 @@ def _has_data_sentence(text: str) -> bool:
 
 def _score_chunk(chunk: DocumentChunk, query_keywords: list[str]) -> ScoredChunk:
     if not chunk.keywords:
-        return ScoredChunk(chunk=chunk, score=0.0)
+        return ScoredChunk(chunk=chunk, score=0)
 
     chunk_kw_set = set(chunk.keywords.split())
     matched: list[str] = []
-    raw_score = 0.0
+    raw_score = 0
 
     for kw in query_keywords:
         kw_parts = kw.lower().split()   # handle multi-word keywords
         for part in kw_parts:
             if part in chunk_kw_set:
                 matched.append(kw)
-                raw_score += 1.0
+                raw_score += 1
                 break
             else:
                 for ck in chunk_kw_set:
@@ -77,7 +77,7 @@ def _score_chunk(chunk: DocumentChunk, query_keywords: list[str]) -> ScoredChunk
                         break
 
     if raw_score == 0:
-        return ScoredChunk(chunk=chunk, score=0.0)
+        return ScoredChunk(chunk=chunk, score=0)
 
     # Soft normalise — prefer dense keyword matches
     token_count = max(chunk.token_count or 1, 1)
@@ -191,7 +191,7 @@ class RetrievalService:
                 .limit(k)
                 .all()
             )
-            return [ScoredChunk(chunk=c, score=0.0) for c in fallback]
+            return [ScoredChunk(chunk=c, score=0) for c in fallback]
 
         # --- Step 2: Score ---
         scored = [_score_chunk(c, query_keywords) for c in candidate_chunks]
@@ -275,3 +275,194 @@ class RetrievalService:
             stitched = _stitch_neighbors(scored[:k], all_chunks_map, window=1)
             return stitched[:k * 2]
         return scored[:k]
+    
+# ---------------------------------------------------------------------------
+# Hybrid retrieval — combines semantic + keyword results
+# ---------------------------------------------------------------------------
+
+def _build_kpi_queries(kpi: KPIDefinition) -> list[str]:
+    """
+    Build natural-language query strings for semantic search from a KPI definition.
+    Multiple queries improve recall — results are merged by max similarity.
+    """
+    from agents.extraction_agent import _KPI_ALIASES
+
+    base_queries = [kpi.display_name]
+
+    # Add unit to query — "Scope 1 GHG Emissions tCO2e"
+    base_queries.append(f"{kpi.display_name} {kpi.expected_unit}")
+
+    # Add keyword-based queries
+    for kw in (kpi.retrieval_keywords or [])[:3]:
+        base_queries.append(kw)
+
+    # Add alias-based queries
+    for alias in _KPI_ALIASES.get(kpi.name, [])[:3]:
+        base_queries.append(alias)
+
+    return base_queries
+
+
+class HybridRetrievalService(RetrievalService):
+    """
+    Extends RetrievalService with semantic (embedding) retrieval.
+
+    Strategy:
+      1. Run semantic search (embedding cosine similarity) — top-K results
+      2. Run keyword search (existing pipeline) — top-K results
+      3. Merge: take union, score = max(semantic_score, keyword_score)
+      4. Re-rank merged list by combined score
+      5. Stitch neighbors around top results
+      6. Return top-K*2 for LLM context
+
+    Falls back to keyword-only if embeddings are not computed or model unavailable.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._embedding_service = None
+
+    def _get_embedding_service(self):
+        if self._embedding_service is None:
+            from services.embedding_service import EmbeddingService
+            self._embedding_service = EmbeddingService()
+        return self._embedding_service
+
+    def retrieve(
+        self,
+        parsed_document_id: uuid.UUID,
+        kpi: KPIDefinition,
+        db: Session,
+        top_k: Optional[int] = None,
+    ) -> list[ScoredChunk]:
+        k = top_k or self.settings.retrieval_top_k
+
+        if not self.settings.use_embedding_retrieval:
+            return super().retrieve(parsed_document_id, kpi, db, top_k)
+
+        emb_service = self._get_embedding_service()
+
+        # Check if this document has embeddings at all
+        has_embeddings = db.query(DocumentChunk.id).filter(
+            DocumentChunk.parsed_document_id == parsed_document_id,
+            DocumentChunk.is_embedded == True,
+        ).first() is not None
+
+        if not has_embeddings or not emb_service.is_available():
+            logger.info("retrieval.semantic_unavailable_fallback", kpi=kpi.name,
+                       has_embeddings=has_embeddings)
+            return super().retrieve(parsed_document_id, kpi, db, top_k)
+
+        # --- Semantic retrieval ---
+        queries = _build_kpi_queries(kpi)
+        try:
+            semantic_results = emb_service.search_multi_query(
+                parsed_document_id=parsed_document_id,
+                queries=queries,
+                db=db,
+                top_k=k,
+            )
+
+            semantic_scored = {
+                chunk.id: ScoredChunk(
+                    chunk=chunk,
+                    score=sim * 10,  # scale to be comparable with keyword scores
+                    matched_keywords=["[semantic]"],
+                )
+                for chunk, sim in semantic_results
+            }
+        except Exception as exc:
+            semantic_results = emb_service.search_multi_query(
+                parsed_document_id=parsed_document_id,
+                queries=queries,
+                db=db,
+                top_k=k,
+            )
+            semantic_scored = {
+                chunk.id: ScoredChunk(
+                    chunk=chunk,
+                    score=sim * 10,  # scale to be comparable with keyword scores
+                    matched_keywords=["[semantic]"],
+                )
+                for chunk, sim in semantic_results
+            }
+            keyword_results = super().retrieve(parsed_document_id, kpi, db, top_k)
+            keyword_scored = {sc.chunk.id: sc for sc in keyword_results}
+
+            all_ids = set(semantic_scored) | set(keyword_scored)
+            for chunk_id in all_ids[:2]:
+                sem = semantic_scored.get(chunk_id)
+                kw = keyword_scored.get(chunk_id)
+                print(type(sem.score), "sem.score")
+                print(type(kw.score), "kw.score")
+            logger.warning("retrieval.semantic_failed", kpi=kpi.name, error=str(exc))
+            semantic_scored = {}
+
+        # --- Keyword retrieval ---
+        keyword_results = super().retrieve(parsed_document_id, kpi, db, top_k)
+        keyword_scored = {sc.chunk.id: sc for sc in keyword_results}
+
+        max_kw = max((kw.score for kw in keyword_scored.values()), default=1)
+        max_sem = max((sem.score for sem in semantic_scored.values()), default=1)
+
+        for kw in keyword_scored.values():
+            kw.score = kw.score / max_kw
+
+        for sem in semantic_scored.values():
+            sem.score = sem.score / max_sem
+        
+        # --- Merge: union of both result sets ---
+        all_ids = set(semantic_scored) | set(keyword_scored)
+        merged: list[ScoredChunk] = []
+
+        for chunk_id in all_ids:
+            sem = semantic_scored.get(chunk_id)
+            kw = keyword_scored.get(chunk_id)
+            if sem and kw:
+                # Both found — boost combined score
+                combined_score = sem.score * 0.6 + kw.score * 0.4 + 0.5
+                merged.append(ScoredChunk(
+                    chunk=sem.chunk,
+                    score=combined_score,
+                    matched_keywords=list(set(sem.matched_keywords + kw.matched_keywords)),
+                ))
+            elif sem:
+                merged.append(sem)
+            else:
+                merged.append(kw)
+
+        merged.sort(key=lambda s: s.score, reverse=True)
+        top = merged[:k]
+
+        # --- Neighbor stitching ---
+        all_chunks_map: dict[int, DocumentChunk] = {}
+        for sc in merged:
+            all_chunks_map[sc.chunk.chunk_index] = sc.chunk
+
+        if top:
+            min_idx = min(s.chunk.chunk_index for s in top)
+            max_idx = max(s.chunk.chunk_index for s in top)
+            neighbor_chunks = (
+                db.query(DocumentChunk)
+                .filter(
+                    DocumentChunk.parsed_document_id == parsed_document_id,
+                    DocumentChunk.chunk_index >= max(0, min_idx - 1),
+                    DocumentChunk.chunk_index <= max_idx + 1,
+                )
+                .all()
+            )
+            for nc in neighbor_chunks:
+                all_chunks_map[nc.chunk_index] = nc
+
+        stitched = _stitch_neighbors(top, all_chunks_map, window=1)
+        final = stitched[:k * 2]
+
+        logger.info(
+            "retrieval.hybrid_complete",
+            kpi=kpi.name,
+            semantic=len(semantic_scored),
+            keyword=len(keyword_scored),
+            merged=len(merged),
+            returned=len(final),
+        )
+        return final

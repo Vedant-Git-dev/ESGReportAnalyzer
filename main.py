@@ -574,6 +574,105 @@ def cmd_list_kpis(_args) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Embedding commands
+# ---------------------------------------------------------------------------
+
+def cmd_embed(args) -> None:
+    """Compute and store embeddings for all chunks of a parsed report."""
+    import uuid as _uuid
+    from core.database import get_db
+    from models.db_models import ParsedDocument
+    from services.embedding_service import EmbeddingService
+
+    report_id = _uuid.UUID(args.report_id)
+
+    with get_db() as db:
+        parsed_doc = (
+            db.query(ParsedDocument)
+            .filter(ParsedDocument.report_id == report_id)
+            .order_by(ParsedDocument.parsed_at.desc())
+            .first()
+        )
+        if not parsed_doc:
+            print(f"No parse cache for report {report_id}. Run: python main.py parse --report-id {report_id}")
+            return
+
+        parsed_doc_id = parsed_doc.id
+
+    print(f"Loading embedding model ({get_settings().embedding_model}) ...")
+    emb = EmbeddingService()
+
+    if not emb.is_available():
+        print("Embedding model unavailable. Install: pip install sentence-transformers")
+        return
+
+    print("Computing embeddings (this runs locally, no API cost) ...")
+    with get_db() as db:
+        count = emb.embed_document(parsed_doc_id, db, force=args.force)
+
+    print(f"Embedded {count} chunks for report {report_id}")
+    print("Retrieval will now use hybrid semantic + keyword scoring.")
+
+
+def cmd_embed_status(_args) -> None:
+    """Show embedding coverage across all parsed documents."""
+    from core.database import get_db
+    from models.db_models import DocumentChunk, ParsedDocument, Report, Company
+    from sqlalchemy import func
+
+    with get_db() as db:
+        rows = (
+            db.query(
+                Company.name,
+                Report.report_year,
+                ParsedDocument.id,
+                func.count(DocumentChunk.id).label("total"),
+                func.sum(
+                    func.cast(DocumentChunk.is_embedded, db.bind.dialect.dbapi.Binary
+                              if hasattr(db.bind, 'dialect') else __builtins__['int'])
+                ).label("embedded"),
+            )
+            .join(Report, ParsedDocument.report_id == Report.id)
+            .join(Company, Report.company_id == Company.id)
+            .join(DocumentChunk, DocumentChunk.parsed_document_id == ParsedDocument.id)
+            .group_by(Company.name, Report.report_year, ParsedDocument.id)
+            .all()
+        )
+
+        if not rows:
+            print("No parsed documents found.")
+            return
+
+        # Simpler query
+        results = db.execute(
+            __import__('sqlalchemy').text("""
+                SELECT c.name, r.report_year,
+                       COUNT(dc.id) as total,
+                       SUM(CASE WHEN dc.is_embedded THEN 1 ELSE 0 END) as embedded
+                FROM document_chunks dc
+                JOIN parsed_documents pd ON dc.parsed_document_id = pd.id
+                JOIN reports r ON pd.report_id = r.id
+                JOIN companies c ON r.company_id = c.id
+                GROUP BY c.name, r.report_year
+                ORDER BY c.name, r.report_year DESC
+            """)
+        ).fetchall()
+
+    if not results:
+        print("No data found.")
+        return
+
+    print(f"\n{'Company':<30} {'Year':<6} {'Total Chunks':<15} {'Embedded':<12} {'Coverage'}")
+    print("-" * 80)
+    for row in results:
+        total = row[2] or 0
+        embedded = row[3] or 0
+        pct = f"{100 * embedded / total:.1f}%" if total > 0 else "0%"
+        status = "ready" if embedded == total else ("partial" if embedded > 0 else "not embedded")
+        print(f"{row[0]:<30} {row[1]:<6} {total:<15} {embedded:<12} {pct}  [{status}]")
+
+
+# ---------------------------------------------------------------------------
 # Phase 4 commands
 # ---------------------------------------------------------------------------
 
@@ -742,6 +841,13 @@ def main():
     # list-kpis
     sub.add_parser("list-kpis", help="List all KPI definitions")
 
+    # Embedding
+    emb_p = sub.add_parser("embed", help="Compute semantic embeddings for a parsed report")
+    emb_p.add_argument("--report-id", required=True, help="UUID of a parsed report")
+    emb_p.add_argument("--force", action="store_true", help="Re-embed even if already done")
+
+    sub.add_parser("embed-status", help="Show embedding coverage across all reports")
+
     # Phase 4: extract
     ex_p = sub.add_parser("extract", help="Extract KPIs from a parsed report (regex → LLM → validation)")
     ex_p.add_argument("--report-id", required=True, help="UUID of a parsed report")
@@ -764,6 +870,8 @@ def main():
         "search-chunks": cmd_search_chunks,
         "kpi-retrieve": cmd_kpi_retrieve,
         "list-kpis": cmd_list_kpis,
+        "embed": cmd_embed,
+        "embed-status": cmd_embed_status,
         "extract": cmd_extract,
         "list-kpi-records": cmd_list_kpi_records,
     }

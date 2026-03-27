@@ -34,7 +34,7 @@ from models.db_models import DocumentChunk, KPIDefinition, ParsedDocument, Repor
 from models.schemas import ExtractedKPI
 from services.kpi_service import KPIService
 from services.llm_service import LLMService
-from services.retrieval_service import RetrievalService, ScoredChunk
+from services.retrieval_service import HybridRetrievalService, RetrievalService, ScoredChunk
 
 logger = get_logger(__name__)
 
@@ -409,7 +409,7 @@ class ExtractionAgent:
 
     def __init__(self) -> None:
         self.settings = get_settings()
-        self.retrieval = RetrievalService()
+        self.retrieval = HybridRetrievalService()
         self.llm = LLMService()
         self.kpi_service = KPIService()
 

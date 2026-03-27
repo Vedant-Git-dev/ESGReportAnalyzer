@@ -28,6 +28,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import relationship
 
 from core.database import Base
@@ -130,6 +131,14 @@ class ParsedDocument(Base):
 # ---------------------------------------------------------------------------
 # document_chunks
 # ---------------------------------------------------------------------------
+
+# Embedding dimension — must match your chosen model
+# all-MiniLM-L6-v2  → 384
+# bge-small-en-v1.5 → 384
+# bge-base-en-v1.5  → 768
+EMBEDDING_DIM = 384
+
+
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
 
@@ -140,10 +149,12 @@ class DocumentChunk(Base):
     page_number = Column(Integer, nullable=True)
     content = Column(Text, nullable=False)
     token_count = Column(Integer, nullable=True)
-    # embedding stored as JSON array (swap for pgvector later)
-    embedding = Column(JSONB, nullable=True)
-    # keyword index stored as lowercase space-separated tokens
+    # pgvector column — cosine similarity search
+    embedding = Column(Vector(EMBEDDING_DIM), nullable=True)
+    # keyword index — space-separated lowercase tokens
     keywords = Column(Text, nullable=True)
+    # True once embedding has been computed for this chunk
+    is_embedded = Column(Boolean, nullable=False, default=False)
 
     parsed_document = relationship("ParsedDocument", back_populates="chunks")
 

@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     min_chunk_tokens: int = 200
     retrieval_top_k: int = 7
 
+    # --- Embeddings ---
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_batch_size: int = 64
+    use_embedding_retrieval: bool = True   # set False to fall back to keyword-only
+
     # --- HTTP ---
     download_timeout_seconds: int = 60
     max_download_size_mb: int = 50

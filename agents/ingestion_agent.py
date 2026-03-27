@@ -5,7 +5,7 @@ Phase 1 agent — owns the full ingestion lifecycle:
 
   1. Ensure company exists in DB
   2. Call SearchService to discover PDF report URLs
-  3. Deduplicate against already-known reports
+  3. Deduplicate against already-known reports and register new ones in DB
   4. Download PDFs (with size + hash guard)
   5. Persist report metadata + update status
 
