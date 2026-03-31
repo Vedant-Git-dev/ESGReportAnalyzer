@@ -39,7 +39,58 @@ from services.retrieval_service import HybridRetrievalService, RetrievalService,
 logger = get_logger(__name__)
 
 _REGEX_HIGH_CONFIDENCE = 0.88
-_LLM_CHUNK_CHAR_LIMIT = 6000   # increased from 4000
+_LLM_CHUNK_CHAR_LIMIT = 6000
+
+# Patterns that indicate a number is NOT a stock value but a delta/target/intensity.
+# Applied as a pre-check on the sentence containing the regex match.
+_DELTA_CONTEXT_RE = re.compile(
+    r"\b("
+    r"reduc(?:ed|es?|tion|ing)|"                  # "reduced scope 1 by", "reduces emissions"
+    r"declin(?:ed|e|ing)|"
+    r"decreas(?:ed|es?|e|ing)|"
+    r"avoid(?:ed|ance|ing|s?)|"
+    r"offset(?:ting|s)?|"
+    r"sequester(?:ed|ing)?|"
+    r"sav(?:ed|ing|ings)|"
+    r"target(?:ed|ing|s?)?\s+(?:of|to|at)|"
+    r"goal\s+(?:of|to)|"
+    r"aim(?:s|ing)?\s+(?:to|for)|"
+    r"commit(?:ted|ment)\s+(?:to|of)|"
+    r"plan(?:ned|s|ning)?\s+(?:to|for)|"
+    r"by\s+(?:fy|20)\d{2}|"
+    r"per\s+(?:employee|fte|unit|sqm|sq\.?\s*m|revenue|capita|tonne|kwh)|"
+    r"intensit(?:y|ies)|"
+    r"baseline\s+(?:of|year|value)|"
+    r"compared\s+to\s+(?:fy|20)\d{2}|"
+    r"vs\.?\s+(?:fy|20)\d{2}|"
+    r"from\s+(?:fy|20)\d{2}\s+(?:to|level)|"
+    r"improvement\s+(?:of|in)|"
+    r"increase[sd]?\s+by|"                        # "increased by X"
+    r"net\s+(?:zero|neutral)|"                    # "net zero target of X"
+    r"emission\s+factor"                           # intensity-related
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _get_sentence_context(text: str, match_start: int, window: int = 120) -> str:
+    """Extract the sentence around a regex match position."""
+    start = max(0, match_start - window)
+    end = min(len(text), match_start + window)
+    snippet = text[start:end]
+    # Find sentence boundaries within the snippet
+    sentences = re.split(r"[.!?\n]", snippet)
+    # Return the sentence most likely containing the match
+    for sent in sentences:
+        if str(match_start - start) and len(sent) > 5:
+            return sent
+    return snippet
+
+
+def _is_delta_context(text: str, match_start: int) -> bool:
+    """Check if the text around a match position describes a delta/target/intensity."""
+    context = _get_sentence_context(text, match_start, window=150)
+    return bool(_DELTA_CONTEXT_RE.search(context))
 
 # ---------------------------------------------------------------------------
 # Unit synonym map
@@ -132,22 +183,123 @@ def _parse_number(s: str) -> Optional[float]:
 # Layer 1 — Regex (broad, narrative-aware patterns)
 # ---------------------------------------------------------------------------
 
-# Generic number pattern: matches 1,00,000 or 12.34 or 1234
-_NUM = r"([\d,]+(?:\.\d+)?)"
-_WS = r"[\s:–\-|]*"          # flexible separator
-_UNIT_PAT = r"(tco2e?|t\s*co2e?|mt\s*co2e?|kt\s*co2e?|tonnes?\s*co2e?|mwh|gwh|gj|tj|kl|kilolitr\w*|m3|mt|metric\s*tonn?\w*|%|percent|crore|lakh|number|nos|headcount)"
+# Indian number format: 8,50,434 or 19,55,525 (lakh-crore grouping)
+# Also handles footnote markers: 8,745(2) → capture 8,745
+_NUM = r"([\d,]+(?:\.\d+)?)(?:\(\d+\))?"   # number optionally followed by footnote marker
+_WS  = r"[\s:–\-|]*"
+_UNIT_PAT = (
+    r"(tco2e?|t\s*co2e?|mt\s*co2e?|kt\s*co2e?|tonnes?\s*co2e?|"
+    r"mwh|gwh|gj|tj|kl|kilolitr\w*|m3|mt|metric\s*tonn?\w*|"
+    r"%|percent|crore|lakh|number|nos|headcount)"
+)
 
-# Built-in broad patterns applied to ALL KPIs as a fallback
+# Patterns for "label\nvalue" block structure (fitz splits label and value by \n)
+# These handle the most common BRSR/ESG PDF block format:
+#   "Total energy consumed (A+B+C+D+E+F)(1)\n8,50,434\n8,39,448"
+_BLOCK_PATTERNS_WITH_UNIT_IN_LABEL = [
+    # Energy: "total energy consumed ... (in GJ)\n<value>"
+    (r"total\s+energy\s+consumed[^\n]*\n" + _NUM, "GJ"),
+    (r"total\s+energy\s+consumption[^\n]*\n" + _NUM, "GJ"),
+    # Water consumption: "total volume of water consumption[^\n]*\n<value>"
+    (r"total\s+volume\s+of\s+water\s+consumption[^\n]*\n" + _NUM, "KL"),
+    (r"total\s+water\s+consumption[^\n]*\n" + _NUM, "KL"),
+    # Waste total: "Total (A + B + ... + H)\n<value>"
+    (r"^total\s*\([a-h\s+]+\)\s*\n" + _NUM, "MT"),
+    (r"total\s+waste\s+generated[^\n]*\n[^\n]*\n" + _NUM, "MT"),
+    # Scope 1: "Total Scope 1 emissions...\nMetric tonnes...\n<value>"
+    (r"total\s+scope\s*1\s+emissions[^\n]*\n[^\n]*\n" + _NUM, "tCO2e"),
+    (r"total\s+scope\s*1\s+emissions[^\n]*equivalent\n" + _NUM, "tCO2e"),
+    # Scope 2: same pattern
+    (r"total\s+scope\s*2\s+emissions[^\n]*\n[^\n]*\n" + _NUM, "tCO2e"),
+    (r"total\s+scope\s*2\s+emissions[^\n]*equivalent\n" + _NUM, "tCO2e"),
+]
+
+# Built-in broad patterns (inline, no newlines)
 _BROAD_PATTERNS = [
-    # "was 12,345 tCO2e" / "of 12,345 tCO2e"
     rf"(?:was|is|were|of|:)\s*{_NUM}\s*{_UNIT_PAT}",
-    # "12,345 tCO2e in FY" / "12,345 tCO2e for"
     rf"{_NUM}\s*{_UNIT_PAT}\s*(?:in|for|during|fy|fiscal)",
-    # table cell: "| 12,345 | tCO2e |"
     rf"\|\s*{_NUM}\s*\|\s*{_UNIT_PAT}",
-    # "totalled 12,345 tCO2e"
     rf"(?:total(?:led|s)?|amount(?:ed|s)?|reached|stood at|equat\w+)\s*{_WS}{_NUM}\s*{_UNIT_PAT}",
 ]
+
+
+def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]:
+    """
+    Try block-aware patterns where unit is in the label and value is on the next line.
+    This handles: "Total energy consumed (in GJ)\n8,50,434\n8,39,448"
+    """
+    text = chunk.content
+
+    # Only apply to KPIs where we know the unit from the label
+    block_patterns_for_kpi = {
+        "energy_consumption": [
+            # Grand total: requires A in parenthetical — excludes subtotals like (D + E + F)
+            r"total\s+energy\s+consumed\s*\(A[^)]*D[^)]*F\)[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            r"total\s+energy\s+consumed\s*\((?:A[^)]*)\)[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+        ],
+        "water_consumption": [
+            r"total\s+volume\s+of\s+water\s+consumption[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            r"total\s+water\s+consumption[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+        ],
+        "waste_generated": [
+            r"^total\s*\([a-h\s\+]+\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            r"total\s+\(A\s*\+\s*B[^\n]*\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+        ],
+        "scope_1_emissions": [
+            r"total\s+scope\s*1\s+emissions[\s\S]{0,120}?equivalent\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            r"total\s+scope\s*1\s+emissions[\s\S]{0,80}?\n\n?([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+        ],
+        "scope_2_emissions": [
+            r"total\s+scope\s*2\s+emissions[\s\S]{0,120}?equivalent\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            r"total\s+scope\s*2\s+emissions[\s\S]{0,80}?\n\n?([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+        ],
+        "total_ghg_emissions": [
+            # Sum is not directly stated — skip block pattern, LLM handles this
+        ],
+    }
+
+    patterns_for_this_kpi = block_patterns_for_kpi.get(kpi.name, [])
+    if not patterns_for_this_kpi:
+        return None
+
+    expected_unit = kpi.expected_unit
+
+    for pat_str in patterns_for_this_kpi:
+        try:
+            m = re.search(pat_str, text, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+            if not m:
+                continue
+            raw_val = m.group(1).strip()
+            value = _parse_number(raw_val)
+            if value is None or value <= 0:
+                continue
+
+            # Sanity: Indian format numbers like 8,50,434 → 850434
+            # _parse_number strips commas so 8,50,434 → 850434.0 ✓
+
+            # Skip intensity values (very small numbers like 0.000000522)
+            if value < 0.1 and kpi.name not in ("renewable_energy_percentage",):
+                continue
+
+            confidence = 0.93 if chunk.chunk_type == "table" else 0.88
+            logger.info("extraction.block_pattern_hit",
+                       kpi=kpi.name, value=value, unit=expected_unit,
+                       chunk_type=chunk.chunk_type, page=chunk.page_number)
+
+            return ExtractedKPI(
+                kpi_name=kpi.name,
+                raw_value=raw_val,
+                normalized_value=value,
+                unit=expected_unit,
+                extraction_method="regex",
+                confidence=confidence,
+                source_chunk_id=chunk.id,
+                validation_passed=True,
+            )
+        except re.error:
+            continue
+
+    return None
 
 
 def _try_regex(
@@ -167,10 +319,26 @@ def _try_regex(
     for chunk in sorted_chunks:
         text = chunk.content
 
+        # --- Block-aware patterns (label\nvalue — handles BRSR/ESG block format) ---
+        block_result = _try_block_patterns(chunk, kpi)
+        if block_result:
+            if _is_delta_context(text, 0):
+                pass  # skip delta blocks
+            else:
+                if best is None or block_result.confidence > best.confidence:
+                    best = block_result
+                if block_result.confidence >= _REGEX_HIGH_CONFIDENCE:
+                    return best
+
         # Try KPI-specific patterns (higher confidence)
         for pattern in kpi_patterns:
             match = pattern.search(text)
             if not match or len(match.groups()) < 2:
+                continue
+            # Reject if the match sits in a delta/target/intensity sentence
+            if _is_delta_context(text, match.start()):
+                logger.debug("extraction.regex_delta_rejected",
+                           kpi=kpi.name, snippet=text[max(0,match.start()-60):match.start()+60])
                 continue
             value = _parse_number(match.group(1))
             if value is None:
@@ -207,11 +375,13 @@ def _try_regex(
             match = pattern.search(text)
             if not match or len(match.groups()) < 2:
                 continue
+            # Reject delta/target/intensity context
+            if _is_delta_context(text, match.start()):
+                continue
             value = _parse_number(match.group(1))
             if value is None:
                 continue
             unit = _normalise_unit(match.group(2))
-            # Only accept broad match if unit is plausible for this KPI
             if kpi.expected_unit and unit.lower() != kpi.expected_unit.lower():
                 continue
             confidence = 0.65 if chunk.chunk_type == "table" else 0.55
@@ -418,7 +588,19 @@ class ExtractionAgent:
         report_id: uuid.UUID,
         db: Session,
         kpi_names: Optional[list[str]] = None,
+        fallback_search: bool = True,
+        max_fallback_reports: int = 3,
     ) -> list[ExtractedKPI]:
+        """
+        Extract all active KPIs for a report.
+
+        Args:
+            report_id:            UUID of a parsed report
+            db:                   Active session
+            kpi_names:            Optional filter — only extract these KPIs
+            fallback_search:      If True, search other reports when a KPI is not found
+            max_fallback_reports: Max additional reports to try per missing KPI
+        """
         report = db.query(Report).filter(Report.id == report_id).first()
         if not report:
             raise ValueError(f"Report {report_id} not found")
@@ -437,6 +619,8 @@ class ExtractionAgent:
         logger.info("extraction.start", report_id=str(report_id), kpis=len(kpis))
 
         results: list[ExtractedKPI] = []
+        not_found_kpis: list[KPIDefinition] = []
+
         for kpi in kpis:
             extracted = self._extract_one(kpi=kpi, parsed_doc=parsed_doc, report=report, db=db)
             results.append(extracted)
@@ -451,10 +635,14 @@ class ExtractionAgent:
                     source_chunk_id=extracted.source_chunk_id,
                     db=db,
                 )
+            else:
+                not_found_kpis.append(kpi)
 
-        found = sum(1 for r in results if r.normalized_value is not None)
-        logger.info("extraction.complete", report_id=str(report_id),
-                   total_kpis=len(kpis), found=found, not_found=len(kpis) - found)
+        logger.info(
+            "extraction.complete",
+            report_id=str(report_id),
+            total_kpis=len(kpis)
+        )
         return results
 
     def _extract_one(

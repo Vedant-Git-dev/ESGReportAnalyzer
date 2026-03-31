@@ -5,7 +5,7 @@ Phase 1 agent — owns the full ingestion lifecycle:
 
   1. Ensure company exists in DB
   2. Call SearchService to discover PDF report URLs
-  3. Deduplicate against already-known reports and register new ones in DB
+  3. Deduplicate against already-known reports
   4. Download PDFs (with size + hash guard)
   5. Persist report metadata + update status
 
@@ -54,31 +54,101 @@ def _download_pdf(url: str, dest: Path, timeout: int, max_mb: int) -> tuple[int,
     """
     Stream-download a PDF to `dest`.
     Returns (file_size_bytes, sha256_hash).
-    Raises ValueError if content-type is wrong or file exceeds size limit.
+
+    Handles 406 Not Acceptable and other server rejections by:
+    - Sending browser-like Accept and User-Agent headers
+    - Retrying with different User-Agent strings on failure
+    - Following redirects
     """
     max_bytes = max_mb * 1024 * 1024
 
-    with httpx.Client(timeout=timeout, follow_redirects=True) as client:
-        with client.stream("GET", url) as resp:
-            resp.raise_for_status()
+    # Browser-like headers — many corporate servers reject requests
+    # that don't look like a real browser (406, 403, 401 errors)
+    _USER_AGENTS = [
+        # Chrome on Windows
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        # Firefox on Linux
+        "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
+        # Chrome on macOS
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    ]
 
-            content_type = resp.headers.get("content-type", "")
-            # lenient check — some servers return application/octet-stream
-            if "html" in content_type:
-                raise ValueError(f"Server returned HTML, not a PDF: {content_type}")
+    _BASE_HEADERS = {
+        "Accept": "application/pdf,application/octet-stream,*/*;q=0.9",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Cache-Control": "no-cache",
+    }
 
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            size = 0
-            with dest.open("wb") as f:
-                for chunk in resp.iter_bytes(chunk_size=65536):
-                    size += len(chunk)
-                    if size > max_bytes:
-                        dest.unlink(missing_ok=True)
-                        raise ValueError(f"PDF exceeds size limit ({max_mb} MB)")
-                    f.write(chunk)
+    last_error: Exception = Exception("No attempts made")
 
-    sha = _sha256(dest)
-    return size, sha
+    for ua in _USER_AGENTS:
+        headers = {**_BASE_HEADERS, "User-Agent": ua}
+        try:
+            with httpx.Client(
+                timeout=timeout,
+                follow_redirects=True,
+                headers=headers,
+            ) as client:
+                with client.stream("GET", url) as resp:
+                    # Raise on 4xx/5xx
+                    resp.raise_for_status()
+
+                    content_type = resp.headers.get("content-type", "")
+                    if "html" in content_type and "pdf" not in content_type:
+                        raise ValueError(f"Server returned HTML, not PDF: {content_type}")
+
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    size = 0
+                    with dest.open("wb") as f:
+                        for chunk in resp.iter_bytes(chunk_size=65536):
+                            size += len(chunk)
+                            if size > max_bytes:
+                                dest.unlink(missing_ok=True)
+                                raise ValueError(f"PDF exceeds size limit ({max_mb} MB)")
+                            f.write(chunk)
+
+            # Verify the file looks like a PDF (starts with %PDF)
+            with dest.open("rb") as f:
+                header = f.read(5)
+            if header != b"%PDF-":
+                dest.unlink(missing_ok=True)
+                raise ValueError(f"Downloaded file is not a valid PDF (header: {header!r})")
+
+            sha = _sha256(dest)
+            return size, sha
+
+        except httpx.HTTPStatusError as exc:
+            last_error = exc
+            status = exc.response.status_code
+            logger.warning(
+                "ingestion.download_http_error",
+                status=status,
+                url=url,
+                ua=ua[:40],
+            )
+            # 406, 403 — worth retrying with different UA
+            # 404, 410 — no point retrying
+            if status in (404, 410, 400):
+                raise ValueError(f"HTTP {status} — resource not found or invalid: {url}")
+            continue  # try next User-Agent
+
+        except ValueError:
+            raise  # size/format errors — don't retry
+
+        except Exception as exc:
+            last_error = exc
+            logger.warning("ingestion.download_error", error=str(exc), url=url)
+            continue
+
+    raise ValueError(f"Download failed after {len(_USER_AGENTS)} attempts: {last_error}")
 
 
 # ---------------------------------------------------------------------------
@@ -228,6 +298,35 @@ class IngestionAgent:
             return ReportRead.model_validate(report)
 
     # --- Orchestration -------------------------------------------------------
+
+    def download_next_available(self, company_id: uuid.UUID, year: int) -> Optional[ReportRead]:
+        """
+        Try downloading registered-but-failed reports for a company+year in order,
+        stopping at the first success. Useful when the top-ranked URL returns 406/403.
+        """
+        with get_db() as db:
+            pending = (
+                db.query(Report)
+                .filter(
+                    Report.company_id == company_id,
+                    Report.report_year == year,
+                    Report.status.in_(["discovered", "failed"]),
+                )
+                .order_by(Report.discovered_at)
+                .all()
+            )
+            ids = [r.id for r in pending]
+
+        for report_id in ids:
+            logger.info("ingestion.trying_next_url", report_id=str(report_id))
+            result = self.download_report(report_id)
+            if result.status == "downloaded":
+                logger.info("ingestion.fallback_success", report_id=str(report_id))
+                return result
+            logger.warning("ingestion.url_failed", report_id=str(report_id), error=result.error_message)
+
+        logger.error("ingestion.all_urls_failed", company_id=str(company_id), year=year)
+        return None
 
     def run(
         self,

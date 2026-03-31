@@ -94,7 +94,13 @@ class LLMService:
     ) -> Optional[dict]:
         """
         Extract a single KPI value from pre-filtered chunk text.
-        Uses a rich, alias-aware prompt to handle naturally-worded PDFs.
+        Returns strict JSON with: {value, unit, reasoning, confidence}
+        
+        Designed to handle:
+        - Values in tables
+        - Values in narrative text
+        - Values next line from keyword
+        - Multiple occurrences (prefer most recent year)
         """
         if not self.settings.llm_api_key:
             logger.warning("llm_service.no_api_key", kpi=kpi_name)
@@ -104,38 +110,34 @@ class LLMService:
             "You are an expert ESG data analyst. "
             "Your task is to find specific numeric metrics from sustainability report excerpts. "
             "The text may be from tables, narrative paragraphs, or data summaries. "
-            "Respond ONLY with valid JSON — no explanation, no markdown fences."
+            "\n\nIMPORTANT extraction rules:"
+            "\n1. Search ALL text carefully — values may be in tables with separators or in narrative sentences"
+            "\n2. Accept any phrasing: 'scope 1 was X', 'X tCO2e of direct emissions', 'emitted X tonnes', etc."
+            "\n3. Do NOT invent values — only extract what is explicitly stated"
+            "\n4. If multiple values appear, prefer the most recent year or highest reported"
+            "\n5. Report the actual unit found, even if different from expected"
+            "\n\nRespond ONLY with valid JSON — no explanation, no markdown fences."
         )
 
-        alias_section = f"\nAlso known as / may appear as: {aliases}" if aliases else ""
-        year_hint = f"\nReport fiscal year: {report_year}. Prefer values for this year if multiple years appear." if report_year else ""
+        alias_section = f"\nAlso known as: {aliases}" if aliases else ""
+        year_hint = f"\nReport fiscal year: {report_year}" if report_year else ""
 
-        user_prompt = f"""Find the value for this ESG metric in the report text below.
+        user_prompt = f"""Find the numeric value for this ESG metric:
 
 Metric: {kpi_display}
 Expected unit: {expected_unit}{alias_section}{year_hint}
 
-Extraction rules:
-1. Search ALL text carefully — the value may appear in narrative sentences, not just tables
-2. Accept any phrasing: "our scope 1 was X", "X tCO2e of direct emissions", "emitted X tonnes", etc.
-3. If the unit differs from expected (e.g. MtCO2e vs tCO2e), still extract the value and report the actual unit
-4. If you find multiple values for different years, return the most recent one
-5. If the value is expressed as a range (e.g. "between X and Y"), return the midpoint
-6. Do NOT invent or estimate values — only extract what is explicitly stated
-
-Report text:
+Text to search:
 {chunks_text}
 
-Return ONLY this JSON (no other text):
-{{
-  "value": <number or null if truly not found>,
-  "unit": "<exact unit as written in text, or null>",
-  "year": <fiscal year as 4-digit integer or null>,
-  "confidence": <0.0 to 1.0 — how certain you are this is the right value>,
-  "notes": "<one sentence: where exactly you found this, or why not found>"
-}}"""
+Return ONLY this JSON (single line, no fences):
+{{"value": <number or null>, "unit": "<unit found or null>", "reasoning": "<1 sentence>", "confidence": <0.0-1.0>}}
 
-        logger.info("llm_service.extract_kpi", kpi=kpi_name, chunk_chars=len(chunks_text))
+Examples:
+{{"value": 21949, "unit": "tCO2e", "reasoning": "Scope 1 Emissions: 21,949 tCO2e in table", "confidence": 0.92}}
+{{"value": null, "unit": null, "reasoning": "Value not found in text", "confidence": 0.0}}"""
+
+        logger.info("llm_service.extract_kpi_start", kpi=kpi_name, chunk_chars=len(chunks_text))
 
         raw = self._call(system_prompt, user_prompt)
         if raw is None:
@@ -143,7 +145,12 @@ Return ONLY this JSON (no other text):
 
         result = _parse_json_response(raw)
         if result is None:
-            logger.warning("llm_service.bad_json", kpi=kpi_name, raw=raw[:300])
+            logger.warning("llm_service.json_parse_failed", kpi=kpi_name, raw=raw[:200])
+            return None
+
+        # Validate required fields
+        if "value" not in result or "confidence" not in result:
+            logger.warning("llm_service.missing_fields", kpi=kpi_name, result=result)
             return None
 
         logger.info(
@@ -152,5 +159,6 @@ Return ONLY this JSON (no other text):
             value=result.get("value"),
             unit=result.get("unit"),
             confidence=result.get("confidence"),
+            reasoning=result.get("reasoning", "")[:50],
         )
         return result

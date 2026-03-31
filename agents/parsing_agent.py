@@ -208,25 +208,60 @@ class ParsingAgent:
     """
     Stateless agent. Call parse(pdf_path) to get RawChunks.
     The agent does NOT interact with the DB — that is ParseCacheManager's job.
+
+    Two extraction modes, controlled by settings.use_spatial_chunker:
+      True  (default) — SpatialChunker: word-level glyph extraction with
+                        column detection. Handles design-heavy PDFs correctly.
+      False           — Block-based: fitz blocks + pdfplumber tables. Faster
+                        but breaks on multi-column layouts.
     """
 
     def parse(self, pdf_path: Path) -> tuple[list[RawChunk], dict]:
-        """
-        Parse a PDF and return (raw_chunks, meta).
-
-        Strategy:
-          1. fitz  → text + footnote chunks
-          2. pdfplumber → table chunks
-          3. OCR fallback for pages with zero fitz text
-
-        meta dict contains: page_count, word_count, table_count, ocr_page_count,
-                            parser_version, pdf_path
-        """
         settings = get_settings()
 
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
+        logger.info("parsing.start", path=str(pdf_path),
+                    mode="spatial" if settings.use_spatial_chunker else "block")
+
+        if settings.use_spatial_chunker:
+            return self._parse_spatial(pdf_path, settings)
+        else:
+            return self._parse_block(pdf_path, settings)
+
+    def _parse_spatial(self, pdf_path: Path, settings) -> tuple[list[RawChunk], dict]:
+        """
+        Spatial mode: word-level extraction with column detection.
+        Correctly handles multi-column tables and design-heavy layouts.
+        """
+        from services.spatial_chunker import extract_spatial_chunks
+
+        all_chunks, spatial_meta = extract_spatial_chunks(pdf_path)
+
+        meta = {
+            **spatial_meta,
+            "text_chunk_count": sum(1 for c in all_chunks if c.chunk_type == "text"),
+            "parser_version": settings.parser_version,
+            "pdf_path": str(pdf_path),
+            "mode": "spatial",
+        }
+
+        logger.info(
+            "parsing.complete",
+            mode="spatial",
+            pages=meta["page_count"],
+            chunks=len(all_chunks),
+            tables=meta["table_count"],
+            ocr_pages=meta["ocr_page_count"],
+        )
+        return all_chunks, meta
+
+    def _parse_block(self, pdf_path: Path, settings) -> tuple[list[RawChunk], dict]:
+        """
+        Block mode (legacy): fitz blocks + pdfplumber tables + OCR.
+        Use when spatial chunker is disabled via USE_SPATIAL_CHUNKER=false.
+        """
         logger.info("parsing.start", path=str(pdf_path))
 
         # Layer 1 — text
@@ -246,8 +281,6 @@ class ParsingAgent:
                     ocr_page_count += 1
 
         all_chunks = text_chunks + table_chunks + ocr_chunks
-
-        # Sort by page then chunk_type (tables before text on same page)
         all_chunks.sort(key=lambda c: (c.page_number, 0 if c.chunk_type == "table" else 1))
 
         word_count = sum(len(c.content.split()) for c in all_chunks)
@@ -259,14 +292,15 @@ class ParsingAgent:
             "ocr_page_count": ocr_page_count,
             "parser_version": settings.parser_version,
             "pdf_path": str(pdf_path),
+            "mode": "block",
         }
 
         logger.info(
             "parsing.complete",
+            mode="block",
             pages=page_count,
             text_chunks=len(text_chunks),
             tables=len(table_chunks),
             ocr_pages=ocr_page_count,
-            words=word_count,
         )
         return all_chunks, meta

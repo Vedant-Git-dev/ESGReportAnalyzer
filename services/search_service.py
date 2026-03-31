@@ -19,24 +19,8 @@ _TAVILY_URL = "https://api.tavily.com/search"
 REPORT_QUERY_TEMPLATES: dict[str, list[str]] = {
     "BRSR": [
         "{company} BRSR report {year} PDF",
-        "{company} business responsibility sustainability report {year} filetype:pdf",
+        "{company} business responsibility sustainability report {past_year}-{year} filetype:pdf",
         "{company} BRSR {year} download",
-        "{company} SEBI BRSR {year}",
-        "{company} annual report BRSR {year}",
-    ],
-    "ESG": [
-        "{company} ESG report {year} PDF",
-        "{company} sustainability report {year} filetype:pdf",
-        "{company} environmental social governance report {year}",
-        "{company} ESG {year} download",
-        "{company} annual report ESG {year}",
-    ],
-    "Sustainability": [
-        "{company} sustainability report {year} filetype:pdf",
-        "{company} sustainability report {year} download",
-        "{company} CSR report {year} PDF",
-        "{company} environmental report {year}",
-        "{company} sustainability {year} annual",
     ],
     "Annual": [
         "{company} annual report {year} filetype:pdf",
@@ -61,7 +45,7 @@ def _normalise_type(report_type: str) -> str:
 
 def _build_queries(company: str, year: int, report_type: str = DEFAULT_REPORT_TYPE) -> list[str]:
     key = _normalise_type(report_type)
-    return [t.format(company=company, year=year) for t in REPORT_QUERY_TEMPLATES[key]]
+    return [t.format(company=company, year=year, past_year = year - 1) for t in REPORT_QUERY_TEMPLATES[key]]
 
 
 def _is_pdf_url(url: str) -> bool:

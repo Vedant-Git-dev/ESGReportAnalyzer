@@ -23,9 +23,9 @@ class Settings(BaseSettings):
     tavily_api_key: str = ""
 
     # --- LLM ---
-    llm_base_url: str = "https://api.groq.com/openai/v1"
+    llm_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
     llm_api_key: str = ""
-    llm_model: str = "llama-3.3-70b-versatile"
+    llm_model: str = "gemini-2.5-flash"
     llm_max_tokens: int = 1024
     llm_temperature: float = 0.0
 
@@ -33,10 +33,11 @@ class Settings(BaseSettings):
     pdf_storage_path: Path = Path("./storage/pdfs")
 
     # --- Pipeline ---
-    parser_version: str = "1.1.0"
+    parser_version: str = "1.2.0"       # bumped: spatial chunker enabled
     max_chunk_tokens: int = 500
     min_chunk_tokens: int = 200
     retrieval_top_k: int = 7
+    use_spatial_chunker: bool = True     # set False to revert to block-based extraction
 
     # --- Embeddings ---
     embedding_model: str = "BAAI/bge-small-en-v1.5"

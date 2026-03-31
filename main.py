@@ -45,15 +45,18 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Emissions",
             "expected_unit": "tCO2e",
             "regex_patterns": [
-                r"scope[\s\-]*1[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?|mt\s*co2e?|kt\s*co2e?|tonnes?\s*co2e?)",
-                r"direct\s+(?:ghg\s+)?emissions[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?|tonnes?\s*co2e?)",
-                r"([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?)\s*[\s\S]{0,40}?scope[\s\-]*1",
+                # Block pattern: "Total Scope 1 emissions...\nMetric tonnes...\nequivalent\n8,745"
+                r"total\s+scope\s*1\s+emissions[\s\S]{0,150}?equivalent\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                # Inline: "Scope 1 ... 8,745 tCO2e"
+                r"scope[\s\-]*1[\s\S]{0,80}?([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2e?|metric\s*tonnes?\s*(?:of\s*)?co2)",
+                # Narrative
+                r"scope\s*1\s+emissions?\s+(?:were|was|of|:)\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2)",
             ],
             "retrieval_keywords": [
                 "scope 1", "direct emissions", "direct ghg", "tCO2e",
-                "stationary combustion", "fuel combustion", "fugitive", "owned vehicles",
+                "metric tonnes CO2", "GHG emissions scope 1",
             ],
-            "valid_min": 0, "valid_max": 1e9,
+            "valid_min": 0, "valid_max": 1e8,
         },
         {
             "name": "scope_2_emissions",
@@ -62,33 +65,32 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Emissions",
             "expected_unit": "tCO2e",
             "regex_patterns": [
-                r"scope[\s\-]*2[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?|mt\s*co2e?|kt\s*co2e?|tonnes?\s*co2e?)",
-                r"indirect\s+(?:ghg\s+)?emissions[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?)",
-                r"purchased\s+electricity[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?)",
+                r"total\s+scope\s*2\s+emissions[\s\S]{0,150}?equivalent\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                r"scope[\s\-]*2[\s\S]{0,80}?([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2e?|metric\s*tonnes?\s*(?:of\s*)?co2)",
+                r"scope\s*2\s+emissions?\s+(?:were|was|of|:)\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2)",
             ],
             "retrieval_keywords": [
-                "scope 2", "indirect emissions", "purchased electricity",
-                "market-based", "location-based", "tCO2e", "electricity ghg",
+                "scope 2", "indirect emissions", "purchased electricity", "tCO2e",
+                "market-based", "location-based", "GHG emissions scope 2",
             ],
-            "valid_min": 0, "valid_max": 1e9,
+            "valid_min": 0, "valid_max": 1e8,
         },
         {
             "name": "total_ghg_emissions",
-            "display_name": "Total GHG Emissions",
+            "display_name": "Total GHG Emissions (Scope 1+2)",
             "category": "Environmental",
             "subcategory": "Emissions",
             "expected_unit": "tCO2e",
             "regex_patterns": [
-                r"total\s+(?:ghg|greenhouse\s+gas)\s+emissions[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?|mt\s*co2e?)",
-                r"(?:scope\s*1\s*(?:and|&|\+)\s*2|scope\s*1\s*\+\s*scope\s*2)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?)",
-                r"(?:carbon|ghg)\s+footprint[\s\S]{0,60}?([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?|mt\s*co2e?)",
-                r"([\d,]+\.?\d*)\s*(tco2e?|t\s*co2e?)\s*[\s\S]{0,50}?(?:total|combined|overall)\s*(?:ghg|emissions)",
+                r"total\s+(?:ghg|greenhouse\s+gas)\s+emissions[\s\S]{0,80}?([\d,]+(?:\.\d+)?)\s*(tco2e?|t\s*co2e?|mt\s*co2e?)",
+                r"scope\s*1\s+and\s+scope\s*2[\s\S]{0,80}?([\d,]+(?:\.\d+)?)\s*(tco2e?|t\s*co2e?)",
+                r"(?:carbon|ghg)\s+footprint[\s\S]{0,60}?([\d,]+(?:\.\d+)?)\s*(tco2e?|t\s*co2e?)",
             ],
             "retrieval_keywords": [
-                "total GHG", "total emissions", "scope 1 and 2", "carbon footprint",
-                "tCO2e", "greenhouse gas", "CO2 equivalent", "carbon neutral", "ghg inventory",
+                "total GHG", "scope 1 and scope 2", "total scope 1 and 2",
+                "carbon neutral", "greenhouse gas", "tCO2e total",
             ],
-            "valid_min": 0, "valid_max": 1e10,
+            "valid_min": 0, "valid_max": 1e9,
         },
         {
             "name": "energy_consumption",
@@ -97,15 +99,19 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Energy",
             "expected_unit": "GJ",
             "regex_patterns": [
-                r"total\s+energy\s+(?:consumption|consumed|use|used)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(gj|mwh|gwh|tj|pj)",
-                r"energy\s+(?:consumption|consumed|use|used)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(gj|mwh|gwh|tj)",
-                r"([\d,]+\.?\d*)\s*(gj|gwh|mwh|tj)\s*[\s\S]{0,40}?(?:total\s+)?energy",
+                # Block pattern: "Total energy consumed (A+B+C+D+E+F)(1)\n8,50,434"
+                r"total\s+energy\s+consumed\s*\([A-Za-z+\s]+\)[\s\S]{0,10}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                r"total\s+energy\s+consumed[^\n]{0,50}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                # Inline with unit
+                r"total\s+energy\s+(?:consumption|consumed)[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj)",
+                # Narrative
+                r"energy\s+consumption\s+(?:was|of|:)\s*([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj)",
             ],
             "retrieval_keywords": [
-                "energy consumption", "total energy", "energy consumed", "energy use",
-                "GJ", "MWh", "GWh", "gigajoules", "megawatt", "fuel consumed",
+                "total energy consumed", "energy consumption", "GJ", "gigajoules",
+                "energy intensity", "A + B + C + D + E + F",
             ],
-            "valid_min": 0, "valid_max": 1e12,
+            "valid_min": 100, "valid_max": 1e13,
         },
         {
             "name": "renewable_energy_percentage",
@@ -114,14 +120,13 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Energy",
             "expected_unit": "%",
             "regex_patterns": [
-                r"renewable\s+energy[\s\S]{0,80}?([\d]+\.?\d*)\s*%",
-                r"([\d]+\.?\d*)\s*%[\s\S]{0,40}?(?:from\s+)?renewable",
-                r"(?:solar|wind|clean|green)\s+energy[\s\S]{0,80}?([\d]+\.?\d*)\s*%",
-                r"renewable[\s\S]{0,40}?([\d]+\.?\d*)\s*percent",
+                r"renewable\s+energy[\s\S]{0,80}?([\d]+(?:\.\d+)?)\s*%",
+                r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,40}?(?:from\s+)?renewable",
+                r"renewable[\s\S]{0,40}?([\d]+(?:\.\d+)?)\s*percent",
             ],
             "retrieval_keywords": [
-                "renewable energy", "solar", "wind", "clean energy", "green energy",
-                "non-fossil", "RE share", "renewable electricity", "percent renewable",
+                "renewable energy", "solar", "wind", "clean energy",
+                "non-fossil", "renewable electricity",
             ],
             "valid_min": 0, "valid_max": 100,
         },
@@ -132,13 +137,16 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Water",
             "expected_unit": "KL",
             "regex_patterns": [
-                r"water\s+(?:consumption|consumed|use|used|withdrawal|withdrawn)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(kl|kilolitr\w*|m3|cubic\s+met\w*|million\s+litr\w*)",
-                r"([\d,]+\.?\d*)\s*(kl|kilolitr\w*|m3)\s*[\s\S]{0,40}?water",
-                r"freshwater[\s\S]{0,60}?([\d,]+\.?\d*)\s*(kl|kilolitr\w*|m3)",
+                # Block: "Total volume of water consumption (in kilolitres)\n19,55,525"
+                r"total\s+volume\s+of\s+water\s+consumption[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                r"total\s+water\s+consumption[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                # Inline with unit
+                r"water\s+consumption[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(kl|kilolitr\w*|m3)",
+                r"([\d,]+(?:\.\d+)?)\s*(kl|kilolitr\w*)\s*[\s\S]{0,30}?water\s+consumption",
             ],
             "retrieval_keywords": [
-                "water consumption", "water withdrawal", "water use", "water consumed",
-                "KL", "kilolitre", "freshwater", "water recycled", "water intensity",
+                "water consumption", "total volume of water consumption",
+                "water withdrawal", "KL", "kilolitres", "kl",
             ],
             "valid_min": 0, "valid_max": 1e12,
         },
@@ -149,13 +157,18 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Waste",
             "expected_unit": "MT",
             "regex_patterns": [
-                r"(?:total\s+)?waste\s+(?:generated|produced|disposed)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(mt|metric\s*tonn?\w*|tonne\w*|kg)",
-                r"([\d,]+\.?\d*)\s*(mt|metric\s*tonn?\w*|tonne\w*)\s*[\s\S]{0,40}?waste",
-                r"hazardous\s+waste[\s\S]{0,60}?([\d,]+\.?\d*)\s*(mt|metric\s*tonn?\w*|tonne\w*|kg)",
+                # Block: "Total (A + B + C + D + E + F + G + H)\n11,689.87"
+                r"total\s*\(A\s*\+\s*B[\s+A-Za-z]*\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                r"^total\s*\([a-h\s\+]+\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                # Header + value pattern
+                r"total\s+waste\s+generated[^\n]{0,60}\n[^\n]{0,60}\n([\d,]+(?:\.\d+)?)",
+                # Inline
+                r"total\s+waste\s+(?:generated|produced)[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(mt|metric\s*tonn?\w*|tonne\w*)",
+                r"([\d,]+(?:\.\d+)?)\s*(mt|metric\s*tonn?\w*)\s*[\s\S]{0,40}?waste",
             ],
             "retrieval_keywords": [
-                "waste generated", "total waste", "solid waste", "hazardous waste",
-                "non-hazardous", "metric tonnes", "MT", "waste disposed", "waste diverted",
+                "total waste generated", "waste generated", "A + B + C + D + E + F + G + H",
+                "metric tonnes", "MT", "hazardous waste", "non-hazardous",
             ],
             "valid_min": 0, "valid_max": 1e9,
         },
@@ -172,8 +185,8 @@ def cmd_seed_kpis(_args) -> None:
                 r"total\s+headcount[\s\S]{0,40}?([\d,]+)",
             ],
             "retrieval_keywords": [
-                "total employees", "workforce", "headcount", "FTE", "full-time",
-                "permanent employees", "employee strength", "number of employees",
+                "total employees", "workforce", "headcount", "FTE",
+                "permanent employees", "employee strength",
             ],
             "valid_min": 1, "valid_max": 5e6,
         },
@@ -184,14 +197,13 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Diversity",
             "expected_unit": "%",
             "regex_patterns": [
-                r"women[\s\S]{0,60}?([\d]+\.?\d*)\s*%",
-                r"female[\s\S]{0,60}?([\d]+\.?\d*)\s*%",
-                r"([\d]+\.?\d*)\s*%[\s\S]{0,30}?(?:women|female)",
-                r"gender\s+(?:ratio|diversity|split)[\s\S]{0,80}?women[\s\S]{0,30}?([\d]+\.?\d*)\s*%",
+                r"women[\s\S]{0,60}?([\d]+(?:\.\d+)?)\s*%",
+                r"female[\s\S]{0,60}?([\d]+(?:\.\d+)?)\s*%",
+                r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,30}?(?:women|female)",
             ],
             "retrieval_keywords": [
                 "women", "female", "gender diversity", "gender ratio",
-                "women employees", "female workforce", "women in leadership",
+                "women employees", "female workforce",
             ],
             "valid_min": 0, "valid_max": 100,
         },
@@ -202,13 +214,13 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Community",
             "expected_unit": "INR Crore",
             "regex_patterns": [
-                r"csr\s+(?:expenditure|spend|investment|amount\s+spent)[\s\S]{0,60}?([\d,]+\.?\d*)\s*(?:crore|cr|lakh|inr)?",
-                r"(?:amount\s+spent|expenditure)\s+on\s+csr[\s\S]{0,60}?([\d,]+\.?\d*)\s*(?:crore|cr)",
-                r"([\d,]+\.?\d*)\s*(?:crore|cr)\s*[\s\S]{0,40}?csr",
+                r"csr\s+(?:expenditure|spend|investment|amount\s+spent)[\s\S]{0,60}?([\d,]+(?:\.\d+)?)\s*(?:crore|cr|lakh|inr)?",
+                r"(?:amount\s+spent|expenditure)\s+on\s+csr[\s\S]{0,60}?([\d,]+(?:\.\d+)?)\s*(?:crore|cr)",
+                r"([\d,]+(?:\.\d+)?)\s*(?:crore|cr)\s*[\s\S]{0,40}?csr",
             ],
             "retrieval_keywords": [
-                "CSR expenditure", "CSR spend", "CSR investment", "social spend",
-                "community investment", "corporate social responsibility", "crore",
+                "CSR expenditure", "CSR spend", "CSR investment",
+                "corporate social responsibility", "crore",
             ],
             "valid_min": 0, "valid_max": 1e6,
         },
@@ -359,6 +371,83 @@ def cmd_list_reports(_args) -> None:
                 f"{company_name:<30} {report.report_year:<6} {report.report_type:<15} "
                 f"{report.status:<12} {report.id}"
             )
+
+
+def cmd_download(args) -> None:
+    """Download a specific registered report by ID, or retry the next available URL."""
+    import uuid as _uuid
+    from agents.ingestion_agent import IngestionAgent
+
+    agent = IngestionAgent()
+
+    if args.report_id:
+        report_id = _uuid.UUID(args.report_id)
+        print(f"Downloading report {report_id} ...")
+        result = agent.download_report(report_id)
+        status = "✓" if result.status == "downloaded" else "✗"
+        print(f"[{status}] {result.status}")
+        if result.status == "downloaded":
+            print(f"    File : {result.file_path}")
+            print(f"    Size : {round((result.file_size_bytes or 0) / 1e6, 2)} MB")
+            print(f"    SHA  : {(result.file_hash or '')[:16]}...")
+        else:
+            print(f"    Error: {result.error_message}")
+
+    elif args.company_id and args.year:
+        company_id = _uuid.UUID(args.company_id)
+        print(f"Trying all registered URLs for company {company_id} year {args.year} ...")
+        result = agent.download_next_available(company_id, args.year)
+        if result:
+            print(f"✓ Downloaded: {result.file_path}")
+        else:
+            print("✗ All URLs failed. Check list-reports for individual error messages.")
+
+    else:
+        print("Provide either --report-id <UUID> or both --company-id <UUID> and --year <YEAR>")
+
+
+def cmd_retry_failed(args) -> None:
+    """Retry downloading all failed reports, trying next available URLs."""
+    import uuid as _uuid
+    from core.database import get_db
+    from models.db_models import Report, Company
+    from agents.ingestion_agent import IngestionAgent
+
+    agent = IngestionAgent()
+
+    with get_db() as db:
+        rows = (
+            db.query(Report, Company.name)
+            .join(Company, Report.company_id == Company.id)
+            .filter(Report.status == "failed")
+            .order_by(Company.name, Report.report_year.desc())
+            .all()
+        )
+        if not rows:
+            print("No failed reports found.")
+            return
+
+        # Group by company+year to avoid re-trying every failed URL
+        seen = set()
+        pairs = []
+        for report, company_name in rows:
+            key = (report.company_id, report.report_year)
+            if key not in seen:
+                seen.add(key)
+                pairs.append((report.company_id, report.report_year, company_name))
+
+    print(f"Found {len(pairs)} company+year combinations with failed downloads.\n")
+    success = 0
+    for company_id, year, company_name in pairs:
+        print(f"  Trying {company_name} {year} ...")
+        result = agent.download_next_available(company_id, year)
+        if result:
+            print(f"    ✓ Downloaded: {result.file_path}")
+            success += 1
+        else:
+            print(f"    ✗ All URLs exhausted.")
+
+    print(f"\nDone: {success}/{len(pairs)} recovered.")
 
 
 # ---------------------------------------------------------------------------
@@ -698,6 +787,8 @@ def cmd_extract(args) -> None:
             report_id=report_id,
             db=db,
             kpi_names=kpi_names,
+            fallback_search=not args.no_fallback,
+            max_fallback_reports=args.max_fallback,
         )
         # Snapshot while session open
         rows = [
@@ -714,17 +805,26 @@ def cmd_extract(args) -> None:
         ]
 
     found = sum(1 for r in rows if r["value"] is not None)
-    print(f"\n=== Extraction Complete: {found}/{len(rows)} KPIs found ===\n")
-    print(f"{'KPI':<35} {'Value':<15} {'Unit':<12} {'Method':<8} {'Conf':<6} {'Valid':<6} Notes")
-    print("-" * 120)
+    fallback_found = sum(1 for r in rows if r["value"] is not None and "fallback" in (r["notes"] or ""))
+    print(f"\n=== Extraction Complete: {found}/{len(rows)} KPIs found", end="")
+    if fallback_found:
+        print(f" ({fallback_found} from fallback reports)", end="")
+    print(" ===\n")
+    print(f"{'KPI':<35} {'Value':<15} {'Unit':<12} {'Method':<8} {'Conf':<6} {'Valid':<6} {'Src':<10} Notes")
+    print("-" * 130)
     for row in rows:
         val = f"{row['value']:,.2f}" if row["value"] is not None else "NOT FOUND"
         conf = f"{row['confidence']:.2f}" if row["confidence"] else "-"
         valid = "✓" if row["valid"] else "✗"
-        notes = (row["notes"] or "")[:40]
+        is_fallback = "fallback" in (row["notes"] or "")
+        # Extract the report type from notes e.g. "[found in BRSR report via fallback]"
+        import re as _re
+        fb_match = _re.search(r"\[found in (\w+) report", row["notes"] or "")
+        src = f"[{fb_match.group(1)}]" if fb_match else ("[fallback]" if is_fallback else "[primary]")
+        notes = (row["notes"] or "")[:35].replace(" [found via fallback search]", "")
         print(
             f"{row['kpi_name']:<35} {val:<15} {(row['unit'] or ''):<12} "
-            f"{row['method']:<8} {conf:<6} {valid:<6} {notes}"
+            f"{row['method']:<8} {conf:<6} {valid:<6} {src:<10} {notes}"
         )
 
 
@@ -809,6 +909,15 @@ def main():
     # list-reports
     sub.add_parser("list-reports", help="List all reports and their status")
 
+    # download — retry a specific or next available
+    dl_p = sub.add_parser("download", help="Download a specific report or retry next available URL")
+    dl_p.add_argument("--report-id", default=None, help="UUID of a specific registered report")
+    dl_p.add_argument("--company-id", default=None, help="Company UUID (use with --year)")
+    dl_p.add_argument("--year", type=int, default=None, help="Report year (use with --company-id)")
+
+    # retry-failed — recover from 406/403 errors
+    sub.add_parser("retry-failed", help="Retry all failed downloads using next registered URLs")
+
     # list-chunks
     chunks_p = sub.add_parser("list-chunks", help="Show parsed chunks for a report")
     chunks_p.add_argument("--report-id", required=True, help="UUID of the report")
@@ -852,6 +961,8 @@ def main():
     ex_p = sub.add_parser("extract", help="Extract KPIs from a parsed report (regex → LLM → validation)")
     ex_p.add_argument("--report-id", required=True, help="UUID of a parsed report")
     ex_p.add_argument("--kpis", default=None, help="Comma-separated KPI names to extract (default: all active)")
+    ex_p.add_argument("--no-fallback", action="store_true", help="Disable fallback search in other reports")
+    ex_p.add_argument("--max-fallback", type=int, default=3, help="Max extra reports to search per missing KPI (default: 3)")
 
     # Phase 4: list-kpi-records
     rec_p = sub.add_parser("list-kpi-records", help="Show extracted KPI records for a report")
@@ -864,6 +975,8 @@ def main():
         "seed-kpis": cmd_seed_kpis,
         "ingest": cmd_ingest,
         "list-reports": cmd_list_reports,
+        "download": cmd_download,
+        "retry-failed": cmd_retry_failed,
         "list-chunks": cmd_list_chunks,
         "parse": cmd_parse,
         "parse-status": cmd_parse_status,
