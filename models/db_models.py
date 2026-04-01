@@ -1,15 +1,19 @@
 """
 models/db_models.py
+
 Full PostgreSQL schema for the ESG pipeline.
 
 Tables
 ------
 companies           — tracked companies
-reports             — discovered / uploaded ESG reports
+reports             — discovered / uploaded ESG reports  [revenue_cr added]
 parsed_documents    — parse cache keyed on (report_id, parser_version)
 document_chunks     — chunked text/table segments, retrieval unit
-kpi_definitions     — config-driven KPI catalogue (no code changes to add KPIs)
+kpi_definitions     — config-driven KPI catalogue
 kpi_records         — extracted KPI values, append-only audit log
+
+Change log:
+  2024-xx — Added revenue_cr, revenue_unit, revenue_source to reports table
 """
 import uuid
 from datetime import datetime, timezone
@@ -67,35 +71,46 @@ class Company(Base):
 
 
 # ---------------------------------------------------------------------------
-# reports
+# reports  (revenue columns added)
 # ---------------------------------------------------------------------------
 class Report(Base):
     __tablename__ = "reports"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    company_id = Column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
     report_year = Column(Integer, nullable=False)
-    report_type = Column(String(50), nullable=False, default="ESG")   # ESG | BRSR | Sustainability
+    report_type = Column(String(50), nullable=False, default="ESG")
     source_url = Column(Text, nullable=True)
     file_path = Column(Text, nullable=True)
-    file_hash = Column(String(64), nullable=True)          # SHA-256 for dedup
+    file_hash = Column(String(64), nullable=True)
     file_size_bytes = Column(BigInteger, nullable=True)
     status = Column(String(30), nullable=False, default="discovered")
-    # statuses: discovered | downloading | downloaded | failed | parsed | extracted
     error_message = Column(Text, nullable=True)
     discovered_at = Column(DateTime(timezone=True), nullable=False, default=_now)
     downloaded_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
 
+    # ── Revenue columns (new) ─────────────────────────────────────────────────
+    # Stored directly on the report so we don't need a separate KPI definition
+    # for revenue, keeping it conceptually separate from ESG KPIs.
+    revenue_cr = Column(Float, nullable=True)          # INR Crore
+    revenue_unit = Column(String(30), nullable=True)   # "INR_Crore" | "USD_Million"
+    revenue_source = Column(String(50), nullable=True) # "regex" | "llm" | "manual"
+
     company = relationship("Company", back_populates="reports")
-    parsed_documents = relationship("ParsedDocument", back_populates="report", cascade="all, delete-orphan")
+    parsed_documents = relationship(
+        "ParsedDocument", back_populates="report", cascade="all, delete-orphan"
+    )
     kpi_records = relationship("KPIRecord", back_populates="report")
 
     __table_args__ = (
-        UniqueConstraint("company_id", "report_year", "report_type", name="uq_report_company_year_type"),
+        UniqueConstraint("company_id", "source_url", name="uq_report_company_url"),
         Index("ix_reports_status", "status"),
         Index("ix_reports_company_id", "company_id"),
+        Index("ix_reports_company_year", "company_id", "report_year"),
     )
 
     def __repr__(self) -> str:
@@ -109,15 +124,18 @@ class ParsedDocument(Base):
     __tablename__ = "parsed_documents"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    report_id = Column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False)
+    report_id = Column(
+        UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False
+    )
     parser_version = Column(String(20), nullable=False)
     page_count = Column(Integer, nullable=True)
     parsed_at = Column(DateTime(timezone=True), nullable=False, default=_now)
-    # meta: word count, table count, ocr_used, etc.
     meta = Column(JSONB, nullable=False, default=dict)
 
     report = relationship("Report", back_populates="parsed_documents")
-    chunks = relationship("DocumentChunk", back_populates="parsed_document", cascade="all, delete-orphan")
+    chunks = relationship(
+        "DocumentChunk", back_populates="parsed_document", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         UniqueConstraint("report_id", "parser_version", name="uq_parsed_report_version"),
@@ -131,11 +149,6 @@ class ParsedDocument(Base):
 # ---------------------------------------------------------------------------
 # document_chunks
 # ---------------------------------------------------------------------------
-
-# Embedding dimension — must match your chosen model
-# all-MiniLM-L6-v2  → 384
-# bge-small-en-v1.5 → 384
-# bge-base-en-v1.5  → 768
 EMBEDDING_DIM = 384
 
 
@@ -143,17 +156,16 @@ class DocumentChunk(Base):
     __tablename__ = "document_chunks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    parsed_document_id = Column(UUID(as_uuid=True), ForeignKey("parsed_documents.id", ondelete="CASCADE"), nullable=False)
+    parsed_document_id = Column(
+        UUID(as_uuid=True), ForeignKey("parsed_documents.id", ondelete="CASCADE"), nullable=False
+    )
     chunk_index = Column(Integer, nullable=False)
-    chunk_type = Column(String(20), nullable=False, default="text")  # text | table | footnote
+    chunk_type = Column(String(20), nullable=False, default="text")
     page_number = Column(Integer, nullable=True)
     content = Column(Text, nullable=False)
     token_count = Column(Integer, nullable=True)
-    # pgvector column — cosine similarity search
     embedding = Column(Vector(EMBEDDING_DIM), nullable=True)
-    # keyword index — space-separated lowercase tokens
     keywords = Column(Text, nullable=True)
-    # True once embedding has been computed for this chunk
     is_embedded = Column(Boolean, nullable=False, default=False)
 
     parsed_document = relationship("ParsedDocument", back_populates="chunks")
@@ -168,22 +180,19 @@ class DocumentChunk(Base):
 
 
 # ---------------------------------------------------------------------------
-# kpi_definitions  (config-driven catalogue)
+# kpi_definitions
 # ---------------------------------------------------------------------------
 class KPIDefinition(Base):
     __tablename__ = "kpi_definitions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(100), nullable=False, unique=True)          # e.g. "scope_1_emissions"
-    display_name = Column(String(150), nullable=False)               # e.g. "Scope 1 Emissions"
-    category = Column(String(50), nullable=False)                    # Environmental | Social | Governance
+    name = Column(String(100), nullable=False, unique=True)
+    display_name = Column(String(150), nullable=False)
+    category = Column(String(50), nullable=False)
     subcategory = Column(String(100), nullable=True)
-    expected_unit = Column(String(50), nullable=False)               # tCO2e | MWh | %
-    # regex patterns as JSON list — tried in order before LLM
+    expected_unit = Column(String(50), nullable=False)
     regex_patterns = Column(JSONB, nullable=False, default=list)
-    # keywords used for chunk retrieval
     retrieval_keywords = Column(JSONB, nullable=False, default=list)
-    # plausibility range for validation
     valid_min = Column(Float, nullable=True)
     valid_max = Column(Float, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
@@ -201,22 +210,30 @@ class KPIDefinition(Base):
 
 
 # ---------------------------------------------------------------------------
-# kpi_records  (append-only extraction audit log)
+# kpi_records  (append-only)
 # ---------------------------------------------------------------------------
 class KPIRecord(Base):
     __tablename__ = "kpi_records"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
-    report_id = Column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False)
-    kpi_definition_id = Column(UUID(as_uuid=True), ForeignKey("kpi_definitions.id"), nullable=False)
+    company_id = Column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    report_id = Column(
+        UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False
+    )
+    kpi_definition_id = Column(
+        UUID(as_uuid=True), ForeignKey("kpi_definitions.id"), nullable=False
+    )
     report_year = Column(Integer, nullable=False)
-    raw_value = Column(Text, nullable=True)         # as found in doc
-    normalized_value = Column(Float, nullable=True) # after unit conversion
+    raw_value = Column(Text, nullable=True)
+    normalized_value = Column(Float, nullable=True)
     unit = Column(String(50), nullable=True)
-    extraction_method = Column(String(20), nullable=False)  # regex | llm | manual
-    confidence = Column(Float, nullable=True)       # 0.0–1.0
-    source_chunk_id = Column(UUID(as_uuid=True), ForeignKey("document_chunks.id"), nullable=True)
+    extraction_method = Column(String(20), nullable=False)
+    confidence = Column(Float, nullable=True)
+    source_chunk_id = Column(
+        UUID(as_uuid=True), ForeignKey("document_chunks.id"), nullable=True
+    )
     is_validated = Column(Boolean, nullable=False, default=False)
     validation_notes = Column(Text, nullable=True)
     extracted_at = Column(DateTime(timezone=True), nullable=False, default=_now)
@@ -232,4 +249,7 @@ class KPIRecord(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<KPIRecord kpi={self.kpi_definition_id} value={self.normalized_value} {self.unit}>"
+        return (
+            f"<KPIRecord kpi={self.kpi_definition_id} "
+            f"value={self.normalized_value} {self.unit}>"
+        )
