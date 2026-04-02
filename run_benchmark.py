@@ -79,7 +79,7 @@ W = 72  # terminal ruler width
 # ─────────────────────────────────────────────────────────────────────────────
 
 TARGET_KPI_NAMES: list[str] = [
-    # "scope_1_emissions",
+    "scope_1_emissions",
     "scope_2_emissions",
     "total_ghg_emissions",
     # "energy_consumption",

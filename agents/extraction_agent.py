@@ -245,16 +245,25 @@ def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]
             r"^total\s*\([a-h\s\+]+\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+\(A\s*\+\s*B[^\n]*\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         ],
+        # ── Scope 1 / Scope 2 — two BRSR table formats ─────────────────────
+        # Format A (TCS 2023-24): pdfplumber collapses to one long line:
+        #   "Total Scope 1 emissions ... Metric tonnes of 21,949.0 20,972.0"
+        # Format B (Infosys 2025): value buried in a downstream "GHG into" row.
+        #   Handled by _try_ghg_row_strategy() which runs after block patterns.
+        # Format C (Infosys 2024, older): multiline block with value on next line.
         "scope_1_emissions": [
-            r"total\s+scope\s*1\s+emissions[\s\S]{0,120}?equivalent\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-            r"total\s+scope\s*1\s+emissions[\s\S]{0,80}?\n\n?([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            # Format A: value inline after "Metric tonnes of"
+            r"total\s+scope\s*1\s+emissions.{0,200}?metric\s+tonnes\s+of\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            # Format C: value on line after "equivalent"
+            r"total\s+scope\s*1\s+emissions[\s\S]{0,300}?equivalent\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         ],
         "scope_2_emissions": [
-            r"total\s+scope\s*2\s+emissions[\s\S]{0,120}?equivalent\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-            r"total\s+scope\s*2\s+emissions[\s\S]{0,80}?\n\n?([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            r"total\s+scope\s*2\s+emissions.{0,200}?metric\s+tonnes\s+of\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            r"total\s+scope\s*2\s+emissions[\s\S]{0,300}?equivalent\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         ],
         "total_ghg_emissions": [
-            # Sum is not directly stated — skip block pattern, LLM handles this
+            # Never stated as a standalone absolute in BRSR tables.
+            # _derive_total_ghg() computes it as scope_1 + scope_2 post-extraction.
         ],
     }
 
@@ -302,6 +311,78 @@ def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]
     return None
 
 
+def _try_ghg_row_strategy(
+    chunks: list,
+    kpi: "KPIDefinition",
+) -> Optional["ExtractedKPI"]:
+    """
+    Infosys 2025 BRSR GHG table format (Format B):
+
+    pdfplumber extracts the table as separate lines. The label row and
+    value row are DIFFERENT lines:
+
+        [label line] "Total Scope 1 emissions (Break-up of the"
+        [unit line]  "Metric tonnes of CO"
+        [value line] "GHG into CO, CH, NO, HFCs, PFCs, SF, 2 8,745(2) 7,150"
+                                                               ↑ value here
+
+    The "2" just before the value is the subscript of CO₂ that pdfplumber
+    strips and places inline. Pattern: r"\s2\s+NUMBER(footnote?)".
+
+    This function scans text chunks and tracks "Total Scope N" context
+    line-by-line, firing when it encounters a "GHG into" value row.
+    Only applies to scope_1_emissions and scope_2_emissions.
+    """
+    if kpi.name not in ("scope_1_emissions", "scope_2_emissions"):
+        return None
+
+    target_scope = 1 if kpi.name == "scope_1_emissions" else 2
+    _GHG_ROW_RE = re.compile(
+        r"ghg\s+into\s+co.{0,80}\s2\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+        re.IGNORECASE,
+    )
+
+    for chunk in chunks:
+        text = chunk.content
+        tl = text.lower()
+        if "ghg into co" not in tl:
+            continue
+
+        lines = text.splitlines()
+        scope_context = None
+        for line in lines:
+            ll = line.lower()
+            if "total scope 1 emissions" in ll:
+                scope_context = 1
+            elif "total scope 2 emissions" in ll:
+                scope_context = 2
+            elif "total scope 3" in ll:
+                scope_context = None
+
+            m = _GHG_ROW_RE.search(line)
+            if m and scope_context == target_scope:
+                raw = m.group(1)
+                value = _parse_number(raw)
+                if value is None or value < 10:
+                    continue
+                logger.info(
+                    "extraction.ghg_row_strategy_hit",
+                    kpi=kpi.name, value=value,
+                    page=chunk.page_number, line=line.strip()[:80],
+                )
+                return ExtractedKPI(
+                    kpi_name=kpi.name,
+                    raw_value=raw,
+                    normalized_value=value,
+                    unit=kpi.expected_unit,
+                    extraction_method="regex",
+                    confidence=0.91 if chunk.chunk_type == "table" else 0.87,
+                    source_chunk_id=chunk.id,
+                    validation_passed=True,
+                )
+    return None
+
+
 def _try_regex(
     chunks: list[DocumentChunk],
     kpi: KPIDefinition,
@@ -329,6 +410,16 @@ def _try_regex(
                     best = block_result
                 if block_result.confidence >= _REGEX_HIGH_CONFIDENCE:
                     return best
+
+        # --- GHG-row strategy (Infosys 2025 format) ---
+        # Fires only for scope_1/2 KPIs when the value is in a downstream
+        # "GHG into ... 2 VALUE" line (subscript-stripped CO₂ notation).
+        ghg_row_result = _try_ghg_row_strategy([chunk], kpi)
+        if ghg_row_result:
+            if best is None or ghg_row_result.confidence > best.confidence:
+                best = ghg_row_result
+            if ghg_row_result.confidence >= _REGEX_HIGH_CONFIDENCE:
+                return best
 
         # Try KPI-specific patterns (higher confidence)
         for pattern in kpi_patterns:
@@ -572,6 +663,73 @@ def _get_wider_chunks(
 
 
 # ---------------------------------------------------------------------------
+# Post-extraction derivation
+# ---------------------------------------------------------------------------
+
+def _derive_total_ghg(results: list["ExtractedKPI"]) -> list["ExtractedKPI"]:
+    """
+    Compute total_ghg_emissions = scope_1 + scope_2 when both are found.
+
+    Root cause: BRSR reports (TCS, Infosys) never state an absolute
+    "Total Scope 1 + 2 = X tCO2e" row.  The only "Total Scope 1 and
+    Scope 2" label in these PDFs appears on the INTENSITY row
+    (tCO2e per rupee of turnover), which is a tiny decimal — not the
+    absolute we need.  Regex and LLM both fail on this KPI.
+
+    This function runs after all KPIs are extracted and back-fills
+    total_ghg_emissions from the two component values when:
+      a) total_ghg was not found (normalized_value is None), AND
+      b) both scope_1 and scope_2 were successfully extracted.
+    """
+    by_name: dict[str, ExtractedKPI] = {r.kpi_name: r for r in results}
+
+    total = by_name.get("total_ghg_emissions")
+    s1    = by_name.get("scope_1_emissions")
+    s2    = by_name.get("scope_2_emissions")
+
+    needs_derivation = (
+        total is not None
+        and total.normalized_value is None
+        and s1 is not None and s1.normalized_value is not None
+        and s2 is not None and s2.normalized_value is not None
+    )
+
+    if not needs_derivation:
+        return results
+
+    computed = round(s1.normalized_value + s2.normalized_value, 2)
+    # Confidence = min of the two component confidences
+    conf = round(min(s1.confidence or 0.5, s2.confidence or 0.5), 3)
+
+    logger.info(
+        "extraction.total_ghg_derived",
+        scope_1=s1.normalized_value,
+        scope_2=s2.normalized_value,
+        total=computed,
+        confidence=conf,
+    )
+
+    # Build new ExtractedKPI replacing the not-found placeholder
+    derived = ExtractedKPI(
+        kpi_name="total_ghg_emissions",
+        raw_value=str(computed),
+        normalized_value=computed,
+        unit="tCO2e",
+        extraction_method="derived",       # new method tag
+        confidence=conf,
+        source_chunk_id=s1.source_chunk_id,  # source is the scope_1 chunk
+        validation_passed=True,
+        validation_notes=(
+            f"Derived: {s1.normalized_value} (scope_1) + "
+            f"{s2.normalized_value} (scope_2) = {computed} tCO2e"
+        ),
+    )
+
+    # Replace in results list preserving order
+    return [derived if r.kpi_name == "total_ghg_emissions" else r for r in results]
+
+
+# ---------------------------------------------------------------------------
 # Public Agent
 # ---------------------------------------------------------------------------
 
@@ -637,6 +795,14 @@ class ExtractionAgent:
                 )
             else:
                 not_found_kpis.append(kpi)
+
+        # ── Derive total_ghg_emissions = scope_1 + scope_2 ─────────────────
+        # Neither TCS nor Infosys states this as a standalone absolute value.
+        # The label "Total Scope 1 and Scope 2" in the PDF only appears for
+        # intensity ratios (per rupee), never as an absolute tCO2e figure.
+        # Regex and LLM both miss it. Compute it deterministically when both
+        # component KPIs were found.
+        results = _derive_total_ghg(results)
 
         logger.info(
             "extraction.complete",
