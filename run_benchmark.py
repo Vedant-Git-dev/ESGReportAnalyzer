@@ -13,7 +13,7 @@ Flow per company:
   7. Summary     — services/summary_generator.py (LLM or rule-based)
 
 Usage:
-    python -m esg_bench.run_benchmark \
+    python -m run_benchmark \
         --pdf1 /path/infosys.pdf  --company1 "Infosys"  --fy1 2025 \
         --pdf2 /path/tcs.pdf      --company2 "TCS"       --fy2 2024 \
         [--force]   # skip DB cache, re-extract from PDF

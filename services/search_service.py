@@ -18,16 +18,13 @@ _TAVILY_URL = "https://api.tavily.com/search"
 
 REPORT_QUERY_TEMPLATES: dict[str, list[str]] = {
     "BRSR": [
-        "{company} BRSR report {year} PDF",
-        "{company} business responsibility sustainability report {past_year}-{year} filetype:pdf",
-        "{company} BRSR {year} download",
+        # "{company} BRSR report {past_year}-{year} PDF",
+        "{company} business responsibility sustainability report {past_year}-{year} nse filetype:pdf",
+        # "{company} BRSR {past_year}-{year} download",
     ],
     "Annual": [
-        "{company} annual report {year} filetype:pdf",
-        "{company} annual report {year} download",
-        "{company} {year} annual report PDF",
-        "{company} AR {year} PDF",
-        "{company} yearly report {year}",
+        "{company} annual report {past_year}-{year} filetype:pdf",
+        "{company} annual report {past_year}-{year} download",
     ],
 }
 
@@ -72,7 +69,7 @@ def search_reports(
     company_name: str,
     year: int,
     report_type: str = DEFAULT_REPORT_TYPE,
-    max_results_per_query: int = 10,
+    max_results_per_query: int = 1,
     pdf_only: bool = True,
 ) -> SearchResult:
     """
@@ -91,6 +88,7 @@ def search_reports(
         return SearchResult(company_name=company_name, year=year, report_type=report_type)
 
     queries = _build_queries(company_name, year, report_type)
+    print(queries)
     logger.info("search_service.start", company=company_name, year=year, report_type=report_type)
 
     seen_urls: set[str] = set()

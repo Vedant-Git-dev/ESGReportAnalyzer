@@ -50,7 +50,9 @@ CANONICAL_UNITS = {
 # Pre-reported intensity ratio patterns found in BRSR/ESG reports
 # Matches: "intensity per rupee of turnover\n0.000000522"
 _INTENSITY_RE = re.compile(
-    r"intensity\s+per\s+rupee\s+(?:of\s+)?(?:turnover|operations)[^\n]{0,120}\n(0\.\d{5,})",
+    r"intensity\s+per\s+rupee\s+(?:of\s+)?(?:turnover|operations)?"
+    r"[\s\S]{0,220}?"
+    r"\b(0\.\d+|\d+(?:\.\d+)?[eE][+-]?\d+)\b",
     re.IGNORECASE,
 )
 
@@ -146,6 +148,7 @@ def _find_reported_ratio(
     if not labels:
         return None
 
+    fallback: Optional[float] = None
     for text in page_texts:
         text_lower = text.lower()
         for label in labels:
@@ -153,14 +156,32 @@ def _find_reported_ratio(
             if idx < 0:
                 continue
             # Grab the text after the label — the ratio number should be nearby
-            snippet = text[idx:idx+400]
-            # Find the first very small decimal (intensity ratios are ~1e-7 to 1e-4)
-            m = re.search(r"\b(0\.0{3,}\d+)\b", snippet)
+            snippet = text[idx:idx + 650]
+            # Match decimal or scientific notation used in some PDF tables.
+            m = re.search(r"\b(0\.\d+|\d+(?:\.\d+)?[eE][+-]?\d+)\b", snippet)
             if m:
                 try:
-                    return float(m.group(1))
+                    val = float(m.group(1))
+                    if 0 < val < 1:
+                        return val
                 except ValueError:
                     pass
+
+    # Generic fallback when label variants miss but "intensity per rupee" appears.
+    if fallback is None:
+        for text in page_texts:
+            m = _INTENSITY_RE.search(text)
+            if not m:
+                continue
+            try:
+                val = float(m.group(1))
+            except ValueError:
+                continue
+            if 0 < val < 1:
+                fallback = val
+                break
+    if fallback is not None:
+        return fallback
     return None
 
 
