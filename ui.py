@@ -156,19 +156,19 @@ SECTORS = [
 KPI_META = {
     "scope_1_emissions":   {
         "label": "Scope 1 GHG",     "unit": "tCO2e/Cr",
-        "max_ratio": 10,   "desc": "Direct GHG per Crore revenue",
+        "max_ratio": 10,   "desc": "Direct GHG per ₹Crore revenue",
     },
     "scope_2_emissions":   {
         "label": "Scope 2 GHG",     "unit": "tCO2e/Cr",
-        "max_ratio": 10,   "desc": "Indirect GHG per Crore revenue",
+        "max_ratio": 10,   "desc": "Indirect GHG per ₹Crore revenue",
     },
     "total_ghg_emissions": {
         "label": "Total GHG",       "unit": "tCO2e/Cr",
-        "max_ratio": 20,   "desc": "Scope 1+2 per Crore revenue",
+        "max_ratio": 20,   "desc": "Scope 1+2 per ₹Crore revenue",
     },
     "waste_generated":     {
         "label": "Waste Intensity", "unit": "MT/Cr",
-        "max_ratio": 5,    "desc": "Waste generated per Crore revenue",
+        "max_ratio": 5,    "desc": "Waste generated per ₹Crore revenue",
     },
 }
 
@@ -467,7 +467,7 @@ def _step_ingest(company_name: str, fy: int, sector: str, log: list[str]) -> dic
     from agents.ingestion_agent import IngestionAgent
     from models.schemas import CompanyCreate
 
-    log.append("  Searching for ESG/BRSR report via Tavily...")
+    log.append("🔍  Searching for ESG/BRSR report via Tavily...")
 
     agent = IngestionAgent()
     company_data = CompanyCreate(
@@ -485,14 +485,14 @@ def _step_ingest(company_name: str, fy: int, sector: str, log: list[str]) -> dic
             max_downloads  = 3,  # try up to 3 URLs if earlier ones fail
         )
     except Exception as exc:
-        log.append(f"  Ingestion failed: {exc}")
+        log.append(f"❌  Ingestion failed: {exc}")
         return {"company_id": None, "report_id": None, "file_path": None}
 
     company   = result.get("company")
     downloads = result.get("downloaded_reports", [])
 
     if not downloads:
-        log.append("  No PDF downloaded — all discovered URLs failed.")
+        log.append("❌  No PDF downloaded — all discovered URLs failed.")
         return {
             "company_id": company.id if company else None,
             "report_id":  None,
@@ -502,7 +502,7 @@ def _step_ingest(company_name: str, fy: int, sector: str, log: list[str]) -> dic
     # Use the first successfully downloaded report
     dl_report = next((r for r in downloads if r.status == "downloaded"), None)
     if not dl_report:
-        log.append("  Downloads attempted but all failed.")
+        log.append("❌  Downloads attempted but all failed.")
         return {
             "company_id": company.id if company else None,
             "report_id":  None,
@@ -510,7 +510,7 @@ def _step_ingest(company_name: str, fy: int, sector: str, log: list[str]) -> dic
         }
 
     log.append(
-        f"  Downloaded PDF · {round((dl_report.file_size_bytes or 0) / 1e6, 1)} MB"
+        f"✅  Downloaded PDF · {round((dl_report.file_size_bytes or 0) / 1e6, 1)} MB"
     )
     return {
         "company_id": company.id,
@@ -534,17 +534,17 @@ def _step_parse(report_id: uuid.UUID, log: list[str]) -> bool:
     """
     from services.parse_orchestrator import ParseOrchestrator
 
-    log.append("  Parsing PDF (spatial chunker + embeddings)...")
+    log.append("📄  Parsing PDF (spatial chunker + embeddings)...")
     try:
         result = ParseOrchestrator().run(report_id=report_id, force=False)
         log.append(
-            f"  Parsed · {result.page_count} pages · "
+            f"✅  Parsed · {result.page_count} pages · "
             f"{result.meta.get('chunk_count','?')} chunks · "
             f"{result.meta.get('table_count','?')} tables"
         )
         return True
     except Exception as exc:
-        log.append(f"  Parsing failed: {exc}")
+        log.append(f"❌  Parsing failed: {exc}")
         return False
 
 
@@ -610,16 +610,16 @@ def _step_extract(
                 "confidence": ext.confidence or 0.5,
             }
             log.append(
-                f"    {ext.kpi_name}: {val:,.2f} {unit} "
+                f"  ✅  {ext.kpi_name}: {val:,.2f} {unit} "
                 f"[{ext.extraction_method} conf={ext.confidence:.2f}]"
             )
 
     except Exception as exc:
-        log.append(f"  Extraction agent failed: {exc}")
+        log.append(f"❌  Extraction agent failed: {exc}")
         # Continue — revenue extraction may still succeed
 
     # ── Revenue extraction ────────────────────────────────────────────────────
-    log.append("  Extracting revenue...")
+    log.append("💰  Extracting revenue...")
     new_revenue = None
 
     # Get file path for revenue extractor (needs direct PDF access)
@@ -641,7 +641,7 @@ def _step_extract(
             )
             if new_revenue:
                 log.append(
-                    f"    Revenue: ₹{new_revenue.value_cr:,.0f} Cr "
+                    f"  ✅  Revenue: ₹{new_revenue.value_cr:,.0f} Cr "
                     f"[{new_revenue.pattern_name} conf={new_revenue.confidence:.2f}]"
                 )
             else:
@@ -698,6 +698,7 @@ def run_company_pipeline(
     sector:       str,
     db_online:    bool,
     llm_service,
+    status_placeholder,
 ) -> CompanyData:
     """
     DB-first pipeline for one company+FY.
@@ -729,8 +730,14 @@ def run_company_pipeline(
     def _update(msg: str):
         """Push a status line to both the log and the live placeholder."""
         log.append(msg)
+        status_placeholder.markdown(
+            "<div class='step-log'>" +
+            "<br>".join(log[-12:]) +   # show last 12 lines to avoid overflow
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
-    _update(f"  Starting pipeline for **{company_name} FY{fy}**...")
+    _update(f"⏳  Starting pipeline for **{company_name} FY{fy}**...")
 
     company_id: Optional[uuid.UUID] = None
     report_id:  Optional[uuid.UUID] = None
@@ -741,7 +748,7 @@ def run_company_pipeline(
     cached_rev   = None
 
     if db_online:
-        _update("   Checking DB cache...")
+        _update("🗄️   Checking DB cache...")
         db_data     = _db_lookup(company_name, fy)
         cached_kpis = db_data["kpis"]
         cached_rev  = db_data["revenue"]
@@ -750,14 +757,14 @@ def run_company_pipeline(
         file_path   = db_data["file_path"]
 
         if cached_kpis:
-            _update(f"    {len(cached_kpis)} KPI(s) in DB: {list(cached_kpis.keys())}")
+            _update(f"  ✅  {len(cached_kpis)} KPI(s) in DB: {list(cached_kpis.keys())}")
         else:
-            _update("     No cached KPIs — will extract from PDF.")
+            _update("  ℹ️   No cached KPIs — will extract from PDF.")
 
         if cached_rev:
-            _update(f"    Revenue in DB: ₹{cached_rev.value_cr:,.0f} Cr")
+            _update(f"  ✅  Revenue in DB: ₹{cached_rev.value_cr:,.0f} Cr")
         else:
-            _update("     Revenue not cached — will extract from PDF.")
+            _update("  ℹ️   Revenue not cached — will extract from PDF.")
 
     # Determine what is still missing
     missing_kpis = [k for k in EXTRACTABLE_KPI_NAMES if k not in cached_kpis]
@@ -765,7 +772,7 @@ def run_company_pipeline(
 
     # Fast path: everything is already cached
     if not missing_kpis and not need_revenue:
-        _update("  All data available from DB — skipping pipeline.")
+        _update("✅  All data available from DB — skipping pipeline.")
         merged = dict(cached_kpis)
         ghg = _derive_total_ghg(merged)
         if ghg:
@@ -789,7 +796,7 @@ def run_company_pipeline(
     )
 
     if not pdf_available:
-        _update(f"  Ingesting — searching & downloading PDF for {company_name} FY{fy}...")
+        _update(f"📥  Ingesting — searching & downloading PDF for {company_name} FY{fy}...")
         ingest_result = _step_ingest(company_name, fy, sector, log)
         company_id = ingest_result["company_id"] or company_id
         report_id  = ingest_result["report_id"]  or report_id
@@ -797,7 +804,7 @@ def run_company_pipeline(
         _update(f"  file_path={file_path}")
 
         if not file_path or not Path(file_path).exists():
-            _update("  Cannot proceed — no PDF available.")
+            _update("❌  Cannot proceed — no PDF available.")
             return CompanyData(
                 company_name   = company_name,
                 fy             = fy,
@@ -812,18 +819,13 @@ def run_company_pipeline(
     else:
         _update(f"📎  PDF already in DB at {file_path}")
 
-
-# =============================================================================
-# MAIN CONTENT AREA
-# =============================================================
-
     # ── Step 3: Parse ─────────────────────────────────────────────────────────
     if report_id:
         parsed_ok = _step_parse(report_id, log)
         if not parsed_ok:
-            _update("  Parsing failed — extraction may be incomplete.")
+            _update("⚠️  Parsing failed — extraction may be incomplete.")
     else:
-        _update("  No report_id available — skipping parse.")
+        _update("⚠️  No report_id available — skipping parse.")
 
     # ── Step 4: Extract ───────────────────────────────────────────────────────
     new_kpis   = {}
@@ -861,12 +863,12 @@ def run_company_pipeline(
             kpi_records    = to_store,
             revenue_result = new_revenue,
         )
-        _update("    Stored.")
+        _update("  ✅  Stored.")
 
     revenue = cached_rev or new_revenue
     if not revenue:
         _update(
-            f"     No revenue found — using default "
+            f"  ℹ️   No revenue found — using default "
             f"₹{_DEFAULT_REVENUE_CR:,.0f} Cr for intensity ratios."
         )
 
@@ -1330,6 +1332,31 @@ with st.sidebar:
     red_col   = C["red"]
     sub_col   = C["sub"]
 
+    if db_online:
+        st.markdown(
+            f"<div style='font-size:11px;color:{green_col};font-weight:600'>"
+            f"● Database connected &nbsp; {len(known_companies)} companies in DB</div>",
+            unsafe_allow_html=True,
+        )
+        if llm_service:
+            st.markdown(
+                f"<div style='font-size:11px;color:{green_col};font-weight:600'>"
+                f"● LLM enabled (Gemini)</div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f"<div style='font-size:11px;color:{amber_col};font-weight:600'>"
+                f"⚠ LLM disabled (no API key)</div>",
+                unsafe_allow_html=True,
+            )
+    else:
+        st.markdown(
+            f"<div style='font-size:11px;color:{red_col};font-weight:600'>"
+            f"● Database offline</div>",
+            unsafe_allow_html=True,
+        )
+
     st.markdown("---")
 
     sector = st.selectbox("Sector", SECTORS, key="sector")
@@ -1357,11 +1384,11 @@ with st.sidebar:
         n1  = len(db1["kpis"])
         if n1 > 0:
             st.caption(
-                f" {n1} KPIs cached"
+                f"✅ {n1} KPIs cached"
                 + (" · revenue cached" if db1["revenue"] else "")
             )
         else:
-            st.caption("Not in DB — pipeline will run automatically")
+            st.caption("⚪ Not in DB — pipeline will run automatically")
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
@@ -1386,11 +1413,11 @@ with st.sidebar:
         n2  = len(db2["kpis"])
         if n2 > 0:
             st.caption(
-                f" {n2} KPIs cached"
+                f"✅ {n2} KPIs cached"
                 + (" · revenue cached" if db2["revenue"] else "")
             )
         else:
-            st.caption(" Not in DB — pipeline will run automatically")
+            st.caption("⚪ Not in DB — pipeline will run automatically")
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
@@ -1403,12 +1430,15 @@ with st.sidebar:
     )
 
     if not ready and (company1 or company2):
-        if not company1:
+        if company1 == company2:
+            st.caption("⚠ Enter two different companies.")
+        elif not company1:
             st.caption("⚠ Enter Company 1 name.")
         elif not company2:
             st.caption("⚠ Enter Company 2 name.")
 
     st.markdown("---")
+
 
 
 # =============================================================================
@@ -1443,18 +1473,18 @@ with tab_compare:
 
     # ── Pipeline trigger ──────────────────────────────────────────────────────
     if compare_btn and ready:
-        # # Create two status placeholders before starting (so they appear in order)
-        # st.markdown(
-        #     f"### Running pipeline for **{company1} FY{fy1}** and **{company2} FY{fy2}**"
-        # )
+        # Create two status placeholders before starting (so they appear in order)
+        st.markdown(
+            f"### Running pipeline for **{company1} FY{fy1}** and **{company2} FY{fy2}**"
+        )
 
-        # col_s1, col_s2 = st.columns(2)
-        # with col_s1:
-        #     st.markdown(f"**{company1} FY{fy1}**")
-        #     placeholder1 = st.empty()
-        # with col_s2:
-        #     st.markdown(f"**{company2} FY{fy2}**")
-        #     placeholder2 = st.empty()
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            st.markdown(f"**{company1} FY{fy1}**")
+            placeholder1 = st.empty()
+        with col_s2:
+            st.markdown(f"**{company2} FY{fy2}**")
+            placeholder2 = st.empty()
 
         try:
             # Run both pipelines sequentially (parallel would need threading)
@@ -1464,7 +1494,7 @@ with tab_compare:
                 sector              = sector,
                 db_online           = db_online,
                 llm_service         = llm_service,
-                # status_placeholder  = placeholder1,
+                status_placeholder  = placeholder1,
             )
             data2 = run_company_pipeline(
                 company_name        = company2,
@@ -1472,7 +1502,7 @@ with tab_compare:
                 sector              = sector,
                 db_online           = db_online,
                 llm_service         = llm_service,
-                # status_placeholder  = placeholder2,
+                status_placeholder  = placeholder2,
             )
 
             # Warn if either company has no KPIs at all
@@ -1546,7 +1576,7 @@ with tab_compare:
 
         if skipped:
             skipped_labels = [KPI_META.get(k, {}).get("label", k) for k in skipped]
-            st.info(f" Excluded (unrealistic ratio): {', '.join(skipped_labels)}")
+            st.info(f"ℹ️ Excluded (unrealistic ratio): {', '.join(skipped_labels)}")
 
         if not filtered:
             st.warning(
@@ -1691,7 +1721,7 @@ with tab_compare:
 
         # ── AI Summary ────────────────────────────────────────────────────────
         st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-        st.markdown('<div class="sec"> Summary</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sec">💬 Summary</div>', unsafe_allow_html=True)
         st.markdown(
             f'<div class="summary-box">{summary.replace(chr(10), "<br>")}</div>',
             unsafe_allow_html=True,
@@ -1699,7 +1729,7 @@ with tab_compare:
 
         # ── Methodology ───────────────────────────────────────────────────────
         st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-        with st.expander(" Methodology & Data Provenance"):
+        with st.expander("ℹ️ Methodology & Data Provenance"):
             st.markdown("""
 **Intensity ratios** — Every KPI is divided by annual revenue (₹Crore) before
 comparison, removing scale bias between companies of different sizes.
