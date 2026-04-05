@@ -22,37 +22,53 @@ from typing import Optional
 
 from services.normalizer import NormalizedKPI, normalize, NormalizationError
 
+from core.logging_config import get_logger
+
+logger = get_logger(__name__)
+
 # ── KPIs benchmarked in this module ──────────────────────────────────────────
-# These are the 4 target KPIs for ESG benchmarking (revenue excluded)
 BENCHMARK_KPI_NAMES = [
     "energy_consumption",
     "scope_1_emissions",
     "scope_2_emissions",
+    "total_ghg_emissions",
     "water_consumption",
     "waste_generated",
 ]
 
-# Lower intensity is better for all 4 environmental KPIs
+# Lower intensity is better for all environmental KPIs
 LOWER_IS_BETTER = {
-    "energy_consumption", "scope_1_emissions",
-    "scope_2_emissions", "water_consumption", "waste_generated",
+    "energy_consumption", "scope_1_emissions", "scope_2_emissions",
+    "total_ghg_emissions", "water_consumption", "waste_generated",
 }
 
 # Canonical units for display
 CANONICAL_UNITS = {
-    "energy_consumption": "GJ",
-    "scope_1_emissions":  "tCO2e",
-    "scope_2_emissions":  "tCO2e",
-    "water_consumption":  "KL",
-    "waste_generated":    "MT",
+    "energy_consumption":  "GJ",
+    "scope_1_emissions":   "tCO2e",
+    "scope_2_emissions":   "tCO2e",
+    "total_ghg_emissions": "tCO2e",
+    "water_consumption":   "KL",
+    "waste_generated":     "MT",
+}
+
+# Hard ceilings on intensity ratio (per INR Crore).
+# Any computed ratio above the ceiling is an extraction/unit error and
+# must be excluded from comparisons rather than shown to the user.
+# Calibrated for Indian large-cap companies across sectors.
+RATIO_CEILINGS: dict[str, float] = {
+    "energy_consumption":  1_000,   # GJ / Cr   — typical IT ≈ 5, heavy industry ≈ 500
+    "scope_1_emissions":   10,      # tCO2e / Cr
+    "scope_2_emissions":   10,
+    "total_ghg_emissions": 20,
+    "water_consumption":   500,     # KL / Cr
+    "waste_generated":     5,       # MT / Cr
 }
 
 # Pre-reported intensity ratio patterns found in BRSR/ESG reports
 # Matches: "intensity per rupee of turnover\n0.000000522"
 _INTENSITY_RE = re.compile(
-    r"intensity\s+per\s+rupee\s+(?:of\s+)?(?:turnover|operations)?"
-    r"[\s\S]{0,220}?"
-    r"\b(0\.\d+|\d+(?:\.\d+)?[eE][+-]?\d+)\b",
+    r"intensity\s+per\s+rupee\s+(?:of\s+)?(?:turnover|operations)[^\n]{0,120}\n(0\.\d{5,})",
     re.IGNORECASE,
 )
 
@@ -148,7 +164,6 @@ def _find_reported_ratio(
     if not labels:
         return None
 
-    fallback: Optional[float] = None
     for text in page_texts:
         text_lower = text.lower()
         for label in labels:
@@ -156,32 +171,14 @@ def _find_reported_ratio(
             if idx < 0:
                 continue
             # Grab the text after the label — the ratio number should be nearby
-            snippet = text[idx:idx + 650]
-            # Match decimal or scientific notation used in some PDF tables.
-            m = re.search(r"\b(0\.\d+|\d+(?:\.\d+)?[eE][+-]?\d+)\b", snippet)
+            snippet = text[idx:idx+400]
+            # Find the first very small decimal (intensity ratios are ~1e-7 to 1e-4)
+            m = re.search(r"\b(0\.0{3,}\d+)\b", snippet)
             if m:
                 try:
-                    val = float(m.group(1))
-                    if 0 < val < 1:
-                        return val
+                    return float(m.group(1))
                 except ValueError:
                     pass
-
-    # Generic fallback when label variants miss but "intensity per rupee" appears.
-    if fallback is None:
-        for text in page_texts:
-            m = _INTENSITY_RE.search(text)
-            if not m:
-                continue
-            try:
-                val = float(m.group(1))
-            except ValueError:
-                continue
-            if 0 < val < 1:
-                fallback = val
-                break
-    if fallback is not None:
-        return fallback
     return None
 
 
@@ -245,6 +242,20 @@ def build_company_profile(
             # Compute from absolute / revenue
             ratio_per_cr = norm.normalized_value / revenue_cr
             source = "computed"
+
+        # Guard: drop ratios that exceed plausibility ceiling.
+        # This catches unit errors (MJ not converted → 1000× inflation)
+        # and LLM hallucinations that produced absurd absolute values.
+        ceiling = RATIO_CEILINGS.get(kpi_name)
+        if ceiling and (ratio_per_cr <= 0 or ratio_per_cr > ceiling):
+            logger.warning(
+                "benchmark.ratio_exceeds_ceiling",
+                kpi=kpi_name,
+                ratio=ratio_per_cr,
+                ceiling=ceiling,
+                company=company_name,
+            )
+            continue  # exclude this KPI from the profile entirely
 
         display = _KPI_DISPLAY_NAMES.get(kpi_name, kpi_name)
         canonical = CANONICAL_UNITS.get(kpi_name, norm.normalized_unit)

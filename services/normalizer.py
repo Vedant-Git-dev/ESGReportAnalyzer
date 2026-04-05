@@ -78,6 +78,7 @@ _GHG_TO_TCO2E: dict[str, float] = {
     "ktco2":  1_000.0,
     "kilo tonne co2e": 1_000.0,
     "mtco2e": 1_000_000.0,
+    "million tonnes coe": 1_000_000.0,
     "mt co2e": 1_000_000.0,
     # GHG without CO2e label (context must confirm GHG)
     "ghg": 1.0,

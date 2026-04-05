@@ -18,9 +18,8 @@ _TAVILY_URL = "https://api.tavily.com/search"
 
 REPORT_QUERY_TEMPLATES: dict[str, list[str]] = {
     "BRSR": [
-        # "{company} BRSR report {past_year}-{year} PDF",
-        "{company} business responsibility sustainability report {past_year}-{year} nse filetype:pdf",
-        # "{company} BRSR {past_year}-{year} download",
+        # "site:nsearchives.nseindia.com Business Responsibility and Sustainability Report {past_year}-{year} filetype:pdf",
+        "{company} business responsibility sustainability report {past_year}-{year} nsearchive filetype:pdf",
     ],
     "Annual": [
         "{company} annual report {past_year}-{year} filetype:pdf",
