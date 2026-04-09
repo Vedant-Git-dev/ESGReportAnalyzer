@@ -12,6 +12,12 @@ python main.py ingest --company "Infosys" --year 2023
 
 # List all companies
 python main.py list-companies
+
+# Extract KPIs by company name and year (recommended)
+python main.py extract --company "TCS" --year 2024
+
+# Extract KPIs by report ID (legacy)
+python main.py extract --report-id <UUID>
 """
 from __future__ import annotations
 
@@ -20,6 +26,7 @@ import argparse
 
 from core.config import get_settings
 from core.logging_config import configure_logging
+import uuid
 
 
 def cmd_init_db(_args) -> None:
@@ -55,6 +62,7 @@ def cmd_seed_kpis(_args) -> None:
             "retrieval_keywords": [
                 "scope 1", "direct emissions", "direct ghg", "tCO2e",
                 "metric tonnes CO2", "GHG emissions scope 1",
+                "greenhouse gas emission", "total scope",
             ],
             "valid_min": 0, "valid_max": 1e8,
         },
@@ -72,6 +80,7 @@ def cmd_seed_kpis(_args) -> None:
             "retrieval_keywords": [
                 "scope 2", "indirect emissions", "purchased electricity", "tCO2e",
                 "market-based", "location-based", "GHG emissions scope 2",
+                "greenhouse gas emission", "total scope",
             ],
             "valid_min": 0, "valid_max": 1e8,
         },
@@ -99,12 +108,9 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Energy",
             "expected_unit": "GJ",
             "regex_patterns": [
-                # Block pattern: "Total energy consumed (A+B+C+D+E+F)(1)\n8,50,434"
                 r"total\s+energy\s+consumed\s*\([A-Za-z+\s]+\)[\s\S]{0,10}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
                 r"total\s+energy\s+consumed[^\n]{0,50}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # Inline with unit
                 r"total\s+energy\s+(?:consumption|consumed)[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj)",
-                # Narrative
                 r"energy\s+consumption\s+(?:was|of|:)\s*([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj)",
             ],
             "retrieval_keywords": [
@@ -137,10 +143,8 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Water",
             "expected_unit": "KL",
             "regex_patterns": [
-                # Block: "Total volume of water consumption (in kilolitres)\n19,55,525"
                 r"total\s+volume\s+of\s+water\s+consumption[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
                 r"total\s+water\s+consumption[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # Inline with unit
                 r"water\s+consumption[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(kl|kilolitr\w*|m3)",
                 r"([\d,]+(?:\.\d+)?)\s*(kl|kilolitr\w*)\s*[\s\S]{0,30}?water\s+consumption",
             ],
@@ -157,12 +161,9 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Waste",
             "expected_unit": "MT",
             "regex_patterns": [
-                # Block: "Total (A + B + C + D + E + F + G + H)\n11,689.87"
                 r"total\s*\(A\s*\+\s*B[\s+A-Za-z]*\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
                 r"^total\s*\([a-h\s\+]+\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # Header + value pattern
                 r"total\s+waste\s+generated[^\n]{0,60}\n[^\n]{0,60}\n([\d,]+(?:\.\d+)?)",
-                # Inline
                 r"total\s+waste\s+(?:generated|produced)[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(mt|metric\s*tonn?\w*|tonne\w*)",
                 r"([\d,]+(?:\.\d+)?)\s*(mt|metric\s*tonn?\w*)\s*[\s\S]{0,40}?waste",
             ],
@@ -232,7 +233,6 @@ def cmd_seed_kpis(_args) -> None:
         for kpi_data in DEFAULT_KPIS:
             existing = db.query(KPIDefinition).filter(KPIDefinition.name == kpi_data["name"]).first()
             if existing:
-                # Always update patterns and keywords to latest version
                 existing.regex_patterns = kpi_data["regex_patterns"]
                 existing.retrieval_keywords = kpi_data["retrieval_keywords"]
                 existing.valid_min = kpi_data.get("valid_min")
@@ -307,12 +307,10 @@ def cmd_list_chunks(args) -> None:
         print(f"Footnotes       : {sum(1 for c in chunks if c.chunk_type == 'footnote')}")
         print()
 
-        # Filter by type if requested
         filtered = chunks
         if args.type:
             filtered = [c for c in chunks if c.chunk_type == args.type]
 
-        # Limit display
         display = filtered[:args.limit]
 
         print(f"{'#':<5} {'Type':<10} {'Page':<6} {'Tokens':<8} Preview")
@@ -324,7 +322,6 @@ def cmd_list_chunks(args) -> None:
         if len(filtered) > args.limit:
             print(f"\n... {len(filtered) - args.limit} more chunks (use --limit to see more)")
 
-        # Show full content of a specific chunk
         if args.show is not None:
             match = next((c for c in chunks if c.chunk_index == args.show), None)
             if match:
@@ -336,6 +333,7 @@ def cmd_list_chunks(args) -> None:
                 print(f"Chunk #{args.show} not found")
 
 
+def cmd_list_companies(_args) -> None:
     from core.database import get_db
     from models.db_models import Company
 
@@ -427,7 +425,6 @@ def cmd_retry_failed(args) -> None:
             print("No failed reports found.")
             return
 
-        # Group by company+year to avoid re-trying every failed URL
         seen = set()
         pairs = []
         for report, company_name in rows:
@@ -506,10 +503,7 @@ def cmd_parse_status(_args) -> None:
 # ---------------------------------------------------------------------------
 
 def cmd_search_chunks(args) -> None:
-    """
-    Ad-hoc keyword search across chunks of a parsed document.
-    Use this to test retrieval before running full KPI extraction.
-    """
+    """Ad-hoc keyword search across chunks of a parsed document."""
     import uuid as _uuid
     from core.database import get_db
     from models.db_models import ParsedDocument
@@ -539,7 +533,6 @@ def cmd_search_chunks(args) -> None:
             chunk_types=chunk_types,
         )
 
-        # Extract all data while session is still open
         rows = [
             {
                 "score": sc.score,
@@ -580,10 +573,7 @@ def cmd_search_chunks(args) -> None:
 
 
 def cmd_kpi_retrieve(args) -> None:
-    """
-    Retrieve top chunks for a specific KPI from a report's parse cache.
-    Shows exactly what will be sent to the LLM in Phase 4.
-    """
+    """Retrieve top chunks for a specific KPI from a report's parse cache."""
     import uuid as _uuid
     from core.database import get_db
     from models.db_models import KPIDefinition, ParsedDocument
@@ -615,7 +605,6 @@ def cmd_kpi_retrieve(args) -> None:
             top_k=args.top_k,
         )
 
-        # Extract while session is open
         kpi_display = kpi.display_name
         kpi_unit = kpi.expected_unit
         kpi_keywords = list(kpi.retrieval_keywords)
@@ -706,35 +695,11 @@ def cmd_embed(args) -> None:
 def cmd_embed_status(_args) -> None:
     """Show embedding coverage across all parsed documents."""
     from core.database import get_db
-    from models.db_models import DocumentChunk, ParsedDocument, Report, Company
-    from sqlalchemy import func
+    import sqlalchemy
 
     with get_db() as db:
-        rows = (
-            db.query(
-                Company.name,
-                Report.report_year,
-                ParsedDocument.id,
-                func.count(DocumentChunk.id).label("total"),
-                func.sum(
-                    func.cast(DocumentChunk.is_embedded, db.bind.dialect.dbapi.Binary
-                              if hasattr(db.bind, 'dialect') else __builtins__['int'])
-                ).label("embedded"),
-            )
-            .join(Report, ParsedDocument.report_id == Report.id)
-            .join(Company, Report.company_id == Company.id)
-            .join(DocumentChunk, DocumentChunk.parsed_document_id == ParsedDocument.id)
-            .group_by(Company.name, Report.report_year, ParsedDocument.id)
-            .all()
-        )
-
-        if not rows:
-            print("No parsed documents found.")
-            return
-
-        # Simpler query
         results = db.execute(
-            __import__('sqlalchemy').text("""
+            sqlalchemy.text("""
                 SELECT c.name, r.report_year,
                        COUNT(dc.id) as total,
                        SUM(CASE WHEN dc.is_embedded THEN 1 ELSE 0 END) as embedded
@@ -765,18 +730,117 @@ def cmd_embed_status(_args) -> None:
 # Phase 4 commands
 # ---------------------------------------------------------------------------
 
+def _resolve_report_id_from_company(company_name: str, year: int) -> "uuid.UUID | None":
+    """
+    Resolve the best report_id for a company name + year.
+
+    Preference order: BRSR > ESG > Integrated > any downloaded report.
+    Returns None and prints a helpful message if not found.
+    """
+    import uuid as _uuid
+    from core.database import get_db
+    from models.db_models import Company, Report
+    from pathlib import Path
+
+    with get_db() as db:
+        company_row = (
+            db.query(Company)
+            .filter(Company.name.ilike(f"%{company_name}%"))
+            .first()
+        )
+        if not company_row:
+            print(f"✗  Company '{company_name}' not found in DB.")
+            print(f"   Run: python main.py ingest --company \"{company_name}\" --year {year}")
+            return None
+
+        print(f"   Company: {company_row.name} (id={str(company_row.id)[:8]})")
+
+        reports = (
+            db.query(Report)
+            .filter(
+                Report.company_id == company_row.id,
+                Report.report_year == year,
+                Report.status.in_(["downloaded", "parsed", "extracted"]),
+                Report.file_path.isnot(None),
+            )
+            .order_by(Report.created_at.desc())
+            .all()
+        )
+
+        if not reports:
+            print(f"✗  No usable report found for {company_name} FY{year}.")
+            print(f"   Run: python main.py ingest --company \"{company_name}\" --year {year}")
+            return None
+
+        # Pick best report: BRSR first, then ESG, then Integrated, then most recent
+        type_priority = {"BRSR": 0, "ESG": 1, "Integrated": 2}
+        reports_with_file = [r for r in reports if r.file_path and Path(r.file_path).exists()]
+
+        if not reports_with_file:
+            # File may be gone but parse cache might still exist
+            print(f"   Warning: PDF file not found on disk, but will attempt extraction from parse cache.")
+            best = reports[0]
+        else:
+            reports_with_file.sort(
+                key=lambda r: (type_priority.get(r.report_type, 99), -r.created_at.timestamp())
+            )
+            best = reports_with_file[0]
+
+        print(f"   Report:  {best.report_type} FY{year} (id={str(best.id)[:8]}, status={best.status})")
+        return best.id
+
+
 def cmd_extract(args) -> None:
-    """Run KPI extraction (regex → LLM → validation) on a parsed report."""
+    """
+    Run KPI extraction (regex → LLM → validation) on a report.
+
+    Supports two modes:
+      1. By company name + year (recommended):
+         python main.py extract --company "TCS" --year 2024
+
+      2. By report ID (legacy):
+         python main.py extract --report-id <UUID>
+    """
     import uuid as _uuid
     from core.database import get_db
     from agents.extraction_agent import ExtractionAgent
 
-    report_id = _uuid.UUID(args.report_id)
+    # ── Resolve report_id ─────────────────────────────────────────────────────
+    report_id = None
+
+    if args.company and args.year:
+        print(f"\nResolving report for {args.company} FY{args.year}...")
+        report_id = _resolve_report_id_from_company(args.company, args.year)
+        if report_id is None:
+            sys.exit(1)
+    elif args.report_id:
+        try:
+            report_id = _uuid.UUID(args.report_id)
+        except ValueError:
+            print(f"✗  Invalid report UUID: {args.report_id}")
+            sys.exit(1)
+    else:
+        print("✗  Provide either --company + --year or --report-id.")
+        print("   Example: python main.py extract --company \"TCS\" --year 2024")
+        sys.exit(1)
+
+    # ── Parse first (idempotent — safe to call even if already parsed) ────────
+    if not args.skip_parse:
+        print(f"\nEnsuring PDF is parsed (idempotent)...")
+        try:
+            from services.parse_orchestrator import ParseOrchestrator
+            result = ParseOrchestrator().run(report_id=report_id, force=False)
+            print(f"   Parsed: {result.page_count} pages, {result.meta.get('chunk_count','?')} chunks")
+        except Exception as exc:
+            print(f"   Warning: Parse step failed: {exc}")
+            print(f"   Continuing with existing parse cache if available...")
+
+    # ── Extract ───────────────────────────────────────────────────────────────
     kpi_names = [k.strip() for k in args.kpis.split(",")] if args.kpis else None
 
     agent = ExtractionAgent()
 
-    print(f"Extracting KPIs for report {report_id} ...")
+    print(f"\nExtracting KPIs for report {str(report_id)[:8]} ...")
     if kpi_names:
         print(f"KPIs: {', '.join(kpi_names)}")
     else:
@@ -790,7 +854,6 @@ def cmd_extract(args) -> None:
             fallback_search=not args.no_fallback,
             max_fallback_reports=args.max_fallback,
         )
-        # Snapshot while session open
         rows = [
             {
                 "kpi_name": r.kpi_name,
@@ -805,27 +868,43 @@ def cmd_extract(args) -> None:
         ]
 
     found = sum(1 for r in rows if r["value"] is not None)
-    fallback_found = sum(1 for r in rows if r["value"] is not None and "fallback" in (r["notes"] or ""))
-    print(f"\n=== Extraction Complete: {found}/{len(rows)} KPIs found", end="")
-    if fallback_found:
-        print(f" ({fallback_found} from fallback reports)", end="")
-    print(" ===\n")
-    print(f"{'KPI':<35} {'Value':<15} {'Unit':<12} {'Method':<8} {'Conf':<6} {'Valid':<6} {'Src':<10} Notes")
+    print(f"\n=== Extraction Complete: {found}/{len(rows)} KPIs found ===\n")
+    print(f"{'KPI':<35} {'Value':<15} {'Unit':<20} {'Method':<8} {'Conf':<6} {'Valid'} Notes")
     print("-" * 130)
     for row in rows:
         val = f"{row['value']:,.2f}" if row["value"] is not None else "NOT FOUND"
         conf = f"{row['confidence']:.2f}" if row["confidence"] else "-"
         valid = "✓" if row["valid"] else "✗"
-        is_fallback = "fallback" in (row["notes"] or "")
-        # Extract the report type from notes e.g. "[found in BRSR report via fallback]"
-        import re as _re
-        fb_match = _re.search(r"\[found in (\w+) report", row["notes"] or "")
-        src = f"[{fb_match.group(1)}]" if fb_match else ("[fallback]" if is_fallback else "[primary]")
-        notes = (row["notes"] or "")[:35].replace(" [found via fallback search]", "")
+        notes = (row["notes"] or "")[:40]
         print(
-            f"{row['kpi_name']:<35} {val:<15} {(row['unit'] or ''):<12} "
-            f"{row['method']:<8} {conf:<6} {valid:<6} {src:<10} {notes}"
+            f"{row['kpi_name']:<35} {val:<15} {(row['unit'] or ''):<20} "
+            f"{row['method']:<8} {conf:<6} {valid:<6} {notes}"
         )
+
+    # ── Revenue extraction ────────────────────────────────────────────────────
+    if not args.skip_revenue:
+        print(f"\nExtracting revenue...")
+        try:
+            from core.database import get_db as _get_db
+            from models.db_models import Report
+            from services.revenue_extractor import extract_revenue
+            from pathlib import Path
+
+            with _get_db() as db:
+                rpt = db.query(Report).filter(Report.id == report_id).first()
+                pdf_path_str = rpt.file_path if rpt else None
+                fy = rpt.report_year if rpt else (args.year or 0)
+
+            if pdf_path_str and Path(pdf_path_str).exists():
+                rev = extract_revenue(pdf_path=Path(pdf_path_str), fiscal_year_hint=fy)
+                if rev:
+                    print(f"   ✓ Revenue: ₹{rev.value_cr:,.0f} Crore [{rev.pattern_name} conf={rev.confidence:.2f}]")
+                else:
+                    print(f"   ✗ Revenue: not found")
+            else:
+                print(f"   ✗ Revenue: PDF not available at {pdf_path_str}")
+        except Exception as exc:
+            print(f"   Warning: Revenue extraction failed: {exc}")
 
 
 def cmd_list_kpi_records(args) -> None:
@@ -909,13 +988,13 @@ def main():
     # list-reports
     sub.add_parser("list-reports", help="List all reports and their status")
 
-    # download — retry a specific or next available
+    # download
     dl_p = sub.add_parser("download", help="Download a specific report or retry next available URL")
     dl_p.add_argument("--report-id", default=None, help="UUID of a specific registered report")
     dl_p.add_argument("--company-id", default=None, help="Company UUID (use with --year)")
     dl_p.add_argument("--year", type=int, default=None, help="Report year (use with --company-id)")
 
-    # retry-failed — recover from 406/403 errors
+    # retry-failed
     sub.add_parser("retry-failed", help="Retry all failed downloads using next registered URLs")
 
     # list-chunks
@@ -958,11 +1037,47 @@ def main():
     sub.add_parser("embed-status", help="Show embedding coverage across all reports")
 
     # Phase 4: extract
-    ex_p = sub.add_parser("extract", help="Extract KPIs from a parsed report (regex → LLM → validation)")
-    ex_p.add_argument("--report-id", required=True, help="UUID of a parsed report")
-    ex_p.add_argument("--kpis", default=None, help="Comma-separated KPI names to extract (default: all active)")
-    ex_p.add_argument("--no-fallback", action="store_true", help="Disable fallback search in other reports")
-    ex_p.add_argument("--max-fallback", type=int, default=3, help="Max extra reports to search per missing KPI (default: 3)")
+    # Supports BOTH --company + --year (preferred) AND --report-id (legacy)
+    ex_p = sub.add_parser(
+        "extract",
+        help=(
+            "Extract KPIs from a report.\n"
+            "Preferred: --company 'TCS' --year 2024\n"
+            "Legacy:    --report-id <UUID>"
+        ),
+    )
+    ex_p.add_argument(
+        "--company", default=None,
+        help="Company name (fuzzy-matched in DB). Use with --year.",
+    )
+    ex_p.add_argument(
+        "--year", type=int, default=None,
+        help="Fiscal year (e.g. 2024). Use with --company.",
+    )
+    ex_p.add_argument(
+        "--report-id", default=None,
+        help="UUID of a parsed report (legacy). Overrides --company/--year.",
+    )
+    ex_p.add_argument(
+        "--kpis", default=None,
+        help="Comma-separated KPI names to extract (default: all active).",
+    )
+    ex_p.add_argument(
+        "--no-fallback", action="store_true",
+        help="Disable fallback search in other reports.",
+    )
+    ex_p.add_argument(
+        "--max-fallback", type=int, default=3,
+        help="Max extra reports to search per missing KPI (default: 3).",
+    )
+    ex_p.add_argument(
+        "--skip-parse", action="store_true",
+        help="Skip the parse step (use existing parse cache only).",
+    )
+    ex_p.add_argument(
+        "--skip-revenue", action="store_true",
+        help="Skip revenue extraction.",
+    )
 
     # Phase 4: list-kpi-records
     rec_p = sub.add_parser("list-kpi-records", help="Show extracted KPI records for a report")
@@ -971,22 +1086,23 @@ def main():
     args = parser.parse_args()
 
     dispatch = {
-        "init-db": cmd_init_db,
-        "seed-kpis": cmd_seed_kpis,
-        "ingest": cmd_ingest,
-        "list-reports": cmd_list_reports,
-        "download": cmd_download,
-        "retry-failed": cmd_retry_failed,
-        "list-chunks": cmd_list_chunks,
-        "parse": cmd_parse,
-        "parse-status": cmd_parse_status,
-        "search-chunks": cmd_search_chunks,
-        "kpi-retrieve": cmd_kpi_retrieve,
-        "list-kpis": cmd_list_kpis,
-        "embed": cmd_embed,
-        "embed-status": cmd_embed_status,
-        "extract": cmd_extract,
-        "list-kpi-records": cmd_list_kpi_records,
+        "init-db":         cmd_init_db,
+        "seed-kpis":       cmd_seed_kpis,
+        "ingest":          cmd_ingest,
+        "list-companies":  cmd_list_companies,
+        "list-reports":    cmd_list_reports,
+        "download":        cmd_download,
+        "retry-failed":    cmd_retry_failed,
+        "list-chunks":     cmd_list_chunks,
+        "parse":           cmd_parse,
+        "parse-status":    cmd_parse_status,
+        "search-chunks":   cmd_search_chunks,
+        "kpi-retrieve":    cmd_kpi_retrieve,
+        "list-kpis":       cmd_list_kpis,
+        "embed":           cmd_embed,
+        "embed-status":    cmd_embed_status,
+        "extract":         cmd_extract,
+        "list-kpi-records":cmd_list_kpi_records,
     }
 
     if args.command not in dispatch:

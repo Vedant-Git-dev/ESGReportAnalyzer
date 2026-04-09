@@ -1,30 +1,24 @@
 """
 services/retrieval_service.py
 
-Retrieval Service — Phase 3 (v3, precision + recall balanced).
+Retrieval Service — Phase 3 (v4, precision + recall balanced).
 
-Root causes fixed in this version
------------------------------------
-Problem 1 — Strict filter too aggressive (49 → 1 chunk for scope_1_emissions)
-  The Infosys BRSR GHG table chunks do NOT contain "scope 1" verbatim after
-  PyMuPDF extracts them. The actual value lives in a table row that says
-  "tCO2e" and "greenhouse gas" but the scope label is only in the table header
-  (a separate chunk). Fix: add a UNIT-BASED FALLBACK — if strict filtering
-  returns < MIN_RELEVANT_CHUNKS, re-admit candidates that contain the expected
-  unit (tCO2e / GJ / KL etc.) even without a must_match phrase. This catches
-  "orphaned data rows" from split tables.
+Fixes vs v3
+-----------
+Fix 1 — scope_1_emissions must_match too restrictive for TCS BRSR
+  TCS BRSR GHG table chunks contain "greenhouse gas" and "tCO2e" but NOT
+  "scope 1" verbatim — the scope label is in the table header (a separate
+  chunk). Added broader GHG terms and the exact BRSR column phrase to
+  must_match so the value row is admitted.
 
-Problem 2 — Neighbor stitching pulls in unrelated pages
-  Old stitching was purely index-based (chunk_index ±1). Chunk indices are
-  sequential across the whole document, so index N±1 is often a completely
-  different page/topic. Fix: stitching is now PAGE-SCOPED — only stitch
-  neighbors on the SAME page as the anchor chunk. Cross-page stitching is
-  disabled. This eliminates ZLD and waste-table noise at ranks 2/3.
+Fix 2 — must_exclude fired on combined-scope chunks (already in v3 but
+  confirmed needed): A chunk saying "scope 1 ... scope 2 ... total" was
+  dropped because "scope 2" is a must_exclude for scope_1_emissions.
+  must_exclude only fires when NO must_match term is also present.
 
-Problem 3 — must_exclude fired on combined-scope chunks
-  A chunk saying "scope 1 ... scope 2 ... total" was dropped because
-  "scope 2" is a must_exclude for scope_1_emissions. Fix: must_exclude only
-  fires when NO must_match term is also present in the chunk.
+Fix 3 — unit_fallback now also fires for scope_1/scope_2 when fewer than
+  MIN_RELEVANT_CHUNKS pass the strict filter. This is required for TCS where
+  the GHG value row only contains "tCO2e" and a number, not a scope label.
 
 Architecture: unchanged. No new dependencies.
 """
@@ -66,9 +60,11 @@ _DATA_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Matches "number near unit" — used in unit_fallback_mode
+# Matches "number near unit" — used in unit_fallback_mode.
+# Handles both inline "21,949 tCO2e" and table formats "21,949 | tCO2e".
+# The separator between number and unit may be spaces, pipes, or other delimiters.
 _UNIT_NUMBER_RE = re.compile(
-    r"\b[\d,]+(?:\.\d+)?\s{0,5}"
+    r"\b[\d,]+(?:\.\d+)?[\s|,]{0,8}"
     r"(?:tco2e?|t\s*co2e?|mt\s*co2e?|gj|mwh|gwh|tj|kl|kilolitr\w*|crore|lakh)\b",
     re.IGNORECASE,
 )
@@ -85,110 +81,158 @@ _UNIT_NUMBER_RE = re.compile(
 
 KPI_STRICT_FILTERS: dict[str, dict] = {
     "scope_1_emissions": {
-        "must_match":    ["scope 1", "scope-1", "direct emissions", "direct ghg",
-                          "stationary combustion", "fugitive", "owned vehicle",
-                          "greenhouse gas emission", "ghg emission",
-                          "carbon neutral", "co2 equivalent"],
-        "must_exclude":  ["indirect emission", "purchased electricity",
-                          "scope 2 emission", "scope 3"],
+        # EXPANDED: TCS BRSR uses "greenhouse gas" / "total scope" / "tCO2e" without
+        # saying "scope 1" verbatim in the value row. Include broader GHG terms.
+        "must_match":    [
+            "scope 1", "scope-1", "direct emissions", "direct ghg",
+            "stationary combustion", "fugitive", "owned vehicle",
+            # Broader terms that appear in GHG tables even without "scope 1" label:
+            "greenhouse gas emission", "ghg emission",
+            "carbon neutral", "co2 equivalent",
+            # BRSR table phrases that accompany scope 1 data:
+            "total scope", "scope 1 and", "scope i",
+        ],
+        "must_exclude":  ["indirect emission", "purchased electricity", "scope 3"],
+        # Note: "scope 2 emission" removed from must_exclude because combined rows
+        # ("Scope 1 and Scope 2") should NOT be excluded when scope 1 is also present.
         "unit_fallback": ["tco2e", "t co2e", "tonne co2", "mt co2", "co2e"],
-        "penalty_terms": ["employee", "salary", "turnover", "headcount",
-                          "water consumption", "waste generated", "csr spend",
-                          "total employees", "workforce", "remuneration"],
+        "penalty_terms": [
+            "employee", "salary", "turnover", "headcount",
+            "water consumption", "waste generated", "csr spend",
+            "total employees", "workforce", "remuneration",
+        ],
         "unit_hints":    ["tco2e", "t co2e", "tonne co2e", "mt co2e"],
     },
     "scope_2_emissions": {
-        "must_match":    ["scope 2", "scope-2", "indirect emissions",
-                          "purchased electricity", "market-based", "location-based",
-                          "electricity ghg", "grid emission"],
-        "must_exclude":  ["direct emissions", "stationary combustion", "scope 3"],
+        "must_match":    [
+            "scope 2", "scope-2", "indirect emissions",
+            "purchased electricity", "market-based", "location-based",
+            "electricity ghg", "grid emission",
+            # Broader terms:
+            "total scope", "scope 1 and", "scope ii",
+        ],
+        "must_exclude":  ["stationary combustion", "scope 3"],
         "unit_fallback": ["tco2e", "t co2e", "tonne co2", "co2e"],
-        "penalty_terms": ["employee", "salary", "turnover", "headcount",
-                          "water consumption", "waste generated"],
+        "penalty_terms": [
+            "employee", "salary", "turnover", "headcount",
+            "water consumption", "waste generated",
+        ],
         "unit_hints":    ["tco2e", "t co2e", "tonne co2e"],
     },
     "total_ghg_emissions": {
-        "must_match":    ["total ghg", "total emissions", "scope 1 and 2",
-                          "scope 1+2", "scope 1 & 2", "carbon footprint",
-                          "greenhouse gas", "ghg inventory", "co2 equivalent",
-                          "carbon neutral", "net zero"],
+        "must_match":    [
+            "total ghg", "total emissions", "scope 1 and 2",
+            "scope 1+2", "scope 1 & 2", "carbon footprint",
+            "greenhouse gas", "ghg inventory", "co2 equivalent",
+            "carbon neutral", "net zero",
+        ],
         "must_exclude":  [],
         "unit_fallback": ["tco2e", "t co2e", "mtco2e", "co2e"],
-        "penalty_terms": ["employee", "salary", "turnover", "headcount",
-                          "water consumption", "waste generated"],
+        "penalty_terms": [
+            "employee", "salary", "turnover", "headcount",
+            "water consumption", "waste generated",
+        ],
         "unit_hints":    ["tco2e", "t co2e", "mtco2e"],
     },
     "energy_consumption": {
-        "must_match":    ["total energy", "energy consumption", "energy consumed",
-                          "energy use", "fuel consumed", "electricity consumed",
-                          "gigajoule", "megawatt", "fuel consumption"],
+        "must_match":    [
+            "total energy", "energy consumption", "energy consumed",
+            "energy use", "fuel consumed", "electricity consumed",
+            "gigajoule", "megawatt", "fuel consumption",
+        ],
         "must_exclude":  ["emissions tco2e"],
         "unit_fallback": ["gj", "mwh", "gwh", "tj"],
-        "penalty_terms": ["employee", "salary", "turnover", "headcount",
-                          "water consumption", "waste generated", "csr"],
+        "penalty_terms": [
+            "employee", "salary", "turnover", "headcount",
+            "water consumption", "waste generated", "csr",
+        ],
         "unit_hints":    ["gj", "mwh", "gwh", "tj"],
     },
     "renewable_energy_percentage": {
-        "must_match":    ["renewable energy", "solar energy", "wind energy",
-                          "clean energy", "green energy", "renewable electricity",
-                          "non-fossil", "re share", "percent renewable",
-                          "solar power", "wind power"],
+        "must_match":    [
+            "renewable energy", "solar energy", "wind energy",
+            "clean energy", "green energy", "renewable electricity",
+            "non-fossil", "re share", "percent renewable",
+            "solar power", "wind power",
+        ],
         "must_exclude":  [],
         "unit_fallback": [],
-        "penalty_terms": ["employee", "salary", "turnover", "headcount",
-                          "water consumption", "waste generated"],
+        "penalty_terms": [
+            "employee", "salary", "turnover", "headcount",
+            "water consumption", "waste generated",
+        ],
         "unit_hints":    ["%", "percent"],
     },
     "water_consumption": {
-        "must_match":    ["water consumption", "water consumed", "water use",
-                          "water withdrawal", "freshwater", "water recycled",
-                          "water intensity", "kilolitre", "water discharge",
-                          "zero liquid discharge"],
+        "must_match":    [
+            "water consumption", "water consumed", "water use",
+            "water withdrawal", "freshwater", "water recycled",
+            "water intensity", "kilolitre", "water discharge",
+            "zero liquid discharge",
+        ],
         "must_exclude":  [],
         "unit_fallback": ["kl", "kilolitre", "m3"],
-        "penalty_terms": ["employee", "salary", "turnover", "headcount",
-                          "waste generated", "csr", "tco2e"],
+        "penalty_terms": [
+            "employee", "salary", "turnover", "headcount",
+            "waste generated", "csr", "tco2e",
+        ],
         "unit_hints":    ["kl", "kilolitre", "m3", "cubic met"],
     },
     "waste_generated": {
-        "must_match":    ["waste generated", "total waste", "solid waste",
-                          "hazardous waste", "non-hazardous waste",
-                          "waste disposed", "waste diverted", "waste management",
-                          "incineration", "landfill"],
+        "must_match":    [
+            "waste generated", "total waste", "solid waste",
+            "hazardous waste", "non-hazardous waste",
+            "waste disposed", "waste diverted", "waste management",
+            "incineration", "landfill",
+        ],
         "must_exclude":  [],
         "unit_fallback": ["metric tonne", "metric ton"],
-        "penalty_terms": ["employee", "salary", "turnover", "headcount", "csr",
-                          "tco2e", "water consumption"],
+        "penalty_terms": [
+            "employee", "salary", "turnover", "headcount", "csr",
+            "tco2e", "water consumption",
+        ],
         "unit_hints":    ["mt", "metric tonne", "metric ton", "kg"],
     },
     "employee_count": {
-        "must_match":    ["total employees", "total workforce", "headcount",
-                          "number of employees", "permanent employees",
-                          "workforce strength", "employee base", "fte",
-                          "employee strength"],
+        "must_match":    [
+            "total employees", "total workforce", "headcount",
+            "number of employees", "permanent employees",
+            "workforce strength", "employee base", "fte",
+            "employee strength",
+        ],
         "must_exclude":  [],
         "unit_fallback": [],
-        "penalty_terms": ["salary", "remuneration", "csr", "turnover rate",
-                          "energy consumption", "tco2e"],
+        "penalty_terms": [
+            "salary", "remuneration", "csr", "turnover rate",
+            "energy consumption", "tco2e",
+        ],
         "unit_hints":    ["headcount", "number", "nos", "employees"],
     },
     "women_in_workforce_percentage": {
-        "must_match":    ["women", "female", "gender diversity", "gender ratio",
-                          "women employees", "female employees"],
+        "must_match":    [
+            "women", "female", "gender diversity", "gender ratio",
+            "women employees", "female employees",
+        ],
         "must_exclude":  [],
         "unit_fallback": [],
-        "penalty_terms": ["salary", "remuneration", "csr", "energy consumption",
-                          "tco2e", "water"],
+        "penalty_terms": [
+            "salary", "remuneration", "csr", "energy consumption",
+            "tco2e", "water",
+        ],
         "unit_hints":    ["%", "percent"],
     },
     "csr_spend": {
-        "must_match":    ["csr expenditure", "csr spend", "csr investment",
-                          "amount spent on csr", "corporate social responsibility",
-                          "social spend", "community investment", "csr amount"],
+        "must_match":    [
+            "csr expenditure", "csr spend", "csr investment",
+            "amount spent on csr", "corporate social responsibility",
+            "social spend", "community investment", "csr amount",
+        ],
         "must_exclude":  [],
         "unit_fallback": ["crore", "lakh"],
-        "penalty_terms": ["energy consumption", "ghg", "tco2e", "water",
-                          "waste", "employee count"],
+        "penalty_terms": [
+            "energy consumption", "ghg", "tco2e", "water",
+            "waste", "employee count",
+        ],
         "unit_hints":    ["crore", "lakh", "inr"],
     },
 }
@@ -217,6 +261,8 @@ def is_relevant_chunk(
 
     Normal mode:
       - must_exclude fires ONLY when no must_match term is also present.
+        (A combined scope1+scope2 row should not be excluded just because
+        "scope 2" is in the must_exclude list for scope_1_emissions.)
       - Drops chunk if must_match is defined and none are found.
 
     unit_fallback_mode:
@@ -240,9 +286,8 @@ def is_relevant_chunk(
         if matched_term is None:
             return False, "no must_match term found"
 
-    # Contextual exclusion: only fire when must_match did NOT hit
-    # (If must_match hit, the chunk is in-context even if it also mentions
-    # an excluded term, e.g. a combined scope 1+2 row)
+    # Contextual exclusion: only fire when must_match did NOT hit.
+    # This allows combined "Scope 1 and Scope 2" rows to pass for both KPIs.
     if matched_term is None:
         for term in flt.get("must_exclude", []):
             if term.lower() in text_lower:
@@ -359,13 +404,8 @@ def _stitch_neighbors_page_scoped(
     """
     Stitch in adjacent chunks — SAME PAGE only.
 
-    The old implementation stitched by chunk_index ±1. Because chunk indices
-    are sequential across the whole document, N+1 is often on a different
-    page entirely. This caused irrelevant chunks (ZLD policy, waste tables)
-    to appear as top-ranked neighbors of a scope-1 narrative chunk.
-
-    New rule: a neighbor is included only if its page_number matches the
-    anchor chunk's page_number. Unknown page numbers are always included.
+    Only include a neighbor if its page_number matches the anchor chunk's
+    page_number. Unknown page numbers are always included.
     """
     seen: set[int] = set()
     result: list[ScoredChunk] = []
@@ -490,8 +530,7 @@ class RetrievalService:
         # ── Step 3: Unit-based fallback ────────────────────────────────────
         # When the GHG table is split across chunks, the value row may not
         # contain "scope 1" — only the header chunk does. The unit fallback
-        # re-admits any candidate that has tCO2e + a number, regardless of
-        # whether it passed strict filter.
+        # re-admits any candidate that has tCO2e + a number.
         if len(relevant) < _MIN_RELEVANT_CHUNKS:
             already_ids = {c.id for c in relevant}
             fallback_candidates: list[DocumentChunk] = []

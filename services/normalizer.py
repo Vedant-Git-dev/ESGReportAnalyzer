@@ -62,25 +62,56 @@ _ENERGY_TO_GJ: dict[str, float] = {
 }
 
 _GHG_TO_TCO2E: dict[str, float] = {
+    # ── tonne-scale (factor = 1.0) ─────────────────────────────────────────
     "tco2e": 1.0,
     "tco2":  1.0,
     "t co2e": 1.0,
     "t co2": 1.0,
     "tonne co2e": 1.0,
     "tonnes co2e": 1.0,
+    "ton co2e": 1.0,
+    "tons co2e": 1.0,
     "metric tonne co2e": 1.0,
     "metric tonnes co2e": 1.0,
+    "metric ton co2e": 1.0,
+    "metric tons co2e": 1.0,
     "metric tonnes of co2 equivalent": 1.0,
     "metric tonnes of co2equivalent": 1.0,
-    # Kilo / Mega
+    "metric tonnes co2 equivalent": 1.0,
+    "tonnes of co2 equivalent": 1.0,
+    "tonnes co2 equivalent": 1.0,
+    "tonne of co2 equivalent": 1.0,
+    "co2 equivalent": 1.0,
+    "co2e": 1.0,
+    # ── Kilo-tonne scale (factor = 1,000) ──────────────────────────────────
     "ktco2e": 1_000.0,
     "kt co2e": 1_000.0,
     "ktco2":  1_000.0,
+    "kt co2": 1_000.0,
     "kilo tonne co2e": 1_000.0,
+    "kilotonne co2e": 1_000.0,
+    "kilotonnes co2e": 1_000.0,
+    "thousand tonnes co2e": 1_000.0,
+    "thousand metric tonnes co2e": 1_000.0,
+    # ── Million-tonne scale (factor = 1,000,000) ───────────────────────────
+    # IMPORTANT: LLM sometimes returns "5 Million tonnes CO2e" for values
+    # that are actually 5,000,000 tCO2e.  All spellings must be here.
+    "million tonnes co2e": 1_000_000.0,
+    "million tonne co2e": 1_000_000.0,
+    "million metric tonnes co2e": 1_000_000.0,
+    "million metric tonne co2e": 1_000_000.0,
+    "million tonnes of co2e": 1_000_000.0,
+    "million tonnes of co2 equivalent": 1_000_000.0,
+    "million tonne co2 equivalent": 1_000_000.0,
+    "million tons co2e": 1_000_000.0,
+    "million ton co2e": 1_000_000.0,
     "mtco2e": 1_000_000.0,
-    "million tonnes coe": 1_000_000.0,
     "mt co2e": 1_000_000.0,
-    # GHG without CO2e label (context must confirm GHG)
+    "mtco2": 1_000_000.0,
+    "mt co2": 1_000_000.0,
+    "million tonnes coe": 1_000_000.0,
+    "million co2e": 1_000_000.0,
+    # ── GHG without explicit CO2e label (context must confirm GHG) ─────────
     "ghg": 1.0,
     "t ghg": 1.0,
 }
@@ -209,6 +240,8 @@ def _clean_unit(unit: str) -> str:
     u = unit.lower().strip()
     u = re.sub(r"[/\-_]", " ", u)
     u = re.sub(r"\s+", " ", u)
+    # Strip trailing/leading punctuation
+    u = u.strip(".")
     return u
 
 
@@ -247,7 +280,8 @@ def normalize(
     Args:
         kpi_name: Name of the KPI (e.g. "scope_1_emissions")
         value:    Raw numeric value as extracted
-        unit:     Unit string as extracted (e.g. "MJ", "tCO2e", "KL")
+        unit:     Unit string as extracted (e.g. "MJ", "tCO2e", "KL",
+                  "Million tonnes CO2e")
         category: Optional override ("energy"|"ghg"|"water"|"waste"|"revenue")
 
     Returns:
@@ -272,10 +306,19 @@ def normalize(
     factor = conv_table.get(cleaned)
     if factor is None:
         # Try prefix stripping (e.g. "metric tonnes CO2e" → "tco2e")
-        # Remove common prefixes before lookup
         for prefix in ("metric ", "total ", "absolute "):
             if cleaned.startswith(prefix):
-                factor = conv_table.get(cleaned[len(prefix):])
+                stripped = cleaned[len(prefix):]
+                factor = conv_table.get(stripped)
+                if factor:
+                    break
+
+    if factor is None:
+        # Try removing trailing noise words: "equivalent", "emissions"
+        for suffix in (" equivalent", " emissions", " emission"):
+            if cleaned.endswith(suffix):
+                stripped = cleaned[: -len(suffix)].strip()
+                factor = conv_table.get(stripped)
                 if factor:
                     break
 
