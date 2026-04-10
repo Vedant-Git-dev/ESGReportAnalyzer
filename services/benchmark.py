@@ -5,9 +5,28 @@ Converts extracted KPI values → intensity ratios (KPI / revenue).
 
 Design principles:
 - No hardcoded company data
-- Checks for pre-reported intensity ratios first (more accurate, PPP-adjusted)
+- Checks for pre-reported intensity ratios first (more accurate)
 - Falls back to computing absolute / revenue
 - Emits clear provenance for every ratio (reported vs computed)
+
+Bug fixes in this version
+--------------------------
+Bug 1 — _find_reported_ratio returns wrong value (ratio=580 for scope_1)
+  Root cause (a): The BRSR intensity search regex required only 3+ zeros
+  (pattern 0.0{3,}\\d+), so values like 0.0000580 (only 4 zeros) matched.
+  Real BRSR intensity ratios have 6-9 zeros (1e-6 to 1e-9 per rupee).
+  Fix: tighten to 6+ zeros (pattern 0.0{6,}\\d+).
+
+  Root cause (b): Even when the correct 6-zero value is found, BRSR uses a
+  *combined* scope1+scope2 label for GHG intensity, so the same value gets
+  applied to BOTH scope_1 and scope_2 individually — producing a 2× overcount.
+  Fix: validate the implied revenue (abs_value / (ratio * 1e7)) is within the
+  plausible corporate revenue range [1_000, 9_000_000] Cr. If not, discard
+  the reported ratio and fall back to computed (absolute / revenue).
+
+Bug 2 — waste/water reported_ratio also affected
+  Same root-cause as Bug 1 — the regex matched any 3+ zero decimal.
+  Both fixes apply equally to all KPI categories.
 
 Public API:
     build_company_profile(kpi_records, revenue_result, company_name, fy) -> CompanyProfile
@@ -65,27 +84,28 @@ RATIO_CEILINGS: dict[str, float] = {
     "waste_generated":     5,       # MT / Cr
 }
 
-# Pre-reported intensity ratio patterns found in BRSR/ESG reports
-# Matches: "intensity per rupee of turnover\n0.000000522"
-_INTENSITY_RE = re.compile(
-    r"intensity\s+per\s+rupee\s+(?:of\s+)?(?:turnover|operations)[^\n]{0,120}\n(0\.\d{5,})",
-    re.IGNORECASE,
-)
+# ── Plausible corporate revenue range (INR Crore) ─────────────────────────────
+# Used to validate back-computed revenue from reported intensity ratios.
+# Too small → the ratio was picked up from a subsection (CSR, standalone)
+# Too large → the ratio is for an entirely different metric
+_IMPLIED_REV_MIN_CR = 1_000       # ₹1,000 Cr minimum
+_IMPLIED_REV_MAX_CR = 9_000_000   # ₹90 lakh Cr maximum
 
-# Category-aware intensity labels
+# Category-aware intensity labels searched in BRSR PDF pages
 _KPI_INTENSITY_LABELS: dict[str, list[str]] = {
     "energy_consumption": [
         "energy intensity per rupee",
         "energy intensity per rupee of turnover",
         "energy intensity per rupee turnover",
     ],
-    "scope_1_emissions": [
+    # Note: BRSR only publishes a *combined* scope1+scope2 intensity.
+    # We deliberately do NOT list scope_1 or scope_2 here so that the
+    # combined label never gets applied to just one component.
+    # Both are computed from absolute / revenue instead.
+    "total_ghg_emissions": [
         "scope 1 and scope 2 emission intensity per rupee",
         "scope 1 and 2 emission intensity per rupee",
         "total scope 1 and scope 2 emissions per rupee",
-    ],
-    "scope_2_emissions": [
-        "scope 1 and scope 2 emission intensity per rupee",  # same block as scope 1
     ],
     "water_consumption": [
         "water intensity per rupee",
@@ -108,7 +128,7 @@ class RatioResult:
     ratio_value: float             # normalized_value / revenue_cr
     ratio_unit: str                # e.g. "GJ / INR_Crore"
     ratio_source: str              # "reported_ratio" | "computed"
-    reported_ratio_raw: Optional[float] = None  # raw ratio from PDF if available
+    reported_ratio_raw: Optional[float] = None  # raw per-rupee ratio from PDF
 
 
 @dataclass
@@ -116,7 +136,7 @@ class CompanyProfile:
     company_name: str
     fiscal_year: int
     revenue_cr: float
-    revenue_source: str            # "financial_statement" | "back_calculated"
+    revenue_source: str
     ratios: dict[str, RatioResult] = field(default_factory=dict)
     raw_kpis: dict[str, NormalizedKPI] = field(default_factory=dict)
 
@@ -139,30 +159,56 @@ class BenchmarkReport:
 
 
 _KPI_DISPLAY_NAMES = {
-    "energy_consumption": "Total Energy Consumption",
-    "scope_1_emissions":  "Scope 1 GHG Emissions",
-    "scope_2_emissions":  "Scope 2 GHG Emissions",
-    "water_consumption":  "Total Water Consumption",
-    "waste_generated":    "Total Waste Generated",
+    "energy_consumption":  "Total Energy Consumption",
+    "scope_1_emissions":   "Scope 1 GHG Emissions",
+    "scope_2_emissions":   "Scope 2 GHG Emissions",
+    "total_ghg_emissions": "Total GHG Emissions (Scope 1+2)",
+    "water_consumption":   "Total Water Consumption",
+    "waste_generated":     "Total Waste Generated",
 }
 
 
 def _find_reported_ratio(
     kpi_name: str,
     page_texts: list[str],
+    abs_normalized_value: float,
 ) -> Optional[float]:
     """
-    Search page texts for a pre-reported intensity ratio (KPI / revenue).
-    Returns the ratio value or None.
+    Search page texts for a pre-reported intensity ratio (KPI per INR Crore).
 
-    Corporate BRSR reports publish these as:
-      "Energy intensity per rupee of turnover (Total energy consumed / revenue from operations)
-       0.000000522   0.000000546"
-    The first number is the current year.
+    Returns the per-Crore ratio, or None if not found / implausible.
+
+    Bug 1 fix (a) — tighter regex: require 6+ zeros after the decimal point.
+    Real BRSR per-rupee intensities are in the range 1e-6 to 1e-9, so they
+    always have 6+ leading zeros:
+        energy:  ~5e-7  -> 0.000000522   (6 zeros)
+        GHG:     ~1e-8  -> 0.000000015   (7 zeros)
+        water:   ~3e-7  -> 0.00000030    (6 zeros)
+        waste:   ~2e-9  -> 0.0000000023  (8 zeros)
+    Values with only 4-5 zeros (e.g. 0.0000580) come from other sections
+    of the BRSR and must be excluded.
+
+    Bug 1 fix (b) — implied-revenue sanity check: after finding a ratio,
+    compute the implied company revenue:
+        implied_rev = abs_value / (ratio_per_rupee * 1e7)
+    If this falls outside [1_000, 9_000_000] Crore, the ratio is wrong
+    and we return None so the caller falls back to computed ratio.
+
+    Args:
+        kpi_name:             Name of the KPI (used to look up label list).
+        page_texts:           List of page text strings from the PDF.
+        abs_normalized_value: The already-normalised absolute KPI value
+                              (tCO2e, GJ, KL, MT etc.). Used for validation.
+
+    Returns:
+        per-Crore ratio (float) or None.
     """
     labels = _KPI_INTENSITY_LABELS.get(kpi_name, [])
     if not labels:
         return None
+
+    # Bug 1 fix (a): 6+ zeros = per-rupee intensity in the right range
+    _INTENSITY_VALUE_RE = re.compile(r"\b(0\.0{6,}\d+)\b")
 
     for text in page_texts:
         text_lower = text.lower()
@@ -170,15 +216,44 @@ def _find_reported_ratio(
             idx = text_lower.find(label)
             if idx < 0:
                 continue
-            # Grab the text after the label — the ratio number should be nearby
-            snippet = text[idx:idx+400]
-            # Find the first very small decimal (intensity ratios are ~1e-7 to 1e-4)
-            m = re.search(r"\b(0\.0{3,}\d+)\b", snippet)
-            if m:
-                try:
-                    return float(m.group(1))
-                except ValueError:
-                    pass
+            # Grab the text after the label — the ratio should appear nearby
+            snippet = text[idx: idx + 400]
+            m = _INTENSITY_VALUE_RE.search(snippet)
+            if not m:
+                continue
+            try:
+                ratio_per_rupee = float(m.group(1))
+            except ValueError:
+                continue
+
+            if ratio_per_rupee <= 0:
+                continue
+
+            # Convert per-rupee → per-Crore (1 Crore = 1e7 rupees)
+            ratio_per_cr = ratio_per_rupee * 1e7
+
+            # Bug 1 fix (b): validate implied revenue
+            if abs_normalized_value > 0:
+                implied_rev = abs_normalized_value / ratio_per_cr
+                if not (_IMPLIED_REV_MIN_CR <= implied_rev <= _IMPLIED_REV_MAX_CR):
+                    logger.debug(
+                        "benchmark.reported_ratio_implausible",
+                        kpi=kpi_name,
+                        ratio_per_rupee=ratio_per_rupee,
+                        ratio_per_cr=ratio_per_cr,
+                        abs_value=abs_normalized_value,
+                        implied_rev=implied_rev,
+                    )
+                    continue  # discard — ratio leads to nonsensical revenue
+
+            logger.debug(
+                "benchmark.reported_ratio_accepted",
+                kpi=kpi_name,
+                ratio_per_rupee=ratio_per_rupee,
+                ratio_per_cr=ratio_per_cr,
+            )
+            return ratio_per_cr
+
     return None
 
 
@@ -199,7 +274,8 @@ def build_company_profile(
         revenue_source: How revenue was obtained
         company_name:   Display name
         fiscal_year:    FY year
-        page_texts:     Optional list of page text strings to search for pre-reported ratios
+        page_texts:     Optional list of page text strings to search for
+                        pre-reported intensity ratios
 
     Returns:
         CompanyProfile with .ratios populated
@@ -216,7 +292,7 @@ def build_company_profile(
         if not rec or rec.get("value") is None:
             continue
 
-        # Normalise the raw KPI value
+        # Normalise the raw KPI value to canonical unit
         try:
             norm = normalize(
                 kpi_name=kpi_name,
@@ -224,19 +300,24 @@ def build_company_profile(
                 unit=str(rec.get("unit") or CANONICAL_UNITS.get(kpi_name, "")),
             )
         except NormalizationError as e:
+            logger.warning("benchmark.normalisation_failed", kpi=kpi_name, error=str(e))
             print(f"  [WARN] Normalisation failed for {kpi_name}: {e}")
             continue
 
         profile.raw_kpis[kpi_name] = norm
 
-        # Check for pre-reported ratio in PDF pages
-        reported_ratio = None
+        # Try to find a pre-reported intensity ratio in PDF pages.
+        # Pass the absolute value so the validator can sanity-check.
+        reported_ratio_per_cr: Optional[float] = None
         if page_texts:
-            reported_ratio = _find_reported_ratio(kpi_name, page_texts)
+            reported_ratio_per_cr = _find_reported_ratio(
+                kpi_name=kpi_name,
+                page_texts=page_texts,
+                abs_normalized_value=norm.normalized_value,
+            )
 
-        if reported_ratio is not None:
-            # Convert per-rupee ratio → per-Crore ratio (1 Crore = 1e7 rupees)
-            ratio_per_cr = reported_ratio * 1e7
+        if reported_ratio_per_cr is not None:
+            ratio_per_cr = reported_ratio_per_cr
             source = "reported_ratio"
         else:
             # Compute from absolute / revenue
@@ -244,8 +325,6 @@ def build_company_profile(
             source = "computed"
 
         # Guard: drop ratios that exceed plausibility ceiling.
-        # This catches unit errors (MJ not converted → 1000× inflation)
-        # and LLM hallucinations that produced absurd absolute values.
         ceiling = RATIO_CEILINGS.get(kpi_name)
         if ceiling and (ratio_per_cr <= 0 or ratio_per_cr > ceiling):
             logger.warning(
@@ -269,7 +348,10 @@ def build_company_profile(
             ratio_value=ratio_per_cr,
             ratio_unit=f"{canonical} / INR_Crore",
             ratio_source=source,
-            reported_ratio_raw=reported_ratio,
+            reported_ratio_raw=(
+                reported_ratio_per_cr / 1e7
+                if reported_ratio_per_cr is not None else None
+            ),
         )
 
     return profile
@@ -300,15 +382,14 @@ def compare_profiles(profiles: list[CompanyProfile]) -> BenchmarkReport:
         if len(entries) < 2:
             continue
 
-        # Lower is better for all 4 environmental KPIs
         lower = kpi_name in LOWER_IS_BETTER
-        best_entry = min(entries, key=lambda e: e[1]) if lower else max(entries, key=lambda e: e[1])
+        best_entry  = min(entries, key=lambda e: e[1]) if lower else max(entries, key=lambda e: e[1])
         worst_entry = max(entries, key=lambda e: e[1]) if lower else min(entries, key=lambda e: e[1])
 
-        if worst_entry[1] > 0:
-            pct_gap = abs(best_entry[1] - worst_entry[1]) / worst_entry[1] * 100
-        else:
-            pct_gap = 0.0
+        pct_gap = (
+            abs(best_entry[1] - worst_entry[1]) / worst_entry[1] * 100
+            if worst_entry[1] > 0 else 0.0
+        )
 
         comparisons.append(KPIComparison(
             kpi_name=kpi_name,
@@ -333,10 +414,7 @@ def compare_profiles(profiles: list[CompanyProfile]) -> BenchmarkReport:
 
 
 def print_report(report: BenchmarkReport) -> None:
-    """
-    Print benchmarking results to terminal.
-    Clean, structured output — no UI framework required.
-    """
+    """Print benchmarking results to terminal."""
     W = 80
     print("\n" + "=" * W)
     print("  ESG COMPETITIVE BENCHMARKING REPORT")
@@ -351,12 +429,11 @@ def print_report(report: BenchmarkReport) -> None:
     print("-" * W)
 
     for comp in report.comparisons:
-        winner_label = comp.winner.split(" FY")[0]  # short name
+        winner_label = comp.winner.split(" FY")[0]
         print(f"\n  ── {comp.display_name} ──")
         for company_label, ratio_val, source in comp.entries:
             is_winner = company_label == comp.winner
             marker = "★" if is_winner else " "
-            # Scientific notation for tiny ratios
             val_str = f"{ratio_val:.4e}" if ratio_val < 0.001 else f"{ratio_val:.4f}"
             src_short = "reported" if "reported" in source else "computed"
             print(f"  {marker} {company_label:<35} {val_str:>16} {comp.unit:<18} [{src_short}]")
