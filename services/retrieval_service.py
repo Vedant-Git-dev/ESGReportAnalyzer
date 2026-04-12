@@ -73,12 +73,12 @@ KPI_STRICT_FILTERS: dict[str, dict] = {
     "scope_1_emissions": {
         "must_match":    [
             "scope 1", "scope-1", "direct emissions", "direct ghg",
-            "stationary combustion", "fugitive", "owned vehicle",
-            "greenhouse gas emission", "ghg emission",
-            "carbon neutral", "co2 equivalent",
-            "total scope", "scope 1 and", "scope i",
+            # "stationary combustion", "fugitive", "owned vehicle",
+            # "greenhouse gas emission", "ghg emission",
+            # "carbon neutral", "co2 equivalent",
+            # "total scope", "scope 1 and", "scope i",
         ],
-        "must_exclude":  ["indirect emission", "purchased electricity", "scope 3"],
+        "must_exclude":  ["scope 1"],
         "unit_fallback": ["tco2e", "t co2e", "tonne co2", "mt co2", "co2e"],
         "penalty_terms": [
             "employee", "salary", "turnover", "headcount",

@@ -18,15 +18,18 @@ python main.py extract --company "TCS" --year 2024
 
 # Extract KPIs by report ID (legacy)
 python main.py extract --report-id <UUID>
+
+# Retrieve top retrieval chunks for a KPI
+python main.py kpi-retrieve --company "TCS" --year 2024 --kpi scope_1_emissions
 """
 from __future__ import annotations
 
 import sys
 import argparse
+import uuid
 
 from core.config import get_settings
 from core.logging_config import configure_logging
-import uuid
 
 
 def cmd_init_db(_args) -> None:
@@ -573,18 +576,22 @@ def cmd_search_chunks(args) -> None:
 
 
 def cmd_kpi_retrieve(args) -> None:
-    """Retrieve top chunks for a specific KPI from a report's parse cache."""
+    """Retrieve top chunks for a specific KPI using company name + year."""
     import uuid as _uuid
     from core.database import get_db
     from models.db_models import KPIDefinition, ParsedDocument
     from services.retrieval_service import RetrievalService
 
-    report_id = _uuid.UUID(args.report_id)
+    # Resolve report_id from company name + year
+    report_id = _resolve_report_id_from_company(args.company, args.year)
+    if report_id is None:
+        sys.exit(1)
 
     with get_db() as db:
         kpi = db.query(KPIDefinition).filter(KPIDefinition.name == args.kpi).first()
         if not kpi:
-            print(f"KPI '{args.kpi}' not found. Run: python main.py list-kpis")
+            print(f"KPI '{args.kpi}' not found.")
+            print("Run: python main.py list-kpis  to see available KPI names.")
             return
 
         parsed_doc = (
@@ -594,7 +601,8 @@ def cmd_kpi_retrieve(args) -> None:
             .first()
         )
         if not parsed_doc:
-            print(f"No parse cache found for report {report_id}")
+            print(f"No parse cache found for report {report_id}.")
+            print(f"Run: python main.py parse --report-id {report_id}")
             return
 
         service = RetrievalService()
@@ -605,16 +613,16 @@ def cmd_kpi_retrieve(args) -> None:
             top_k=args.top_k,
         )
 
-        kpi_display = kpi.display_name
-        kpi_unit = kpi.expected_unit
+        kpi_display  = kpi.display_name
+        kpi_unit     = kpi.expected_unit
         kpi_keywords = list(kpi.retrieval_keywords)
         rows = [
             {
-                "score": sc.score,
+                "score":       sc.score,
                 "chunk_index": sc.chunk.chunk_index,
-                "chunk_type": sc.chunk.chunk_type,
+                "chunk_type":  sc.chunk.chunk_type,
                 "page_number": sc.chunk.page_number,
-                "content": sc.chunk.content,
+                "content":     sc.chunk.content,
             }
             for sc in results
         ]
@@ -624,6 +632,7 @@ def cmd_kpi_retrieve(args) -> None:
         return
 
     print(f"\n=== KPI Retrieval: {kpi_display} ===")
+    print(f"Company       : {args.company}  FY{args.year}")
     print(f"Expected unit : {kpi_unit}")
     print(f"Keywords used : {', '.join(kpi_keywords)}")
     print(f"Chunks found  : {len(rows)}\n")
@@ -1021,10 +1030,19 @@ def main():
     sc_p.add_argument("--show-top", action="store_true", help="Print full content of top result")
 
     # Phase 3: kpi-retrieve
-    kr_p = sub.add_parser("kpi-retrieve", help="Retrieve top chunks for a KPI (preview of Phase 4 input)")
-    kr_p.add_argument("--report-id", required=True, help="UUID of the report")
-    kr_p.add_argument("--kpi", required=True, help="KPI name e.g. scope_1_emissions")
-    kr_p.add_argument("--top-k", type=int, default=7)
+    kr_p = sub.add_parser(
+        "kpi-retrieve",
+        help="Retrieve top chunks for a KPI — by company name + year",
+    )
+    kr_p.add_argument("--company", required=True,
+                      help="Company name (fuzzy-matched, e.g. 'TCS')")
+    kr_p.add_argument("--year",    required=True, type=int,
+                      help="Fiscal year (e.g. 2024)")
+    kr_p.add_argument("--kpi",     required=True,
+                      help="KPI name (e.g. scope_1_emissions).  "
+                           "Run list-kpis to see all options.")
+    kr_p.add_argument("--top-k",   type=int, default=7,
+                      help="Number of chunks to return (default: 7)")
 
     # list-kpis
     sub.add_parser("list-kpis", help="List all KPI definitions")

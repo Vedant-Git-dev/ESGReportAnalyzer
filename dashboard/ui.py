@@ -1,47 +1,28 @@
 """
-dashboard/ui.py
-
-ESG Competitive Intelligence Dashboard.
+ui.py  —  ESG Competitive Intelligence Dashboard (light theme, PDF upload)
 
 Pipeline contract
 -----------------
-For each company, the pipeline runs as follows:
+For each company slot the resolution order is:
 
-  Step 1 - DB existence check
-    Query the reports table for any row matching (company_name, fiscal_year).
-    "Any row" means at least one Report with status in
-    ('downloaded', 'parsed', 'extracted').
+  1. If a PDF is uploaded for that slot:
+       a. Register + parse the uploaded PDF (temp ingest).
+       b. Extract KPIs from the PDF.
+       c. Merge with any existing DB records for the same company+FY
+          (DB wins for KPIs that are already stored and pass plausibility;
+           newly extracted values fill the gaps).
 
-    If a report exists:
-      Load whatever KPI records and revenue are already stored.
-      Do NOT search Tavily again, even if some KPIs are missing.
-      Proceed directly to parse (idempotent) and extract on the existing report.
+  2. If NO PDF is uploaded:
+       a. Check DB for existing KPI records + revenue.
+       b. If found → fast path (no network, no parsing).
+       c. If not found → report an error; without a PDF there is nothing
+          to extract from.
 
-    If no report exists:
-      Run full ingestion: Tavily search -> classify URLs -> download PDFs.
-      Then parse -> extract -> store.
-
-  Step 2 - Full pipeline for Company 1
-    Ingestion (if needed) -> Parse -> Extract -> Store KPIs to DB.
-    Pipeline is fully complete and KPIs are written to DB before Company 2 starts.
-
-  Step 3 - Full pipeline for Company 2
-    Same as Step 2.
-
-  Step 4 - Load both from DB
-    Read KPI records fresh from DB for both companies.
-    Build benchmark profiles from those cached values.
-    Render charts and summary.
-
-This means:
-  - A second run for any company is always a DB-only read (no network calls).
-  - Missing KPIs on the first run are extracted from the already-downloaded PDF,
-    not from a new search.
-  - The comparison is always driven by DB values, never by in-memory state from
-    the pipeline run (avoids stale data bugs on re-renders).
+Same-company different-year comparison is fully supported — the two company
+slots are completely independent (name + FY + optional PDF).
 
 Run:
-    streamlit run dashboard/ui.py
+    streamlit run ui.py
 """
 from __future__ import annotations
 
@@ -63,83 +44,359 @@ import pandas as pd
 
 st.set_page_config(
     page_title="ESG Intelligence",
-    page_icon="",
+    page_icon="🌿",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # =============================================================================
-# DESIGN TOKENS
+# DESIGN TOKENS  — white background, black text
 # =============================================================================
-
 C = {
-    "bg":      "#0F1117",
-    "surface": "#1A1D27",
-    "border":  "#2D3142",
-    "text":    "#E8EAF0",
-    "sub":     "#8B92A9",
-    "green":   "#10B981",
-    "blue":    "#4B84DE",
-    "amber":   "#F59E0B",
-    "red":     "#EF4444",
-    "ca":      "#4B84DE",
-    "cb":      "#10B981",
-    "grid":    "#2D3142",
+    "bg":      "#FFFFFF",
+    "surface": "#F8F9FA",
+    "border":  "#DEE2E6",
+    "text":    "#212529",
+    "sub":     "#6C757D",
+    "green":   "#198754",
+    "blue":    "#0D6EFD",
+    "amber":   "#E6A817",
+    "red":     "#DC3545",
+    "ca":      "#0D6EFD",
+    "cb":      "#198754",
+    "grid":    "#E9ECEF",
     "font":    "Inter, 'Helvetica Neue', Arial, sans-serif",
 }
 
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-html,body,[class*="css"]{{font-family:{C['font']};background:{C['bg']};color:{C['text']};}}
-.stApp{{background:{C['bg']};}}
-[data-testid="stSidebar"]{{background:{C['surface']};border-right:1px solid {C['border']};}}
-.stButton>button{{
-    background:{C['blue']};color:#fff;border:none;border-radius:8px;
-    padding:0.55rem 1.4rem;font-family:{C['font']};font-weight:600;
-    font-size:14px;width:100%;letter-spacing:.02em;transition:background .2s;
+
+html, body, [class*="css"] {{
+    font-family: {C['font']};
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
 }}
-.stButton>button:hover{{background:#2563EB;}}
-.stButton>button:disabled{{background:{C['border']};color:{C['sub']};}}
-.stSelectbox>div>div,.stTextInput>div>div>input{{
-    border-radius:8px;border:1px solid {C['border']};
-    background:{C['surface']};color:{C['text']};
+.stApp {{ background-color: {C['bg']} !important; }}
+
+/* Sidebar */
+[data-testid="stSidebar"] {{
+    background-color: {C['surface']} !important;
+    border-right: 1px solid {C['border']};
 }}
-hr{{border-color:{C['border']};margin:1.2rem 0;}}
-.card{{
-    background:{C['surface']};border:1px solid {C['border']};
-    border-radius:12px;padding:18px 22px;margin-bottom:12px;
+[data-testid="stSidebar"] * {{
+    color: {C['text']} !important;
 }}
-.label{{
-    font-size:11px;font-weight:600;text-transform:uppercase;
-    letter-spacing:.08em;color:{C['sub']};margin-bottom:4px;
+
+/* All text elements */
+p, span, div, label, h1, h2, h3, h4, h5, h6,
+.stMarkdown, .stText, .stCaption {{
+    color: {C['text']} !important;
 }}
-.badge-green{{
-    background:#064E3B;color:#34D399;border-radius:20px;
-    font-size:11px;font-weight:700;padding:3px 12px;letter-spacing:.04em;
+
+/* ── All baseweb inputs (text, number, select) ── */
+[data-baseweb="input"],
+[data-baseweb="input-container"],
+[data-baseweb="base-input"] {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
 }}
-.badge-blue{{
-    background:#1E3A5F;color:#93C5FD;border-radius:6px;
-    font-size:11px;font-weight:600;padding:2px 9px;
+[data-baseweb="input"] *,
+[data-baseweb="input-container"] *,
+[data-baseweb="base-input"] * {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
 }}
-.sec{{
-    font-size:13px;font-weight:700;text-transform:uppercase;
-    letter-spacing:.1em;color:{C['sub']};margin-bottom:16px;
-    padding-bottom:8px;border-bottom:2px solid {C['border']};
+
+/* Text input */
+.stTextInput > div > div > input {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 6px;
 }}
-.summary-box{{
-    background:{C['surface']};border-left:4px solid {C['blue']};
-    border-radius:0 10px 10px 0;padding:20px 24px;
-    line-height:1.75;font-size:14.5px;
+
+/* Number input — the whole widget including stepper +/- buttons */
+.stNumberInput {{
+    background-color: {C['bg']} !important;
 }}
-.step-log{{
-    background:#0A0D14;border:1px solid {C['border']};border-radius:8px;
-    padding:12px 16px;font-family:monospace;font-size:12px;
-    color:#6EE7B7;line-height:1.6;
+.stNumberInput > div {{
+    background-color: {C['bg']} !important;
 }}
-.upload-zone{{
-    background:{C['surface']};border:2px dashed {C['border']};
-    border-radius:12px;padding:24px;text-align:center;
+.stNumberInput input {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 6px 0 0 6px;
+}}
+.stNumberInput button {{
+    background-color: {C['surface']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+}}
+.stNumberInput button:hover {{
+    background-color: {C['border']} !important;
+    color: {C['text']} !important;
+}}
+.stNumberInput button svg {{
+    fill: {C['text']} !important;
+    stroke: {C['text']} !important;
+}}
+/* baseweb number spinner container */
+[data-testid="stNumberInputContainer"] {{
+    background-color: {C['bg']} !important;
+}}
+[data-testid="stNumberInputContainer"] * {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+[data-testid="stNumberInputContainer"] button {{
+    background-color: {C['surface']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+}}
+
+/* Selectbox */
+.stSelectbox > div > div {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 6px;
+}}
+.stSelectbox [data-baseweb="select"],
+.stSelectbox [data-baseweb="select"] * {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+/* Selectbox dropdown popover */
+[data-baseweb="popover"] {{
+    background-color: {C['bg']} !important;
+}}
+[data-baseweb="menu"] {{
+    background-color: {C['bg']} !important;
+}}
+[data-baseweb="menu"] * {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+[data-baseweb="option"] {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+[data-baseweb="option"]:hover {{
+    background-color: {C['surface']} !important;
+    color: {C['text']} !important;
+}}
+li[role="option"] {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+li[role="option"]:hover {{
+    background-color: {C['surface']} !important;
+}}
+
+/* ── Buttons ── */
+.stButton > button {{
+    background-color: {C['blue']};
+    color: #ffffff !important;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1.2rem;
+    font-weight: 600;
+    font-size: 14px;
+    width: 100%;
+    transition: background 0.2s;
+}}
+.stButton > button:hover {{ background-color: #0b5ed7; color: #ffffff !important; }}
+.stButton > button:disabled {{
+    background-color: {C['border']} !important;
+    color: {C['sub']} !important;
+}}
+.stButton > button p {{
+    color: #ffffff !important;
+}}
+.stButton > button:disabled p {{
+    color: {C['sub']} !important;
+}}
+
+/* ── File uploader ── */
+[data-testid="stFileUploader"] {{
+    background-color: {C['surface']} !important;
+    border-radius: 8px;
+}}
+[data-testid="stFileUploader"] * {{
+    color: {C['text']} !important;
+}}
+/* Dropzone area */
+[data-testid="stFileUploaderDropzone"] {{
+    background-color: {C['surface']} !important;
+    border: 2px dashed {C['border']} !important;
+    border-radius: 8px;
+}}
+[data-testid="stFileUploaderDropzone"] * {{
+    color: {C['text']} !important;
+}}
+/* "Browse files" button inside file uploader */
+[data-testid="stFileUploaderDropzoneButton"] {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 6px !important;
+}}
+[data-testid="stFileUploaderDropzoneButton"]:hover {{
+    background-color: {C['surface']} !important;
+    color: {C['text']} !important;
+}}
+[data-testid="stFileUploaderDropzoneButton"] p,
+[data-testid="stFileUploaderDropzoneButton"] span {{
+    color: {C['text']} !important;
+}}
+
+/* Tabs */
+[data-testid="stTabs"] button {{
+    color: {C['text']} !important;
+    background: transparent !important;
+}}
+[data-testid="stTabs"] button[aria-selected="true"] {{
+    border-bottom: 2px solid {C['blue']} !important;
+    color: {C['blue']} !important;
+}}
+
+/* Expander */
+[data-testid="stExpander"] {{
+    background-color: {C['surface']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 8px;
+}}
+[data-testid="stExpander"] * {{
+    color: {C['text']} !important;
+}}
+
+/* Alerts / info boxes */
+.stAlert, .stInfo, .stWarning, .stError, .stSuccess {{
+    color: {C['text']} !important;
+}}
+.stAlert p, .stInfo p, .stWarning p, .stError p, .stSuccess p {{
+    color: {C['text']} !important;
+}}
+[data-testid="stAlertContainer"] {{
+    color: {C['text']} !important;
+}}
+[data-testid="stAlertContainer"] * {{
+    color: {C['text']} !important;
+}}
+
+/* Dataframe */
+[data-testid="stDataFrame"] * {{
+    color: {C['text']} !important;
+    background-color: {C['bg']} !important;
+}}
+
+/* Code blocks (step log) */
+.stCode, .stCodeBlock, code, pre {{
+    background-color: #F1F3F5 !important;
+    color: #212529 !important;
+    border: 1px solid {C['border']};
+    border-radius: 6px;
+}}
+
+/* Download button */
+[data-testid="stDownloadButton"] button {{
+    background-color: {C['surface']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+}}
+
+/* Dividers */
+hr {{ border-color: {C['border']}; margin: 1rem 0; }}
+
+/* Custom component classes */
+.card {{
+    background: {C['surface']};
+    border: 1px solid {C['border']};
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    color: {C['text']} !important;
+}}
+.card * {{ color: {C['text']} !important; }}
+
+.sec {{
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: {C['sub']};
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid {C['border']};
+}}
+
+.label-tag {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: {C['text']};
+    margin-bottom: 3px;
+}}
+
+.badge-green {{
+    background: #D1E7DD;
+    color: #0F5132 !important;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 10px;
+}}
+.badge-blue {{
+    background: #CFE2FF;
+    color: #084298 !important;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+}}
+.badge-amber {{
+    background: #FFF3CD;
+    color: #664D03 !important;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+}}
+
+.summary-box {{
+    background: {C['surface']};
+    border-left: 4px solid {C['blue']};
+    border-radius: 0 8px 8px 0;
+    padding: 18px 22px;
+    line-height: 1.75;
+    font-size: 14px;
+    color: {C['text']} !important;
+}}
+.summary-box * {{ color: {C['text']} !important; }}
+
+.step-log {{
+    background: #F1F3F5;
+    border: 1px solid {C['border']};
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: monospace;
+    font-size: 12px;
+    color: {C['text']} !important;
+    line-height: 1.6;
+    min-height: 60px;
+}}
+
+.upload-info {{
+    background: #E8F4FD;
+    border: 1px solid #B8D9F5;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #084298 !important;
+    margin-top: 4px;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -156,52 +413,32 @@ SECTORS = [
     "Infrastructure & Real Estate", "Metals & Mining", "Other",
 ]
 
-INGESTION_REPORT_TYPES = ["BRSR", "ESG", "Integrated"]
-UPLOAD_REPORT_TYPE_OPTIONS = ["BRSR", "ESG", "Integrated", "Annual", "CSR", "Other"]
-
 KPI_META: dict[str, dict] = {
-    "scope_1_emissions": {
-        "label":     "Scope 1 GHG",
-        "unit":      "tCO2e/Cr",
-        "max_ratio": 10,
-        "desc":      "Direct GHG emissions per INR Crore revenue",
-    },
-    "scope_2_emissions": {
-        "label":     "Scope 2 GHG",
-        "unit":      "tCO2e/Cr",
-        "max_ratio": 10,
-        "desc":      "Indirect GHG emissions per INR Crore revenue",
-    },
-    "total_ghg_emissions": {
-        "label":     "Total GHG",
-        "unit":      "tCO2e/Cr",
-        "max_ratio": 20,
-        "desc":      "Scope 1 + Scope 2 per INR Crore revenue",
-    },
-    "waste_generated": {
-        "label":     "Waste Intensity",
-        "unit":      "MT/Cr",
-        "max_ratio": 5,
-        "desc":      "Waste generated per INR Crore revenue",
-    },
+    "scope_1_emissions":   {"label": "Scope 1 GHG",     "unit": "tCO2e/Cr",
+                             "max_ratio": 10,  "desc": "Direct GHG per ₹Crore revenue"},
+    "scope_2_emissions":   {"label": "Scope 2 GHG",     "unit": "tCO2e/Cr",
+                             "max_ratio": 10,  "desc": "Indirect GHG per ₹Crore revenue"},
+    "total_ghg_emissions": {"label": "Total GHG",       "unit": "tCO2e/Cr",
+                             "max_ratio": 20,  "desc": "Scope 1+2 per ₹Crore revenue"},
+    "waste_generated":     {"label": "Waste Intensity", "unit": "MT/Cr",
+                             "max_ratio": 5,   "desc": "Waste per ₹Crore revenue"},
 }
 
-EXTRACTABLE_KPI_NAMES = [
-    "scope_1_emissions",
-    "scope_2_emissions",
-    "waste_generated",
-]
-
-TARGET_KPI_NAMES = list(KPI_META.keys())
+EXTRACTABLE_KPI_NAMES = ["scope_1_emissions", "scope_2_emissions", "waste_generated"]
+TARGET_KPI_NAMES      = list(KPI_META.keys())
 
 _KPI_PLAUSIBILITY: dict[str, tuple[float, float]] = {
-    "scope_1_emissions":   (1,      5_000_000),
-    "scope_2_emissions":   (1,      5_000_000),
-    "total_ghg_emissions": (1,     10_000_000),
-    "waste_generated":     (0.1,     500_000),
+    "scope_1_emissions":   (1,        5_000_000),
+    "scope_2_emissions":   (1,        5_000_000),
+    "total_ghg_emissions": (1,       10_000_000),
+    "waste_generated":     (0.1,        500_000),
 }
 
 _DEFAULT_REVENUE_CR = 315_322.0
+
+# Temporary PDF files are stored here during the Streamlit session
+_TEMP_DIR = Path(tempfile.gettempdir()) / "esg_ui_uploads"
+_TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # =============================================================================
@@ -210,25 +447,20 @@ _DEFAULT_REVENUE_CR = 315_322.0
 
 @dataclass
 class CompanyData:
-    """
-    All data for one company after the pipeline completes.
-    All fields are populated from DB reads, not in-memory pipeline state.
-    """
     company_name:   str
     fy:             int
     sector:         str
-    kpi_records:    dict                   # {kpi_name: {"value","unit","method","confidence"}}
-    revenue_result: object                 # RevenueResult | None
+    kpi_records:    dict
+    revenue_result: object          # RevenueResult | None
     log:            list[str]
     company_id:     Optional[uuid.UUID] = None
     report_id:      Optional[uuid.UUID] = None
     file_path:      Optional[str]       = None
+    pdf_source:     str = "db"          # "db" | "upload" | "db+upload"
 
 
 # =============================================================================
 # DB LAYER
-# All functions return plain Python values only.
-# No live ORM objects are returned to callers (avoids DetachedInstanceError).
 # =============================================================================
 
 @st.cache_resource
@@ -246,40 +478,19 @@ def _get_company_names() -> list[str]:
         from core.database import get_db
         from models.db_models import Company
         with get_db() as db:
-            rows = (
-                db.query(Company.name)
-                .filter(Company.is_active == True)
-                .order_by(Company.name)
-                .all()
-            )
+            rows = db.query(Company.name).filter(Company.is_active == True).order_by(Company.name).all()
         return [r[0] for r in rows]
     except Exception:
         return []
 
 
-def _db_check_report_exists(company_name: str, fy: int) -> dict:
-    """
-    Check whether any usable report already exists in DB for this company+year.
-
-    A "usable" report has status in ('downloaded', 'parsed', 'extracted').
-    We do a fuzzy company name match (ILIKE %name%) to handle minor variations.
-
-    Returns:
-        {
-            "exists":     bool,
-            "company_id": uuid | None,
-            "report_id":  uuid | None,   # best report to use for extraction
-            "file_path":  str  | None,
-        }
-
-    The "best" report is the most recently created one with a valid file_path.
-    If multiple reports exist (one per type), we prefer the BRSR one first,
-    then ESG, then Integrated, then any downloaded report.
-    """
-    empty = {"exists": False, "company_id": None, "report_id": None, "file_path": None}
+def _db_lookup(company_name: str, fy: int) -> dict:
+    """Load cached KPI records + revenue from DB. Returns plain Python dicts only."""
+    empty = {"kpis": {}, "revenue": None, "company_id": None, "report_id": None, "file_path": None}
     try:
         from core.database import get_db
-        from models.db_models import Company, Report
+        from models.db_models import Company, Report, KPIRecord, KPIDefinition
+        from services.revenue_extractor import RevenueResult
 
         with get_db() as db:
             company_row = (
@@ -292,176 +503,63 @@ def _db_check_report_exists(company_name: str, fy: int) -> dict:
 
             company_id = company_row.id
 
-            # Fetch all usable reports for this company+year, ordered by type priority
-            # then by creation date descending.
-            # Type priority: BRSR > ESG > Integrated > others.
-            reports = (
+            report_row = (
                 db.query(Report)
-                .filter(
-                    Report.company_id == company_id,
-                    Report.report_year == fy,
-                    Report.status.in_(["downloaded", "parsed", "extracted"]),
-                    Report.file_path.isnot(None),
-                )
-                .order_by(Report.created_at.desc())
-                .all()
-            )
-
-            if not reports:
-                return empty
-
-            # Pick the best report for extraction: prefer BRSR, then ESG,
-            # then Integrated, then fall back to the most recent.
-            type_priority = {"BRSR": 0, "ESG": 1, "Integrated": 2}
-            reports_with_file = [r for r in reports if r.file_path and Path(r.file_path).exists()]
-
-            if not reports_with_file:
-                # Reports exist in DB but the file is gone from disk.
-                # We still mark as "exists" so the pipeline re-uses the report_id
-                # for parse/extract (parse cache may still be valid).
-                best = reports[0]
-                return {
-                    "exists":     True,
-                    "company_id": company_id,
-                    "report_id":  best.id,
-                    "file_path":  best.file_path,
-                }
-
-            reports_with_file.sort(
-                key=lambda r: (type_priority.get(r.report_type, 99), -r.created_at.timestamp())
-            )
-            best = reports_with_file[0]
-
-            return {
-                "exists":     True,
-                "company_id": company_id,
-                "report_id":  best.id,
-                "file_path":  best.file_path,
-            }
-
-    except Exception as exc:
-        st.warning(f"DB existence check failed for {company_name}: {exc}")
-        return empty
-
-
-def _db_load_kpis_and_revenue(company_id: uuid.UUID, fy: int) -> dict:
-    """
-    Load all KPI records and revenue for a company+FY from the database.
-
-    This is called AFTER the pipeline completes for a company. It reads
-    the final persisted state from DB, not from in-memory variables.
-
-    KPI records are scoped to company_id + report_year, NOT to a specific
-    report_id. This means KPIs extracted from different report types
-    (e.g. scope_1 from BRSR and waste from ESG) are all returned together.
-
-    Revenue is read from the most recently created report that has revenue_cr set.
-
-    Returns:
-        {
-            "kpis":      {kpi_name: {"value","unit","method","confidence"}},
-            "revenue":   RevenueResult | None,
-            "report_id": uuid | None,   # report used for revenue (for file_path)
-            "file_path": str  | None,
-        }
-    """
-    empty = {"kpis": {}, "revenue": None, "report_id": None, "file_path": None}
-    try:
-        from core.database import get_db
-        from models.db_models import Report, KPIRecord, KPIDefinition
-        from services.revenue_extractor import RevenueResult
-
-        with get_db() as db:
-            # ---- Revenue: from most recent report that has it set ----
-            report_with_rev = (
-                db.query(Report)
-                .filter(
-                    Report.company_id == company_id,
-                    Report.report_year == fy,
-                    Report.revenue_cr.isnot(None),
-                )
+                .filter(Report.company_id == company_id, Report.report_year == fy)
                 .order_by(Report.created_at.desc())
                 .first()
             )
-
-            # Best report for file_path (most recent with a valid file)
-            best_report = (
-                db.query(Report)
-                .filter(
-                    Report.company_id == company_id,
-                    Report.report_year == fy,
-                    Report.status.in_(["downloaded", "parsed", "extracted"]),
-                    Report.file_path.isnot(None),
-                )
-                .order_by(Report.created_at.desc())
-                .first()
-            )
-            report_id = best_report.id        if best_report else None
-            file_path = best_report.file_path if best_report else None
+            report_id = report_row.id        if report_row else None
+            file_path = report_row.file_path if report_row else None
 
             cached_rev = None
-            if report_with_rev and getattr(report_with_rev, "revenue_cr", None) is not None:
+            if report_row and getattr(report_row, "revenue_cr", None) is not None:
                 try:
                     cached_rev = RevenueResult(
-                        value_cr=float(report_with_rev.revenue_cr),
-                        raw_value=str(report_with_rev.revenue_cr),
-                        raw_unit=getattr(report_with_rev, "revenue_unit", None) or "INR_Crore",
-                        source=getattr(report_with_rev, "revenue_source", None) or "db",
-                        page_number=0,
-                        confidence=0.99,
-                        pattern_name="cached",
+                        value_cr=float(report_row.revenue_cr),
+                        raw_value=str(report_row.revenue_cr),
+                        raw_unit=getattr(report_row, "revenue_unit",   None) or "INR_Crore",
+                        source  =getattr(report_row, "revenue_source", None) or "db",
+                        page_number=0, confidence=0.99, pattern_name="cached",
                     )
                 except Exception:
                     pass
 
-            # ---- KPIs: scoped to company+year across ALL reports ----
-            # This collects KPIs extracted from any report (BRSR, ESG, Integrated).
             kpis: dict = {}
-            for kpi_name in EXTRACTABLE_KPI_NAMES:
-                kdef = (
-                    db.query(KPIDefinition)
-                    .filter(KPIDefinition.name == kpi_name)
-                    .first()
-                )
-                if not kdef:
-                    continue
-
-                rec = (
-                    db.query(KPIRecord)
-                    .filter(
-                        KPIRecord.company_id        == company_id,
-                        KPIRecord.kpi_definition_id == kdef.id,
-                        KPIRecord.report_year       == fy,
-                        KPIRecord.normalized_value.isnot(None),
+            if report_row:
+                for kpi_name in EXTRACTABLE_KPI_NAMES:
+                    kdef = db.query(KPIDefinition).filter(KPIDefinition.name == kpi_name).first()
+                    if not kdef:
+                        continue
+                    rec = (
+                        db.query(KPIRecord)
+                        .filter(
+                            KPIRecord.company_id == company_id,
+                            KPIRecord.kpi_definition_id == kdef.id,
+                            KPIRecord.report_year == fy,
+                            KPIRecord.normalized_value.isnot(None),
+                        )
+                        .order_by(KPIRecord.extracted_at.desc())
+                        .first()
                     )
-                    .order_by(KPIRecord.extracted_at.desc())
-                    .first()
-                )
-                if not rec:
-                    continue
+                    if not rec:
+                        continue
+                    val  = rec.normalized_value
+                    unit = rec.unit or kdef.expected_unit
+                    lo, hi = _KPI_PLAUSIBILITY.get(kpi_name, (0, float("inf")))
+                    if not (lo <= val <= hi):
+                        continue
+                    kpis[kpi_name] = {
+                        "value": val, "unit": unit,
+                        "method": rec.extraction_method,
+                        "confidence": rec.confidence or 0.9,
+                    }
 
-                val  = rec.normalized_value
-                unit = rec.unit or kdef.expected_unit
-                lo, hi = _KPI_PLAUSIBILITY.get(kpi_name, (0, float("inf")))
-                if not (lo <= val <= hi):
-                    continue
-
-                kpis[kpi_name] = {
-                    "value":      val,
-                    "unit":       unit,
-                    "method":     rec.extraction_method,
-                    "confidence": rec.confidence or 0.9,
-                }
-
-        return {
-            "kpis":      kpis,
-            "revenue":   cached_rev,
-            "report_id": report_id,
-            "file_path": file_path,
-        }
+        return {"kpis": kpis, "revenue": cached_rev,
+                "company_id": company_id, "report_id": report_id, "file_path": file_path}
 
     except Exception as exc:
-        st.warning(f"DB KPI load failed for company_id={company_id}: {exc}")
+        st.warning(f"DB lookup failed for {company_name}: {exc}")
         return empty
 
 
@@ -475,18 +573,7 @@ def _db_ensure_schema() -> None:
         pass
 
 
-def _db_store_kpis(
-    company_id:     uuid.UUID,
-    report_id:      uuid.UUID,
-    fy:             int,
-    kpi_records:    dict,
-    revenue_result,
-) -> None:
-    """
-    Persist extracted KPIs and revenue to the database.
-    Skips exact duplicates (same company/KPI/year/value already present).
-    Revenue is only written if the report row does not already have a value.
-    """
+def _db_store_kpis(company_id, report_id, fy, kpi_records, revenue_result) -> None:
     try:
         from core.database import get_db
         from models.db_models import Report, KPIRecord, KPIDefinition
@@ -494,622 +581,534 @@ def _db_store_kpis(
 
         with get_db() as db:
             if revenue_result:
-                report_row = db.query(Report).filter(Report.id == report_id).first()
-                if report_row and getattr(report_row, "revenue_cr", None) is None:
+                rpt = db.query(Report).filter(Report.id == report_id).first()
+                if rpt and getattr(rpt, "revenue_cr", None) is None:
                     try:
-                        store_revenue(report_row, revenue_result, db)
+                        store_revenue(rpt, revenue_result, db)
                     except Exception:
                         pass
 
             for kpi_name, rec in kpi_records.items():
-                kdef = (
-                    db.query(KPIDefinition)
-                    .filter(KPIDefinition.name == kpi_name)
-                    .first()
-                )
+                kdef = db.query(KPIDefinition).filter(KPIDefinition.name == kpi_name).first()
                 if not kdef:
                     continue
-
-                already = (
+                exists = (
                     db.query(KPIRecord)
                     .filter(
-                        KPIRecord.company_id        == company_id,
+                        KPIRecord.company_id == company_id,
                         KPIRecord.kpi_definition_id == kdef.id,
-                        KPIRecord.report_year       == fy,
-                        KPIRecord.normalized_value  == rec["value"],
+                        KPIRecord.report_year == fy,
+                        KPIRecord.normalized_value == rec["value"],
                     )
                     .first()
                 )
-                if already:
+                if exists:
                     continue
-
                 db.add(KPIRecord(
-                    company_id        = company_id,
-                    report_id         = report_id,
-                    kpi_definition_id = kdef.id,
-                    report_year       = fy,
-                    raw_value         = str(rec["value"]),
-                    normalized_value  = rec["value"],
-                    unit              = rec["unit"],
-                    extraction_method = rec["method"],
-                    confidence        = rec["confidence"],
-                    is_validated      = rec["confidence"] >= 0.85,
-                    validation_notes  = "esg_dashboard",
+                    company_id=company_id, report_id=report_id,
+                    kpi_definition_id=kdef.id, report_year=fy,
+                    raw_value=str(rec["value"]), normalized_value=rec["value"],
+                    unit=rec["unit"], extraction_method=rec["method"],
+                    confidence=rec["confidence"],
+                    is_validated=rec["confidence"] >= 0.85,
+                    validation_notes="esg_dashboard",
                 ))
-
     except Exception as exc:
         st.warning(f"DB store failed: {exc}")
 
 
 # =============================================================================
-# PIPELINE STEPS
-# Each step is a pure function that appends to a log list.
+# PDF UPLOAD HELPERS
 # =============================================================================
 
-def _step_ingest(
+def _save_upload_to_temp(uploaded_file, slot_label: str) -> Optional[Path]:
+    """
+    Write a Streamlit UploadedFile to a temp path and return the path.
+    The file is kept until the session ends or the user uploads a new file.
+    Returns None on error.
+    """
+    try:
+        suffix = Path(uploaded_file.name).suffix or ".pdf"
+        tmp_path = _TEMP_DIR / f"esg_{slot_label}_{uuid.uuid4().hex[:8]}{suffix}"
+        tmp_path.write_bytes(uploaded_file.getbuffer())
+        return tmp_path
+    except Exception as exc:
+        st.warning(f"Could not save uploaded file: {exc}")
+        return None
+
+
+def _ingest_uploaded_pdf(
+    pdf_path: Path,
     company_name: str,
-    fy:           int,
-    sector:       str,
-    log:          list[str],
+    fy: int,
+    sector: str,
+    report_type: str,
+    log: list[str],
 ) -> dict:
     """
-    Search Tavily for BRSR, ESG, and Integrated reports and download each.
+    Register uploaded PDF, parse it, extract KPIs + revenue.
 
-    This step is ONLY called when _db_check_report_exists() returns False.
-    It will never be called for a company that already has a report in DB.
+    Returns {company_id, report_id, kpis, revenue, file_path} or empty dict on failure.
+    """
+    from agents.ingestion_agent import IngestionAgent
 
-    Internally: collect_and_classify() runs all query templates, pools URLs,
-    globally deduplicates, classifies by keyword rules (BRSR>ESG>Integrated),
-    and downloads one PDF per type.
+    log.append(f"Registering uploaded PDF: {pdf_path.name}")
+    try:
+        result = IngestionAgent().ingest_uploaded_pdf(
+            source_path=pdf_path,
+            company_name=company_name,
+            year=fy,
+            sector=sector,
+            report_type=report_type,
+        )
+    except Exception as exc:
+        log.append(f"  PDF ingestion failed: {exc}")
+        return {}
 
-    Returns:
-        {"company_id": uuid|None, "report_id": uuid|None, "file_path": str|None}
+    company   = result["company"]
+    report    = result["report"]
+    is_dup    = result.get("is_duplicate", False)
+    company_id = company.id
+    report_id  = report.id
+
+    if is_dup:
+        log.append(f"  Duplicate detected (SHA-256 match). Reusing report {str(report_id)[:8]}.")
+    else:
+        log.append(f"  Registered as {report_type} report (id={str(report_id)[:8]}).")
+
+    # Parse
+    log.append("Parsing uploaded PDF...")
+    try:
+        from services.parse_orchestrator import ParseOrchestrator
+        parsed = ParseOrchestrator().run(report_id=report_id, force=False)
+        log.append(f"  {parsed.page_count} pages, {parsed.meta.get('chunk_count','?')} chunks.")
+    except Exception as exc:
+        log.append(f"  Parsing failed: {exc}")
+        return {}
+
+    # Extract KPIs
+    log.append("Extracting KPIs from uploaded PDF...")
+    new_kpis: dict = {}
+    try:
+        from agents.extraction_agent import ExtractionAgent
+        from core.database import get_db
+        with get_db() as db:
+            extracted_list = ExtractionAgent().extract_all(
+                report_id=report_id, db=db, kpi_names=EXTRACTABLE_KPI_NAMES,
+            )
+        for ext in extracted_list:
+            if ext.normalized_value is None:
+                log.append(f"  {ext.kpi_name}: not found")
+                continue
+            val, unit = ext.normalized_value, ext.unit or ""
+            lo, hi = _KPI_PLAUSIBILITY.get(ext.kpi_name, (0, float("inf")))
+            if not (lo <= val <= hi):
+                log.append(f"  {ext.kpi_name}: {val:,.2f} outside range — dropped")
+                continue
+            new_kpis[ext.kpi_name] = {
+                "value": val, "unit": unit,
+                "method": ext.extraction_method,
+                "confidence": ext.confidence or 0.5,
+            }
+            log.append(f"  {ext.kpi_name}: {val:,.2f} {unit} [{ext.extraction_method} conf={ext.confidence:.2f}]")
+    except Exception as exc:
+        log.append(f"  KPI extraction failed: {exc}")
+
+    # Revenue
+    log.append("Extracting revenue from uploaded PDF...")
+    new_revenue = None
+    try:
+        from services.revenue_extractor import extract_revenue
+        new_revenue = extract_revenue(pdf_path=Path(report.file_path), fiscal_year_hint=fy)
+        if new_revenue:
+            log.append(f"  Revenue: ₹{new_revenue.value_cr:,.0f} Cr [{new_revenue.pattern_name}]")
+        else:
+            log.append("  Revenue: not found in PDF.")
+    except Exception as exc:
+        log.append(f"  Revenue extraction failed: {exc}")
+
+    return {
+        "company_id": company_id,
+        "report_id":  report_id,
+        "file_path":  report.file_path,
+        "kpis":       new_kpis,
+        "revenue":    new_revenue,
+    }
+
+
+# =============================================================================
+# PIPELINE STEPS
+# =============================================================================
+
+def _step_search_and_ingest(
+    company_name: str,
+    fy: int,
+    sector: str,
+    log: list[str],
+) -> tuple:
+    """
+    Run the full Tavily search + download pipeline for a company+FY.
+    Returns (report_id, company_id, file_path) or (None, None, None) on failure.
+    Called only when there is no DB data and no uploaded PDF.
     """
     from agents.ingestion_agent import IngestionAgent
     from models.schemas import CompanyCreate
 
-    agent        = IngestionAgent()
-    company_data = CompanyCreate(name=company_name, sector=sector, country="India")
-
-    log.append(
-        f"Searching BRSR, ESG, and Integrated reports for {company_name} FY{fy}."
-    )
-
+    log.append(f"Searching for {company_name} FY{fy} reports via Tavily...")
     try:
-        result = agent.run_multi_report_types(
-            company_data=company_data,
-            year=fy,
-            auto_download=True,
+        agent        = IngestionAgent()
+        company_data = CompanyCreate(name=company_name, sector=sector, country="India")
+        result       = agent.run_multi_report_types(
+            company_data=company_data, year=fy, auto_download=True,
         )
     except Exception as exc:
-        log.append(f"  Ingestion failed: {exc}")
-        return {"company_id": None, "report_id": None, "file_path": None}
+        log.append(f"  Search failed: {exc}")
+        return None, None, None
 
-    company       = result["company"]
-    downloads     = result["downloaded_reports"]
-    not_found     = result.get("not_found_types", [])
-    failed        = result.get("failed_types", [])
+    company   = result.get("company")
+    downloads = result.get("downloaded_reports", [])
+    not_found = result.get("not_found_types", [])
+    failed    = result.get("failed_types", [])
 
-    for rtype in INGESTION_REPORT_TYPES:
+    for rtype in ["BRSR", "ESG", "Integrated"]:
         dl = next((d for d in downloads if d.report_type == rtype), None)
         if dl:
-            fname   = Path(dl.file_path).name if dl.file_path else "unknown"
-            size_mb = round((dl.file_size_bytes or 0) / (1024 * 1024), 1)
-            log.append(f"  [{rtype}] downloaded: {fname} ({size_mb} MB)")
+            size_mb = round((dl.file_size_bytes or 0) / 1e6, 1)
+            log.append(f"  [{rtype}] downloaded ({size_mb} MB).")
         elif rtype in not_found:
-            log.append(
-                f"  [{rtype}] NOT FOUND: no URL matched {rtype} keywords. "
-                f"Company may not publish a separate {rtype} report."
-            )
+            log.append(f"  [{rtype}] not found.")
         elif rtype in failed:
-            log.append(
-                f"  [{rtype}] DOWNLOAD FAILED: URL found but all "
-                f"download attempts failed."
-            )
-        else:
-            log.append(f"  [{rtype}] no result.")
+            log.append(f"  [{rtype}] download failed.")
 
     if not downloads:
-        log.append("No PDFs were downloaded for any report type.")
-        return {
-            "company_id": company.id if company else None,
-            "report_id":  None,
-            "file_path":  None,
-        }
+        log.append("  No PDFs downloaded. Check the Tavily API key and company name.")
+        return None, None, None
 
-    # Use the best downloaded report for extraction (BRSR preferred).
+    # Prefer BRSR > ESG > Integrated
     type_priority = {"BRSR": 0, "ESG": 1, "Integrated": 2}
-    downloads_with_file = [d for d in downloads if d.file_path and Path(d.file_path).exists()]
-
-    if not downloads_with_file:
-        log.append("Downloads registered in DB but files not found on disk.")
-        # Return the first download's ID anyway — parse cache may still work
-        best = downloads[0]
+    with_file = [d for d in downloads if d.file_path and Path(d.file_path).exists()]
+    if with_file:
+        with_file.sort(key=lambda d: type_priority.get(d.report_type, 99))
+        best = with_file[0]
     else:
-        downloads_with_file.sort(key=lambda d: type_priority.get(d.report_type, 99))
-        best = downloads_with_file[0]
+        best = downloads[0]
 
-    log.append(
-        f"Using {best.report_type} report for extraction "
-        f"(report_id: {str(best.id)[:8]})"
-    )
-    return {
-        "company_id": company.id,
-        "report_id":  best.id,
-        "file_path":  best.file_path,
-    }
+    log.append(f"  Using {best.report_type} report (id={str(best.id)[:8]}).")
+    return best.id, company.id if company else None, best.file_path
 
 
 def _step_parse(report_id: uuid.UUID, log: list[str]) -> bool:
-    """
-    Run ParseOrchestrator on a report. Idempotent: returns cached result
-    if (report_id, parser_version) already parsed.
-
-    Returns True on success, False on failure.
-    """
     from services.parse_orchestrator import ParseOrchestrator
-
-    log.append("Parsing PDF...")
+    log.append("Parsing PDF (cache check)...")
     try:
-        result = ParseOrchestrator().run(report_id=report_id, force=False)
-        log.append(
-            f"  Parsed: {result.page_count} pages, "
-            f"{result.meta.get('chunk_count', '?')} chunks, "
-            f"{result.meta.get('table_count', '?')} tables."
-        )
+        r = ParseOrchestrator().run(report_id=report_id, force=False)
+        log.append(f"  {r.page_count} pages, {r.meta.get('chunk_count','?')} chunks.")
         return True
     except Exception as exc:
-        log.append(f"  Parsing failed: {exc}")
+        log.append(f"  Parse failed: {exc}")
         return False
 
 
-def _step_extract(
-    report_id:   uuid.UUID,
-    fy:          int,
-    log:         list[str],
-    llm_service,
-) -> dict:
-    """
-    Run KPI extraction and revenue extraction on a parsed report.
-
-    KPI extraction: regex -> LLM -> validation (via ExtractionAgent).
-    Revenue extraction: regex -> back-calculation -> LLM fallback.
-
-    Returns {"kpis": dict, "revenue": RevenueResult | None}.
-    """
+def _step_extract(report_id: uuid.UUID, fy: int, log: list[str], llm_service) -> dict:
     from agents.extraction_agent import ExtractionAgent
     from services.revenue_extractor import extract_revenue
     from core.database import get_db
 
     new_kpis: dict = {}
-
-    log.append("Extracting KPIs (regex -> LLM -> validation)...")
+    log.append("Extracting KPIs (regex → LLM → validate)...")
     try:
         with get_db() as db:
             extracted_list = ExtractionAgent().extract_all(
-                report_id=report_id,
-                db=db,
-                kpi_names=EXTRACTABLE_KPI_NAMES,
+                report_id=report_id, db=db, kpi_names=EXTRACTABLE_KPI_NAMES,
             )
-
         for ext in extracted_list:
             if ext.normalized_value is None:
                 log.append(f"  {ext.kpi_name}: not found")
                 continue
-
-            val  = ext.normalized_value
-            unit = ext.unit or ""
+            val, unit = ext.normalized_value, ext.unit or ""
             lo, hi = _KPI_PLAUSIBILITY.get(ext.kpi_name, (0, float("inf")))
             if not (lo <= val <= hi):
-                log.append(
-                    f"  {ext.kpi_name}: {val:,.2f} {unit} "
-                    f"outside plausible range [{lo}, {hi}] - dropped"
-                )
+                log.append(f"  {ext.kpi_name}: {val:,.2f} out of range — dropped")
                 continue
-
             new_kpis[ext.kpi_name] = {
-                "value":      val,
-                "unit":       unit,
-                "method":     ext.extraction_method,
+                "value": val, "unit": unit,
+                "method": ext.extraction_method,
                 "confidence": ext.confidence or 0.5,
             }
-            log.append(
-                f"  {ext.kpi_name}: {val:,.2f} {unit} "
-                f"[{ext.extraction_method} conf={ext.confidence:.2f}]"
-            )
-
+            log.append(f"  {ext.kpi_name}: {val:,.2f} {unit} [{ext.extraction_method} conf={ext.confidence:.2f}]")
     except Exception as exc:
-        log.append(f"  KPI extraction failed: {exc}")
+        log.append(f"  Extraction failed: {exc}")
 
     log.append("Extracting revenue...")
     new_revenue = None
-
     try:
-        from core.database import get_db
+        from core.database import get_db as _gdb
         from models.db_models import Report
-        with get_db() as db:
-            rpt          = db.query(Report).filter(Report.id == report_id).first()
-            pdf_path_str = rpt.file_path if rpt else None
+        with _gdb() as db:
+            rpt = db.query(Report).filter(Report.id == report_id).first()
+            pdf_str = rpt.file_path if rpt else None
     except Exception:
-        pdf_path_str = None
+        pdf_str = None
 
-    if pdf_path_str and Path(pdf_path_str).exists():
+    if pdf_str and Path(pdf_str).exists():
         try:
             new_revenue = extract_revenue(
-                pdf_path         = Path(pdf_path_str),
-                fiscal_year_hint = fy,
-                llm_service      = llm_service,
+                pdf_path=Path(pdf_str), fiscal_year_hint=fy, llm_service=llm_service
             )
             if new_revenue:
-                log.append(
-                    f"  Revenue: INR {new_revenue.value_cr:,.0f} Crore "
-                    f"[{new_revenue.pattern_name} conf={new_revenue.confidence:.2f}]"
-                )
+                log.append(f"  Revenue: ₹{new_revenue.value_cr:,.0f} Cr [{new_revenue.pattern_name}]")
             else:
-                log.append("  Revenue: not found - default will be used")
+                log.append("  Revenue: not found.")
         except Exception as exc:
             log.append(f"  Revenue extraction failed: {exc}")
     else:
-        log.append("  Revenue: PDF path not available for extraction")
+        log.append("  Revenue: PDF unavailable.")
 
     return {"kpis": new_kpis, "revenue": new_revenue}
 
 
 def _derive_total_ghg(kpi_records: dict) -> Optional[dict]:
-    """
-    Compute total_ghg = scope_1 + scope_2 after normalisation.
-
-    BRSR tables never state an absolute total GHG figure; they only publish
-    the intensity ratio (per rupee of turnover). Derivation is the correct
-    approach for BRSR-sourced data.
-
-    Returns None if total_ghg is already in kpi_records or either component
-    is missing.
-    """
     if "total_ghg_emissions" in kpi_records:
         return None
-
     s1 = kpi_records.get("scope_1_emissions")
     s2 = kpi_records.get("scope_2_emissions")
     if not s1 or not s2:
         return None
-
     try:
         from services.normalizer import normalize
-        n1    = normalize("scope_1_emissions", float(s1["value"]), s1["unit"])
-        n2    = normalize("scope_2_emissions", float(s2["value"]), s2["unit"])
+        n1 = normalize("scope_1_emissions", float(s1["value"]), s1["unit"])
+        n2 = normalize("scope_2_emissions", float(s2["value"]), s2["unit"])
         total = round(n1.normalized_value + n2.normalized_value, 2)
     except Exception:
         return None
-
     return {
-        "value":      total,
-        "unit":       "tCO2e",
-        "method":     "derived",
+        "value": total, "unit": "tCO2e", "method": "derived",
         "confidence": round(min(s1["confidence"], s2["confidence"]) * 0.99, 3),
     }
 
 
 # =============================================================================
-# MAIN COMPARISON PIPELINE
-#
-# run_company_pipeline() implements the full DB-first contract:
-#
-#   1. Check DB: does any report exist for (company_name, fy)?
-#      YES -> skip ingestion entirely. Use existing report_id for parse+extract.
-#      NO  -> run ingestion (search + download), then parse + extract.
-#
-#   2. Parse (idempotent via parse cache).
-#
-#   3. Extract KPIs and revenue.
-#
-#   4. Store new KPIs and revenue to DB.
-#
-#   5. Load final KPI state from DB (authoritative read after all writes).
-#      Return CompanyData populated from DB, not from in-memory variables.
-#
-# The final DB read (step 5) is what gets used for comparison. This ensures
-# that even if the pipeline run encountered errors for some KPIs, the
-# comparison uses whatever was successfully stored - no partial in-memory
-# state leaks into the benchmark.
+# MAIN PIPELINE — handles both DB-only and PDF-upload paths
 # =============================================================================
 
 def run_company_pipeline(
-    company_name:       str,
-    fy:                 int,
-    sector:             str,
-    db_online:          bool,
+    company_name:    str,
+    fy:              int,
+    sector:          str,
+    db_online:       bool,
     llm_service,
     status_placeholder,
+    uploaded_file=None,         # Streamlit UploadedFile or None
+    upload_report_type: str = "BRSR",
 ) -> CompanyData:
     """
-    DB-first pipeline for one company+FY.
+    Resolve KPIs for one company slot.
 
-    Returns CompanyData populated from a final DB read, not from pipeline
-    in-memory state. This guarantees the comparison always uses what was
-    actually persisted.
+    Resolution order
+    ----------------
+    1. If a PDF is uploaded:
+         a. Ingest (register + parse + extract) the uploaded PDF.
+         b. Load any existing DB records for the same company+FY.
+         c. Merge: DB wins for KPIs already present; PDF fills gaps.
+         d. Store newly extracted KPIs to DB (if DB is online).
+
+    2. If no PDF is uploaded:
+         a. Fast path if DB has all KPIs + revenue.
+         b. If DB has a report with a parseable PDF, run parse+extract.
+         c. If nothing is available, return empty CompanyData with an error.
     """
     log: list[str] = []
 
-    def _update(msg: str) -> None:
+    def _upd(msg: str) -> None:
         log.append(msg)
         status_placeholder.markdown(
             "<div class='step-log'>" + "<br>".join(log[-14:]) + "</div>",
             unsafe_allow_html=True,
         )
 
-    _update(f"Starting pipeline for {company_name} FY{fy}.")
+    _upd(f"Starting: {company_name} FY{fy}")
 
     company_id: Optional[uuid.UUID] = None
     report_id:  Optional[uuid.UUID] = None
     file_path:  Optional[str]       = None
+    pdf_source  = "db"
 
-    # ------------------------------------------------------------------
-    # Step 1: DB existence check
-    # ------------------------------------------------------------------
+    # ── Step 1: DB lookup ─────────────────────────────────────────────────────
+    db_kpis: dict  = {}
+    db_rev         = None
     if db_online:
-        _update("Checking database for existing reports...")
-        existence = _db_check_report_exists(company_name, fy)
+        _upd("Checking DB cache...")
+        db_data    = _db_lookup(company_name, fy)
+        db_kpis    = db_data["kpis"]
+        db_rev     = db_data["revenue"]
+        company_id = db_data["company_id"]
+        report_id  = db_data["report_id"]
+        file_path  = db_data["file_path"]
+        if db_kpis:
+            _upd(f"  DB: {len(db_kpis)} KPI(s) cached.")
+        if db_rev:
+            _upd(f"  DB: Revenue ₹{db_rev.value_cr:,.0f} Cr cached.")
 
-        if existence["exists"]:
-            # Report(s) already exist in DB.
-            # Do NOT search Tavily again.
-            # Proceed with existing report_id for parse + extract.
-            company_id = existence["company_id"]
-            report_id  = existence["report_id"]
-            file_path  = existence["file_path"]
-            _update(
-                f"  Report found in DB (report_id: {str(report_id)[:8]}). "
-                f"Skipping search. Using cached report."
-            )
-            if file_path and Path(file_path).exists():
-                _update(f"  PDF on disk: {Path(file_path).name}")
-            else:
-                _update(
-                    "  PDF file not found on disk. "
-                    "Parse cache may still be valid; extraction will proceed."
-                )
+    # ── Step 2: Handle uploaded PDF ───────────────────────────────────────────
+    pdf_kpis: dict = {}
+    pdf_rev        = None
+    pdf_report_id  = None
+    pdf_company_id = None
+    pdf_file_path  = None
+
+    if uploaded_file is not None:
+        _upd(f"PDF uploaded: {uploaded_file.name} ({round(uploaded_file.size/1e6,1)} MB)")
+        tmp_path = _save_upload_to_temp(uploaded_file, f"{company_name}_{fy}")
+        if tmp_path is None:
+            _upd("  Failed to save uploaded file.")
         else:
-            # No report in DB: run full ingestion.
-            _update(
-                f"  No reports found in DB for {company_name} FY{fy}. "
-                f"Starting ingestion..."
+            upload_result = _ingest_uploaded_pdf(
+                pdf_path=tmp_path,
+                company_name=company_name,
+                fy=fy,
+                sector=sector,
+                report_type=upload_report_type,
+                log=log,
             )
-            ingest_result = _step_ingest(company_name, fy, sector, log)
-            company_id = ingest_result["company_id"]
-            report_id  = ingest_result["report_id"]
-            file_path  = ingest_result["file_path"]
+            # Clean up temp file (permanent copy is in storage)
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except Exception:
+                pass
 
-            if not report_id:
-                _update(
-                    "Ingestion did not produce a report_id. "
-                    "Cannot proceed with parse or extraction."
-                )
+            if upload_result:
+                pdf_kpis       = upload_result.get("kpis", {})
+                pdf_rev        = upload_result.get("revenue")
+                pdf_report_id  = upload_result.get("report_id")
+                pdf_company_id = upload_result.get("company_id")
+                pdf_file_path  = upload_result.get("file_path")
+                _upd(f"  PDF extraction complete: {len(pdf_kpis)} KPI(s) found.")
+                pdf_source = "upload"
+
+    # ── Step 3: DB-only extraction if needed ──────────────────────────────────
+    # Only run if no PDF was uploaded AND DB has a parseable report
+    db_extracted_kpis: dict = {}
+    db_extracted_rev       = None
+
+    if uploaded_file is None:
+        missing  = [k for k in EXTRACTABLE_KPI_NAMES if k not in db_kpis]
+        need_rev = db_rev is None
+
+        if (missing or need_rev) and db_online and report_id:
+            _upd(f"  Missing from DB: {missing}. Running extraction...")
+            if file_path and Path(file_path).exists():
+                parse_ok = _step_parse(report_id, log)
+                if parse_ok:
+                    ext = _step_extract(report_id, fy, log, llm_service)
+                    db_extracted_kpis = ext.get("kpis", {})
+                    db_extracted_rev  = ext.get("revenue")
+            else:
+                _upd("  No PDF on disk — will try search pipeline.")
+
+        # ── Search pipeline fallback ──────────────────────────────────────────
+        # No DB data, no upload, no stored PDF → run full Tavily ingestion.
+        if not db_kpis and not db_extracted_kpis:
+            _upd(f"No local data found. Running search pipeline for {company_name} FY{fy}...")
+            search_report_id, search_company_id, search_file_path = (
+                _step_search_and_ingest(company_name, fy, sector, log)
+            )
+            if search_report_id:
+                company_id = search_company_id
+                report_id  = search_report_id
+                file_path  = search_file_path
+                parse_ok   = _step_parse(report_id, log)
+                if parse_ok:
+                    ext = _step_extract(report_id, fy, log, llm_service)
+                    db_extracted_kpis = ext.get("kpis", {})
+                    db_extracted_rev  = ext.get("revenue")
+            else:
+                _upd("Search pipeline found no reports. Cannot proceed.")
                 return CompanyData(
                     company_name=company_name, fy=fy, sector=sector,
                     kpi_records={}, revenue_result=None, log=log,
                 )
-    else:
-        _update("Database is offline. Cannot check for cached reports or store results.")
-        return CompanyData(
-            company_name=company_name, fy=fy, sector=sector,
-            kpi_records={}, revenue_result=None, log=log,
-        )
 
-    # ------------------------------------------------------------------
-    # Step 2: Parse (idempotent)
-    # ------------------------------------------------------------------
-    if report_id:
-        parse_ok = _step_parse(report_id, log)
-        if not parse_ok:
-            _update(
-                "Parsing failed. Extraction will attempt to use any existing "
-                "parse cache for this report."
-            )
-    else:
-        _update("No report_id available. Skipping parse.")
+    # ── Step 4: Merge all sources ──────────────────────────────────────────────
+    # Priority: DB cached (highest confidence) → PDF extracted → DB extracted
+    # For each KPI: use DB if present; PDF fills gaps; DB-extracted fills remaining gaps.
+    merged_kpis: dict = {}
 
-    # ------------------------------------------------------------------
-    # Step 3: Extract KPIs and revenue
-    # ------------------------------------------------------------------
-    new_kpis:    dict = {}
-    new_revenue        = None
+    # DB cached (most trusted — already validated in previous runs)
+    for k, v in db_kpis.items():
+        merged_kpis[k] = {**v, "_src": "db"}
 
-    if report_id:
-        _update("Extracting KPIs and revenue from parsed chunks...")
-        extract_result = _step_extract(report_id, fy, log, llm_service)
-        new_kpis    = extract_result["kpis"]
-        new_revenue = extract_result["revenue"]
-    else:
-        _update("No report_id available. Skipping extraction.")
+    # PDF extracted (new data from uploaded PDF)
+    for k, v in pdf_kpis.items():
+        if k not in merged_kpis:
+            merged_kpis[k] = {**v, "_src": "pdf"}
+        # If PDF has higher confidence than DB, prefer PDF
+        elif v.get("confidence", 0) > merged_kpis[k].get("confidence", 0):
+            merged_kpis[k] = {**v, "_src": "pdf"}
 
-    # Derive total_ghg from scope_1 + scope_2 if both were just extracted
-    ghg = _derive_total_ghg(new_kpis)
+    # DB extracted (freshly extracted from DB's stored PDF)
+    for k, v in db_extracted_kpis.items():
+        if k not in merged_kpis:
+            merged_kpis[k] = {**v, "_src": "db_extract"}
+
+    # Strip internal _src key before storing/using
+    kpi_records = {k: {kk: vv for kk, vv in v.items() if kk != "_src"}
+                   for k, v in merged_kpis.items()}
+
+    if pdf_kpis and db_kpis:
+        pdf_source = "db+upload"
+    elif pdf_kpis:
+        pdf_source = "upload"
+
+    # Resolve IDs: PDF takes precedence for report_id if it was just ingested
+    if pdf_company_id:
+        company_id = pdf_company_id
+    if pdf_report_id:
+        report_id = pdf_report_id
+        file_path = pdf_file_path
+
+    # Derive total_ghg
+    ghg = _derive_total_ghg(kpi_records)
     if ghg:
-        new_kpis["total_ghg_emissions"] = ghg
-        s1v = new_kpis.get("scope_1_emissions", {}).get("value", 0)
-        s2v = new_kpis.get("scope_2_emissions", {}).get("value", 0)
-        _update(
-            f"  Derived total_ghg: {ghg['value']:,.2f} tCO2e "
-            f"(scope_1={s1v:,.0f} + scope_2={s2v:,.0f})"
-        )
+        kpi_records["total_ghg_emissions"] = ghg
+        s1v = kpi_records.get("scope_1_emissions", {}).get("value", 0)
+        s2v = kpi_records.get("scope_2_emissions", {}).get("value", 0)
+        _upd(f"  Derived total_ghg: {ghg['value']:,.2f} tCO2e ({s1v:,.0f}+{s2v:,.0f})")
 
-    # ------------------------------------------------------------------
-    # Step 4: Store to DB
-    # ------------------------------------------------------------------
-    if new_kpis or new_revenue:
-        _update(f"Storing {len(new_kpis)} extracted KPI(s) and revenue to DB...")
-        _db_store_kpis(
-            company_id     = company_id,
-            report_id      = report_id,
-            fy             = fy,
-            kpi_records    = new_kpis,
-            revenue_result = new_revenue,
-        )
-        _update("  Storage complete.")
-    else:
-        _update("No new KPIs or revenue extracted. Nothing new to store.")
+    # Revenue: prefer PDF/DB-extracted over cached if available
+    revenue = db_rev
+    new_rev = pdf_rev or db_extracted_rev
+    if new_rev and (revenue is None or new_rev.confidence > revenue.confidence):
+        revenue = new_rev
 
-    # ------------------------------------------------------------------
-    # Step 5: Final authoritative read from DB
-    # Load the complete final state for this company — not from the
-    # pipeline's in-memory variables. This is what gets passed to the
-    # benchmark builder.
-    # ------------------------------------------------------------------
-    _update("Loading final KPI state from DB...")
-    final_db = _db_load_kpis_and_revenue(company_id, fy)
-    final_kpis    = final_db["kpis"]
-    final_revenue = final_db["revenue"]
-    final_fp      = final_db["file_path"] or file_path
-    final_rid     = final_db["report_id"] or report_id
-
-    # Derive total_ghg from the final DB state (covers the case where
-    # scope_1 and scope_2 were cached from a previous run and total_ghg
-    # was never stored).
-    ghg_final = _derive_total_ghg(final_kpis)
-    if ghg_final:
-        final_kpis["total_ghg_emissions"] = ghg_final
-
-    if final_kpis:
-        kpi_names = list(final_kpis.keys())
-        _update(f"  Final state: {len(final_kpis)} KPI(s) available: {kpi_names}")
-    else:
-        _update(
-            "  No KPIs available in DB for this company+year. "
-            "Comparison will proceed but charts may be empty."
-        )
-
-    if final_revenue:
-        _update(f"  Revenue: INR {final_revenue.value_cr:,.0f} Crore")
-    else:
-        _update(f"  Revenue: not available. Default INR {_DEFAULT_REVENUE_CR:,.0f} Crore will be used.")
-
-    _update(f"Pipeline complete for {company_name} FY{fy}.")
-
-    return CompanyData(
-        company_name   = company_name,
-        fy             = fy,
-        sector         = sector,
-        kpi_records    = final_kpis,
-        revenue_result = final_revenue,
-        log            = log,
-        company_id     = company_id,
-        report_id      = final_rid,
-        file_path      = final_fp,
-    )
-
-
-# =============================================================================
-# UPLOAD PIPELINE (unchanged in logic, updated to use new DB helpers)
-# =============================================================================
-
-def run_upload_pipeline(
-    uploaded_file,
-    company_name: str,
-    fy:           int,
-    sector:       str,
-    report_type:  str,
-    db_online:    bool,
-    llm_service,
-    status_placeholder,
-) -> dict:
-    """
-    Full pipeline for a user-uploaded PDF.
-
-    Steps:
-    1. Write bytes to a temp file on disk.
-    2. IngestionAgent.ingest_uploaded_pdf(): validate PDF header, SHA-256
-       dedup, copy to permanent storage, create Company + Report rows in DB.
-    3. Parse the report (idempotent).
-    4. Extract KPIs and revenue.
-    5. Store to DB.
-
-    Returns:
-        {"success": bool, "kpi_records": dict, "revenue": ..., "log": list}
-    """
-    from agents.ingestion_agent import IngestionAgent
-
-    log: list[str] = []
-
-    def _update(msg: str) -> None:
-        log.append(msg)
-        status_placeholder.markdown(
-            "<div class='step-log'>" + "<br>".join(log[-14:]) + "</div>",
-            unsafe_allow_html=True,
-        )
-
-    _update(
-        f"Processing upload: {uploaded_file.name} "
-        f"({round(uploaded_file.size / (1024 * 1024), 1)} MB)"
-    )
-
-    try:
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, prefix="esg_upload_") as tmp:
-            tmp.write(uploaded_file.getbuffer())
-            tmp_path = Path(tmp.name)
-        _update(f"  Saved to temp file: {tmp_path.name}")
-    except Exception as exc:
-        _update(f"  Failed to save upload to disk: {exc}")
-        return {"success": False, "log": log}
-
-    _update("Registering in database...")
-    try:
-        result = IngestionAgent().ingest_uploaded_pdf(
-            source_path  = tmp_path,
-            company_name = company_name,
-            year         = fy,
-            sector       = sector,
-            report_type  = report_type,
-        )
-    except Exception as exc:
-        _update(f"  Ingestion failed: {exc}")
-        tmp_path.unlink(missing_ok=True)
-        return {"success": False, "log": log}
-    finally:
-        tmp_path.unlink(missing_ok=True)
-
-    company    = result["company"]
-    report     = result["report"]
-    is_dup     = result.get("is_duplicate", False)
-    company_id = company.id
-    report_id  = report.id
-
-    if is_dup:
-        _update(
-            f"  Duplicate detected: SHA-256 matches an existing upload. "
-            f"Reusing report {str(report_id)[:8]}."
-        )
-    else:
-        fname = Path(report.file_path).name if report.file_path else "unknown"
-        _update(f"  Stored as: {fname}")
-
-    parsed_ok = _step_parse(report_id, log)
-    if not parsed_ok:
-        _update("  Parsing failed - extraction may be incomplete.")
-
-    _update("Extracting KPIs...")
-    extract_result = _step_extract(report_id, fy, log, llm_service)
-    new_kpis    = extract_result["kpis"]
-    new_revenue = extract_result["revenue"]
-
-    ghg = _derive_total_ghg(new_kpis)
-    if ghg:
-        new_kpis["total_ghg_emissions"] = ghg
-        _update(f"  Derived total_ghg: {ghg['value']:,.2f} tCO2e")
-
-    if db_online and (new_kpis or new_revenue):
-        _db_store_kpis(company_id, report_id, fy, new_kpis, new_revenue)
-        _update(f"  Stored {len(new_kpis)} KPI record(s) to DB.")
-
-    _update("Upload pipeline complete.")
-    return {
-        "success":     True,
-        "kpi_records": new_kpis,
-        "revenue":     new_revenue,
-        "company_id":  company_id,
-        "report_id":   report_id,
-        "log":         log,
+    # ── Step 5: Store new extractions to DB ───────────────────────────────────
+    new_kpis_to_store = {
+        **{k: v for k, v in pdf_kpis.items()},
+        **{k: v for k, v in db_extracted_kpis.items()},
     }
+    if "total_ghg_emissions" not in db_kpis and "total_ghg_emissions" in kpi_records:
+        new_kpis_to_store["total_ghg_emissions"] = kpi_records["total_ghg_emissions"]
+
+    if db_online and company_id and report_id and new_kpis_to_store:
+        _upd(f"Storing {len(new_kpis_to_store)} new KPI(s) to DB...")
+        _db_store_kpis(company_id, report_id, fy, new_kpis_to_store, new_rev or db_extracted_rev)
+
+    if not kpi_records:
+        _upd("No KPIs found from any source.")
+    else:
+        _upd(f"Final: {len(kpi_records)} KPI(s) from source={pdf_source}.")
+
+    if revenue:
+        _upd(f"Revenue: ₹{revenue.value_cr:,.0f} Cr [{revenue.source}]")
+    else:
+        _upd(f"Revenue: not found — default ₹{_DEFAULT_REVENUE_CR:,.0f} Cr will be used.")
+
+    _upd(f"Done: {company_name} FY{fy}.")
+    return CompanyData(
+        company_name=company_name, fy=fy, sector=sector,
+        kpi_records=kpi_records, revenue_result=revenue,
+        log=log, company_id=company_id, report_id=report_id,
+        file_path=file_path, pdf_source=pdf_source,
+    )
 
 
 # =============================================================================
@@ -1117,10 +1116,6 @@ def run_upload_pipeline(
 # =============================================================================
 
 def _build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dict:
-    """
-    Build comparison profiles from CompanyData populated via DB reads.
-    Neither data1 nor data2 contains any in-memory pipeline state here.
-    """
     from services.benchmark import build_company_profile, compare_profiles
     from services.summary_generator import generate_summary
     from services.llm_service import LLMService
@@ -1128,9 +1123,9 @@ def _build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dic
 
     profiles = []
     for data in [data1, data2]:
-        rev     = data.revenue_result
-        rev_cr  = rev.value_cr if rev else _DEFAULT_REVENUE_CR
-        rev_src = rev.source   if rev else "default"
+        rev    = data.revenue_result
+        rev_cr = rev.value_cr if rev else _DEFAULT_REVENUE_CR
+        rev_src = rev.source  if rev else "default"
 
         page_texts: list[str] = []
         if data.file_path and Path(data.file_path).exists():
@@ -1144,12 +1139,10 @@ def _build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dic
                 pass
 
         profile = build_company_profile(
-            kpi_records    = data.kpi_records,
-            revenue_cr     = rev_cr,
-            revenue_source = rev_src,
-            company_name   = data.company_name,
-            fiscal_year    = data.fy,
-            page_texts     = page_texts,
+            kpi_records=data.kpi_records,
+            revenue_cr=rev_cr, revenue_source=rev_src,
+            company_name=data.company_name, fiscal_year=data.fy,
+            page_texts=page_texts,
         )
         profiles.append(profile)
 
@@ -1168,7 +1161,6 @@ def _build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dic
 
 
 def _filter_comparable(comparisons) -> list:
-    """Remove comparisons where any ratio exceeds the plausibility ceiling."""
     out = []
     for comp in comparisons:
         ceiling = KPI_META.get(comp.kpi_name, {}).get("max_ratio")
@@ -1184,49 +1176,54 @@ def _filter_comparable(comparisons) -> list:
 _CHART_FONT = dict(family="Inter, Arial, sans-serif", size=12, color=C["text"])
 
 
-def _hex_rgba(hex_color: str, alpha: float) -> str:
-    h = hex_color.lstrip("#")
-    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-    return f"rgba({r},{g},{b},{alpha})"
+def _hex_rgba(h: str, a: float) -> str:
+    h = h.lstrip("#")
+    r, g, b = int(h[:2], 16), int(h[2:4], 16), int(h[4:], 16)
+    return f"rgba({r},{g},{b},{a})"
+
+
+def _chart_layout(**kw) -> dict:
+    return dict(
+        paper_bgcolor=C["bg"], plot_bgcolor=C["bg"],
+        font=_CHART_FONT,
+        **kw,
+    )
 
 
 def _radar_chart(filtered, la: str, lb: str):
     cats, sa, sb = [], [], []
     for comp in filtered:
-        vals = {lbl: v for lbl, v, _ in comp.entries}
+        vals = {l: v for l, v, _ in comp.entries}
         va, vb = vals.get(la), vals.get(lb)
         if va is None or vb is None:
             continue
         cats.append(KPI_META.get(comp.kpi_name, {}).get("label", comp.display_name))
         total = va + vb
-        sa.append(round(100 * (1 - va / total), 1) if total else 50)
-        sb.append(round(100 * (1 - vb / total), 1) if total else 50)
+        sa.append(round(100*(1-va/total), 1) if total else 50)
+        sb.append(round(100*(1-vb/total), 1) if total else 50)
     if len(cats) < 2:
         return None
-    cats_c = cats + [cats[0]]
-    sa_c   = sa   + [sa[0]]
-    sb_c   = sb   + [sb[0]]
+    cats_c = cats + [cats[0]]; sa_c = sa + [sa[0]]; sb_c = sb + [sb[0]]
     fig = go.Figure()
-    for name, scores, color in [
-        (la.split(" FY")[0], sa_c, C["ca"]),
-        (lb.split(" FY")[0], sb_c, C["cb"]),
-    ]:
+    for name, scores, color in [(la.split(" FY")[0], sa_c, C["ca"]), (lb.split(" FY")[0], sb_c, C["cb"])]:
         fig.add_trace(go.Scatterpolar(
             r=scores, theta=cats_c, fill="toself", name=name,
-            line=dict(color=color, width=2.5), fillcolor=_hex_rgba(color, 0.12),
+            line=dict(color=color, width=2.5),
+            fillcolor=_hex_rgba(color, 0.10),
             hovertemplate="<b>%{theta}</b><br>Score: %{r:.0f}<extra></extra>",
         ))
     fig.update_layout(
-        polar=dict(bgcolor=C["surface"],
-            radialaxis=dict(visible=True, range=[0, 100],
+        polar=dict(
+            bgcolor=C["surface"],
+            radialaxis=dict(visible=True, range=[0,100],
                             tickfont=dict(size=9, color=C["sub"]),
                             gridcolor=C["grid"], linecolor=C["border"]),
             angularaxis=dict(tickfont=dict(size=11, color=C["text"]),
                              gridcolor=C["grid"], linecolor=C["border"]),
         ),
-        paper_bgcolor=C["bg"], height=360,
-        margin=dict(l=40, r=40, t=40, b=20), font=_CHART_FONT,
-        legend=dict(orientation="h", y=-0.08, font=dict(size=12)),
+        height=360, margin=dict(l=40,r=40,t=40,b=20),
+        legend=dict(orientation="h", y=-0.08, font=dict(size=12, color=C["text"])),
+        **_chart_layout(),
     )
     return fig
 
@@ -1237,17 +1234,15 @@ def _donut_chart(filtered, la: str, lb: str):
     wb = sum(1 for c in filtered if c.winner == lb)
     fig = go.Figure(go.Pie(
         labels=[na, nb], values=[wa, wb], hole=0.62,
-        marker=dict(colors=[C["ca"], C["cb"]], line=dict(color=C["bg"], width=3)),
-        textinfo="label+percent", textfont=dict(size=12),
-        hovertemplate="<b>%{label}</b><br>%{value} KPI wins<extra></extra>",
+        marker=dict(colors=[C["ca"], C["cb"]], line=dict(color="#fff", width=3)),
+        textinfo="label+percent", textfont=dict(size=12, color=C["text"]),
+        hovertemplate="<b>%{label}</b><br>%{value} wins<extra></extra>",
     ))
     fig.update_layout(
-        paper_bgcolor=C["bg"], height=260, margin=dict(l=0, r=0, t=10, b=0),
-        showlegend=False, font=_CHART_FONT,
-        annotations=[dict(
-            text=f"{wa+wb}<br><span style='font-size:10px'>KPIs</span>",
-            x=0.5, y=0.5, font=dict(size=20, color=C["text"]), showarrow=False,
-        )],
+        height=260, margin=dict(l=0,r=0,t=10,b=0), showlegend=False,
+        annotations=[dict(text=f"{wa+wb}<br><span style='font-size:10px'>KPIs</span>",
+                          x=0.5, y=0.5, font=dict(size=20, color=C["text"]), showarrow=False)],
+        **_chart_layout(),
     )
     return fig
 
@@ -1255,13 +1250,12 @@ def _donut_chart(filtered, la: str, lb: str):
 def _gap_bar_chart(filtered, la: str, lb: str):
     labels_list, va_list, vb_list = [], [], []
     for comp in filtered:
-        vals = {lbl: v for lbl, v, _ in comp.entries}
+        vals = {l: v for l, v, _ in comp.entries}
         va, vb = vals.get(la), vals.get(lb)
         if va is None or vb is None:
             continue
         labels_list.append(KPI_META.get(comp.kpi_name, {}).get("label", comp.display_name))
-        va_list.append(va)
-        vb_list.append(vb)
+        va_list.append(va); vb_list.append(vb)
     if not labels_list:
         return None
     fig = go.Figure()
@@ -1272,30 +1266,32 @@ def _gap_bar_chart(filtered, la: str, lb: str):
         fig.add_trace(go.Bar(
             name=name, x=vals, y=labels_list, orientation="h",
             marker=dict(color=color, line=dict(color=color, width=1), pattern_shape=pat),
-            text=[f"{v:.3g}" for v in vals], textposition="outside", textfont=dict(size=10),
+            text=[f"{v:.3g}" for v in vals], textposition="outside",
+            textfont=dict(size=10, color=C["text"]),
             hovertemplate="<b>%{y}</b><br>%{x:.4e}<extra></extra>",
         ))
     fig.update_layout(
         barmode="group", height=300,
-        paper_bgcolor=C["bg"], plot_bgcolor=C["bg"], font=_CHART_FONT,
-        xaxis=dict(title="Intensity per INR Crore", showgrid=True,
-                   gridcolor=C["grid"], zeroline=False, color=C["text"]),
+        xaxis=dict(title="Intensity per ₹Crore", showgrid=True,
+                   gridcolor=C["grid"], zeroline=False, color=C["text"],
+                   title_font=dict(color=C["text"])),
         yaxis=dict(autorange="reversed", color=C["text"]),
-        legend=dict(orientation="h", y=1.08),
+        legend=dict(orientation="h", y=1.08, font=dict(color=C["text"])),
         margin=dict(l=160, r=60, t=20, b=40),
+        **_chart_layout(),
     )
     return fig
 
 
 def _mini_bar_chart(comp, la: str, lb: str):
-    vals   = {lbl: v for lbl, v, _ in comp.entries}
+    vals = {l: v for l, v, _ in comp.entries}
     va, vb = vals.get(la, 0), vals.get(lb, 0)
-    meta   = KPI_META.get(comp.kpi_name, {})
+    meta = KPI_META.get(comp.kpi_name, {})
     na, nb = la.split(" FY")[0], lb.split(" FY")[0]
     fig = go.Figure()
     for name, val, color, pat in [(na, va, C["ca"], ""), (nb, vb, C["cb"], "/")]:
         fig.add_trace(go.Bar(
-            name=name, x=[val], y=[meta.get("label", "")], orientation="h",
+            name=name, x=[val], y=[meta.get("label","")], orientation="h",
             marker=dict(color=color, line=dict(color=color, width=1.5), pattern_shape=pat),
             text=[f"{val:.3g}"], textposition="outside",
             textfont=dict(size=11, color=C["text"]),
@@ -1303,10 +1299,11 @@ def _mini_bar_chart(comp, la: str, lb: str):
         ))
     fig.update_layout(
         barmode="group", height=110, showlegend=False,
-        paper_bgcolor=C["bg"], plot_bgcolor=C["bg"], font=_CHART_FONT,
         yaxis=dict(visible=False),
-        xaxis=dict(showgrid=True, gridcolor=C["grid"], zeroline=False, showticklabels=False),
+        xaxis=dict(showgrid=True, gridcolor=C["grid"], zeroline=False,
+                   showticklabels=False),
         margin=dict(l=10, r=60, t=8, b=8),
+        **_chart_layout(),
     )
     return fig
 
@@ -1320,50 +1317,42 @@ def _export_pdf_report(profiles, filtered, summary: str, sector: str) -> bytes:
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
     from reportlab.lib import colors
-    from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
-    )
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                     Table, TableStyle, HRFlowable)
 
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        leftMargin=2*cm, rightMargin=2*cm,
-        topMargin=2*cm, bottomMargin=2*cm,
-    )
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=2*cm, rightMargin=2*cm,
+                            topMargin=2*cm, bottomMargin=2*cm)
 
-    BLUE  = colors.HexColor("#3B82F6")
-    GREEN = colors.HexColor("#10B981")
-    GRAY  = colors.HexColor("#64748B")
-    LIGHT = colors.HexColor("#F8F9FB")
-    BDR   = colors.HexColor("#E2E8F0")
-    BLK   = colors.HexColor("#1A202C")
+    BLUE  = colors.HexColor("#0D6EFD")
+    GREEN = colors.HexColor("#198754")
+    GRAY  = colors.HexColor("#6C757D")
+    LIGHT = colors.HexColor("#F8F9FA")
+    BDR   = colors.HexColor("#DEE2E6")
+    BLK   = colors.HexColor("#212529")
 
-    ss = getSampleStyleSheet()
-    s_title = ParagraphStyle("t",  parent=ss["Title"],   fontSize=22, textColor=BLK,
-                              spaceAfter=4, leading=28, fontName="Helvetica-Bold")
-    s_sub   = ParagraphStyle("s",  parent=ss["Normal"],  fontSize=11, textColor=GRAY,
-                              spaceAfter=14, leading=16)
-    s_h2    = ParagraphStyle("h2", parent=ss["Heading2"],fontSize=13, textColor=BLK,
-                              spaceBefore=16, spaceAfter=8, fontName="Helvetica-Bold")
-    s_body  = ParagraphStyle("b",  parent=ss["Normal"],  fontSize=10, textColor=BLK,
-                              leading=16, spaceAfter=8)
-    s_note  = ParagraphStyle("n",  parent=ss["Normal"],  fontSize=9, textColor=GRAY,
-                              leading=14)
+    ss   = getSampleStyleSheet()
+    s_t  = ParagraphStyle("t",  parent=ss["Title"],   fontSize=22, textColor=BLK,
+                           spaceAfter=4, leading=28, fontName="Helvetica-Bold")
+    s_s  = ParagraphStyle("s",  parent=ss["Normal"],  fontSize=11, textColor=GRAY,
+                           spaceAfter=14, leading=16)
+    s_h2 = ParagraphStyle("h2", parent=ss["Heading2"],fontSize=13, textColor=BLK,
+                           spaceBefore=16, spaceAfter=8, fontName="Helvetica-Bold")
+    s_b  = ParagraphStyle("b",  parent=ss["Normal"],  fontSize=10, textColor=BLK,
+                           leading=16, spaceAfter=8)
+    s_n  = ParagraphStyle("n",  parent=ss["Normal"],  fontSize=9,  textColor=GRAY,
+                           leading=14)
 
     labels = [f"{p.company_name} FY{p.fiscal_year}" for p in profiles]
     story  = [
-        Paragraph("ESG Competitive Intelligence Report", s_title),
-        Paragraph(f"{labels[0]} vs {labels[1]}", s_sub),
-        Paragraph(f"Sector: {sector}", s_note),
+        Paragraph("ESG Competitive Intelligence Report", s_t),
+        Paragraph(f"{labels[0]} vs {labels[1]}", s_s),
+        Paragraph(f"Sector: {sector}", s_n),
         HRFlowable(width="100%", thickness=1, color=BDR, spaceAfter=14),
         Paragraph("Methodology", s_h2),
-        Paragraph(
-            "All metrics are intensity ratios (KPI value divided by annual revenue "
-            "in INR Crore). KPIs with implausible intensity ratios are excluded. "
-            "All comparison data is read from the database after extraction "
-            "to ensure consistency.",
-            s_body,
-        ),
+        Paragraph("All metrics are intensity ratios (KPI ÷ INR Crore revenue). "
+                  "KPIs with implausible ratios are excluded.", s_b),
         Spacer(1, 8),
         Paragraph("KPI Intensity Comparison", s_h2),
     ]
@@ -1371,56 +1360,43 @@ def _export_pdf_report(profiles, filtered, summary: str, sector: str) -> bytes:
     tdata = [["Metric", "Unit", labels[0], labels[1], "Gap", "Leader"]]
     for comp in filtered:
         meta = KPI_META.get(comp.kpi_name, {})
-        vals = {lbl: v for lbl, v, _ in comp.entries}
+        vals = {l: v for l, v, _ in comp.entries}
         v0, v1 = vals.get(labels[0]), vals.get(labels[1])
         fmt = lambda v: f"{v:.2e}" if (v and v < 0.001) else (f"{v:.4f}" if v else "N/A")
         tdata.append([
-            meta.get("label", comp.display_name),
-            meta.get("unit", comp.unit),
-            fmt(v0), fmt(v1),
-            f"{comp.pct_gap:.1f}%",
-            comp.winner.split(" FY")[0],
+            meta.get("label", comp.display_name), meta.get("unit", comp.unit),
+            fmt(v0), fmt(v1), f"{comp.pct_gap:.1f}%", comp.winner.split(" FY")[0],
         ])
 
-    tbl = Table(
-        tdata,
-        colWidths=[5.2*cm, 2.3*cm, 2.8*cm, 2.8*cm, 1.6*cm, 2.5*cm],
-        repeatRows=1,
-    )
+    tbl = Table(tdata, colWidths=[5.2*cm, 2.3*cm, 2.8*cm, 2.8*cm, 1.6*cm, 2.5*cm], repeatRows=1)
     tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1,  0), BLUE),
-        ("TEXTCOLOR",     (0, 0), (-1,  0), colors.white),
-        ("FONTNAME",      (0, 0), (-1,  0), "Helvetica-Bold"),
-        ("FONTSIZE",      (0, 0), (-1,  0), 9),
-        ("BOTTOMPADDING", (0, 0), (-1,  0), 8),
-        ("TOPPADDING",    (0, 0), (-1,  0), 8),
-        ("FONTSIZE",      (0, 1), (-1, -1), 9),
-        ("TOPPADDING",    (0, 1), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
-        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [colors.white, LIGHT]),
-        ("GRID",          (0, 0), (-1, -1), 0.5, BDR),
-        ("ALIGN",         (2, 0), (-1, -1), "CENTER"),
-        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("TEXTCOLOR",     (5, 1), ( 5, -1), GREEN),
-        ("FONTNAME",      (5, 1), ( 5, -1), "Helvetica-Bold"),
+        ("BACKGROUND",    (0,0), (-1,0), BLUE),
+        ("TEXTCOLOR",     (0,0), (-1,0), colors.white),
+        ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE",      (0,0), (-1,0), 9),
+        ("BOTTOMPADDING", (0,0), (-1,0), 8),
+        ("TOPPADDING",    (0,0), (-1,0), 8),
+        ("FONTSIZE",      (0,1), (-1,-1), 9),
+        ("TOPPADDING",    (0,1), (-1,-1), 6),
+        ("BOTTOMPADDING", (0,1), (-1,-1), 6),
+        ("ROWBACKGROUNDS",(0,1), (-1,-1), [colors.white, LIGHT]),
+        ("GRID",          (0,0), (-1,-1), 0.5, BDR),
+        ("ALIGN",         (2,0), (-1,-1), "CENTER"),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("TEXTCOLOR",     (5,1), (5,-1), GREEN),
+        ("FONTNAME",      (5,1), (5,-1), "Helvetica-Bold"),
     ]))
 
-    story += [
-        tbl, Spacer(1, 16),
-        Paragraph("AI-Generated Narrative Summary", s_h2),
-    ]
+    story += [tbl, Spacer(1, 16), Paragraph("AI-Generated Narrative Summary", s_h2)]
     for para in summary.split("\n\n"):
         if para.strip():
-            story.append(Paragraph(para.strip(), s_body))
+            story.append(Paragraph(para.strip(), s_b))
     story += [
         Spacer(1, 12),
         HRFlowable(width="100%", thickness=0.5, color=BDR),
         Spacer(1, 6),
-        Paragraph(
-            "Generated by ESG Competitive Intelligence Pipeline. "
-            "Data sourced from public BRSR, ESG, and Integrated reports.",
-            s_note,
-        ),
+        Paragraph("Generated by ESG Competitive Intelligence Pipeline. "
+                  "Data sourced from BRSR, ESG, and Integrated reports.", s_n),
     ]
     doc.build(story)
     return buf.getvalue()
@@ -1452,48 +1428,52 @@ llm_service     = _get_llm_service()
 if db_online:
     _db_ensure_schema()
 
+UPLOAD_TYPES = ["BRSR", "ESG", "Integrated", "Annual", "Other"]
+
 
 # =============================================================================
 # SIDEBAR
 # =============================================================================
 
 with st.sidebar:
-    st.markdown("""
-    <div style="padding:0 0 14px">
-        <div style="font-size:22px;font-weight:800;color:#E8EAF0;letter-spacing:-0.5px">
-            ESG Intel
-        </div>
-        <div style="font-size:12px;color:#8B92A9;margin-top:2px">
-            Automated Benchmarking Pipeline
-        </div>
-    </div>""", unsafe_allow_html=True)
-
-    db_color = C["green"] if db_online else C["red"]
-    db_label = (
-        f"Database connected ({len(known_companies)} companies)"
-        if db_online else "Database offline"
-    )
+    # Header
     st.markdown(
-        f"<div style='font-size:11px;color:{db_color};font-weight:600'>"
-        f"{db_label}</div>",
+        f"""<div style="padding:0 0 12px">
+          <div style="font-size:20px;font-weight:800;color:{C['text']}">
+            🌿 ESG Intelligence
+          </div>
+          <div style="font-size:11px;color:{C['sub']};margin-top:2px">
+            Competitive Benchmarking Pipeline
+          </div>
+        </div>""",
         unsafe_allow_html=True,
     )
-    if db_online:
-        llm_color = C["green"] if llm_service else C["amber"]
-        llm_label = "LLM enabled (Gemini)" if llm_service else "LLM disabled (no API key)"
-        st.markdown(
-            f"<div style='font-size:11px;color:{llm_color};font-weight:600'>"
-            f"{llm_label}</div>",
-            unsafe_allow_html=True,
-        )
+
+    # Status indicators
+    db_col = C["green"] if db_online else C["red"]
+    st.markdown(
+        f"<div style='font-size:11px;color:{db_col};font-weight:600'>"
+        f"{'● DB connected' if db_online else '● DB offline'}"
+        + (f" ({len(known_companies)} companies)" if db_online else "")
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+    llm_col = C["green"] if llm_service else C["amber"]
+    st.markdown(
+        f"<div style='font-size:11px;color:{llm_col};font-weight:600'>"
+        f"{'● LLM enabled' if llm_service else '⚠ LLM disabled (no API key)'}"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
     st.markdown("---")
     sector = st.selectbox("Sector", SECTORS, key="sector")
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-    # Company 1
+    # ── Company 1 ─────────────────────────────────────────────────────────────
     st.markdown(
-        f'<div class="label" style="color:{C["ca"]}">Company 1</div>',
+        f"<div class='label-tag' style='color:{C['text']}'>"
+        f"Company / Dataset 1</div>",
         unsafe_allow_html=True,
     )
     company1 = st.text_input(
@@ -1501,72 +1481,137 @@ with st.sidebar:
         label_visibility="collapsed", key="c1_name",
     )
     fy1 = st.number_input(
-        "FY1", min_value=2015, max_value=2030, value=2025,
+        "FY1", min_value=2010, max_value=2030, value=2024,
         label_visibility="collapsed", key="c1_fy",
-        help="Fiscal year end (e.g. 2025 for FY2024-25)",
+        help="Fiscal year end (e.g. 2024 for FY2023-24)",
     )
-    if db_online and company1:
-        check1 = _db_check_report_exists(company1, int(fy1))
-        if check1["exists"]:
-            db1_kpis = _db_load_kpis_and_revenue(check1["company_id"], int(fy1))
-            n1 = len(db1_kpis["kpis"])
-            rev_hint = " | revenue cached" if db1_kpis["revenue"] else ""
-            st.caption(f"{n1} KPI(s) in DB{rev_hint}")
+    upload1 = st.file_uploader(
+        "Upload PDF (optional)", type=["pdf"], key="upload1",
+        help="Upload a BRSR/ESG/Annual report PDF. If omitted, existing DB data is used.",
+    )
+    rtype1 = st.selectbox("Report type", UPLOAD_TYPES, key="rtype1",
+                           label_visibility="collapsed") if upload1 else None
+
+    if upload1:
+        st.markdown(
+            f"<div class='upload-info'>📄 {upload1.name} "
+            f"({round(upload1.size/1e6,1)} MB)</div>",
+            unsafe_allow_html=True,
+        )
+    elif db_online and company1:
+        db1 = _db_lookup(company1, int(fy1))
+        n1  = len(db1["kpis"])
+        if n1 > 0:
+            rev_hint = " · revenue cached" if db1["revenue"] else ""
+            st.caption(f"✓ {n1} KPI(s) in DB{rev_hint}")
         else:
-            st.caption("No report in DB - full pipeline will run")
+            st.caption("No DB data — will search & download automatically.")
 
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-    # Company 2
+    # ── Company 2 ─────────────────────────────────────────────────────────────
     st.markdown(
-        f'<div class="label" style="color:{C["cb"]}">Company 2</div>',
+        f"<div class='label-tag' style='color:{C['cb']}'>"
+        f"Company / Dataset 2</div>",
         unsafe_allow_html=True,
     )
     company2 = st.text_input(
-        "c2name", placeholder="e.g. TCS",
+        "c2name", placeholder="e.g. TCS (or same company, different FY)",
         label_visibility="collapsed", key="c2_name",
     )
     fy2 = st.number_input(
-        "FY2", min_value=2015, max_value=2030, value=2024,
+        "FY2", min_value=2010, max_value=2030, value=2023,
         label_visibility="collapsed", key="c2_fy",
-        help="Fiscal year end",
+        help="Fiscal year end for Company 2",
     )
-    if db_online and company2:
-        check2 = _db_check_report_exists(company2, int(fy2))
-        if check2["exists"]:
-            db2_kpis = _db_load_kpis_and_revenue(check2["company_id"], int(fy2))
-            n2 = len(db2_kpis["kpis"])
-            rev_hint2 = " | revenue cached" if db2_kpis["revenue"] else ""
-            st.caption(f"{n2} KPI(s) in DB{rev_hint2}")
+    upload2 = st.file_uploader(
+        "Upload PDF (optional)", type=["pdf"], key="upload2",
+        help="Upload a PDF for company 2.",
+    )
+    rtype2 = st.selectbox("Report type ", UPLOAD_TYPES, key="rtype2",
+                           label_visibility="collapsed") if upload2 else None
+
+    if upload2:
+        st.markdown(
+            f"<div class='upload-info'>📄 {upload2.name} "
+            f"({round(upload2.size/1e6,1)} MB)</div>",
+            unsafe_allow_html=True,
+        )
+    elif db_online and company2:
+        db2 = _db_lookup(company2, int(fy2))
+        n2  = len(db2["kpis"])
+        if n2 > 0:
+            rev_hint2 = " · revenue cached" if db2["revenue"] else ""
+            st.caption(f"✓ {n2} KPI(s) in DB{rev_hint2}")
         else:
-            st.caption("No report in DB - full pipeline will run")
+            st.caption("No DB data — will search & download automatically.")
 
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-    ready       = bool(company1 and company2 and company1.strip().lower() != company2.strip().lower())
+    # Same company different year note
+    if (company1 and company2
+            and company1.strip().lower() == company2.strip().lower()
+            and int(fy1) != int(fy2)):
+        st.markdown(
+            f"<div style='font-size:11px;color:{C['amber']};font-weight:600'>"
+            f"📅 Year-over-year comparison mode</div>",
+            unsafe_allow_html=True,
+        )
+
+    # Validation: only need a company name — search pipeline runs if nothing else is available
+    def _slot_ready(company, fy, upload, db_data_fn) -> tuple[bool, str]:
+        if not company:
+            return False, "Enter a company name."
+        # PDF provided → always ready
+        if upload is not None:
+            return True, ""
+        # DB has data → ready
+        if db_online:
+            d = db_data_fn()
+            if d["kpis"] or d["report_id"]:
+                return True, ""
+        # No data locally but we have Tavily → search will run automatically
+        # Allow the slot — the pipeline will search and download
+        return True, ""
+
+    r1_ok, r1_msg = _slot_ready(
+        company1, int(fy1), upload1,
+        lambda: _db_lookup(company1, int(fy1)) if company1 else {"kpis":{}, "report_id":None},
+    )
+    r2_ok, r2_msg = _slot_ready(
+        company2, int(fy2), upload2,
+        lambda: _db_lookup(company2, int(fy2)) if company2 else {"kpis":{}, "report_id":None},
+    )
+
+    # Reject only when BOTH name AND FY are identical with no PDFs (exact duplicate)
+    same_slot = (
+        company1 and company2
+        and company1.strip().lower() == company2.strip().lower()
+        and int(fy1) == int(fy2)
+        and upload1 is None and upload2 is None
+    )
+
+    ready = r1_ok and r2_ok and not same_slot
     compare_btn = st.button("Compare", disabled=not ready, use_container_width=True)
 
-    if not ready and (company1 or company2):
-        if company1.strip().lower() == company2.strip().lower():
-            st.caption("Enter two different company names.")
-        elif not company1:
-            st.caption("Enter Company 1 name.")
-        elif not company2:
-            st.caption("Enter Company 2 name.")
+    if not ready:
+        hints = []
+        if not company1: hints.append("Enter Company 1 name")
+        elif not r1_ok:  hints.append(f"Slot 1: {r1_msg}")
+        if not company2: hints.append("Enter Company 2 name")
+        elif not r2_ok:  hints.append(f"Slot 2: {r2_msg}")
+        if same_slot:    hints.append("Same company + same FY — change the year or upload different PDFs")
+        for h in hints:
+            st.caption(h)
 
     st.markdown("---")
 
 
 # =============================================================================
-# MAIN CONTENT TABS
+# MAIN CONTENT
 # =============================================================================
 
-tab_compare, tab_upload = st.tabs(["Comparison", "Upload PDF"])
-
-
-# ---------------------------------------------------------------------------
-# TAB: COMPARISON
-# ---------------------------------------------------------------------------
+tab_compare, tab_help = st.tabs(["Comparison", "How it works"])
 
 with tab_compare:
 
@@ -1574,97 +1619,88 @@ with tab_compare:
     if "result" not in st.session_state and not compare_btn:
         st.markdown(f"""
         <div style="display:flex;flex-direction:column;align-items:center;
-                    justify-content:center;padding:80px 40px;text-align:center">
-            <div style="font-size:28px;font-weight:800;color:#E8EAF0;
+                    justify-content:center;padding:60px 40px;text-align:center">
+            <div style="font-size:44px;margin-bottom:12px">🌿</div>
+            <div style="font-size:26px;font-weight:800;color:{C['text']};
                         letter-spacing:-0.5px;margin-bottom:8px">
                 ESG Competitive Intelligence
             </div>
-            <div style="font-size:14px;color:#8B92A9;max-width:540px;
-                        line-height:1.7;margin-bottom:24px">
-                Enter two company names in the sidebar and click Compare.<br><br>
-                If reports are already in the database, the pipeline skips search
-                entirely and uses the cached data. If any report is missing,
-                the full ingestion pipeline runs for that company only.<br><br>
-                Company 1 is fully processed (through extraction and storage)
-                before Company 2 starts. The final comparison reads both
-                companies' KPIs from the database.
+            <div style="font-size:14px;color:{C['sub']};max-width:560px;
+                        line-height:1.8;margin-bottom:24px">
+                Compare ESG intensity metrics for any two companies or
+                the same company across two fiscal years.<br><br>
+                <strong>With PDF upload:</strong> upload BRSR / ESG / Annual report
+                PDFs for instant extraction — no prior ingestion needed.<br>
+                <strong>DB-first:</strong> if the company is already in the database,
+                cached data is used automatically and the PDF fills any gaps.
             </div>
-            <div style="font-size:13px;color:#6EE7B7;background:#064E3B;
-                        border-radius:8px;padding:10px 20px;display:inline-block">
-                DB-first | No re-search if report exists | Sequential processing
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                <span class="badge-blue">PDF Upload</span>
+                <span class="badge-green">DB Cache Merge</span>
+                <span class="badge-amber">Year-over-Year</span>
             </div>
         </div>""", unsafe_allow_html=True)
 
     # Pipeline trigger
     if compare_btn and ready:
-        st.markdown(f"### {company1} FY{fy1} vs {company2} FY{fy2}")
-        st.caption(
-            "Pipeline: check DB -> (ingest if missing) -> parse -> extract -> "
-            "store to DB. Company 1 completes fully before Company 2 starts. "
-            "Final comparison reads from DB."
-        )
+        label1 = f"{company1} FY{fy1}"
+        label2 = f"{company2} FY{fy2}"
+        st.markdown(f"### {label1}  vs  {label2}")
 
         col_s1, col_s2 = st.columns(2)
         with col_s1:
-            st.markdown(f"**{company1} FY{fy1}**")
-            placeholder1 = st.empty()
+            st.markdown(
+                f"<div style='font-size:13px;font-weight:600;color:{C['ca']}'>"
+                f"{label1}</div>", unsafe_allow_html=True)
+            ph1 = st.empty()
         with col_s2:
-            st.markdown(f"**{company2} FY{fy2}**")
-            placeholder2 = st.empty()
+            st.markdown(
+                f"<div style='font-size:13px;font-weight:600;color:{C['cb']}'>"
+                f"{label2}</div>", unsafe_allow_html=True)
+            ph2 = st.empty()
 
         pipeline_error = None
         data1 = data2 = None
-
         try:
-            # Company 1: full pipeline runs to completion before Company 2 starts
             data1 = run_company_pipeline(
-                company_name       = company1,
-                fy                 = int(fy1),
-                sector             = sector,
-                db_online          = db_online,
-                llm_service        = llm_service,
-                status_placeholder = placeholder1,
+                company_name=company1, fy=int(fy1), sector=sector,
+                db_online=db_online, llm_service=llm_service,
+                status_placeholder=ph1,
+                uploaded_file=upload1,
+                upload_report_type=rtype1 or "BRSR",
             )
-
-            # Company 2: runs only after Company 1 is fully stored in DB
             data2 = run_company_pipeline(
-                company_name       = company2,
-                fy                 = int(fy2),
-                sector             = sector,
-                db_online          = db_online,
-                llm_service        = llm_service,
-                status_placeholder = placeholder2,
+                company_name=company2, fy=int(fy2), sector=sector,
+                db_online=db_online, llm_service=llm_service,
+                status_placeholder=ph2,
+                uploaded_file=upload2,
+                upload_report_type=rtype2 or "BRSR",
             )
-
         except Exception as exc:
             pipeline_error = exc
             st.error(f"Pipeline error: {exc}")
-            with st.expander("Full traceback"):
+            with st.expander("Traceback"):
                 st.code(traceback.format_exc())
 
-        if pipeline_error is None and data1 is not None and data2 is not None:
+        if pipeline_error is None and data1 and data2:
             if not data1.kpi_records and not data2.kpi_records:
                 st.error(
-                    "No KPIs available for either company. "
-                    "Check the Tavily API key and confirm company names are correct."
+                    "No KPIs found for either company. "
+                    "Upload PDFs or ensure data exists in the database."
                 )
                 st.stop()
 
-            # Build benchmark from CompanyData populated via final DB reads
             result = _build_benchmark(data1, data2, sector)
-            result["log1"]   = data1.log
-            result["log2"]   = data2.log
-            result["sector"] = sector
+            result.update({"log1": data1.log, "log2": data2.log,
+                           "src1": data1.pdf_source, "src2": data2.pdf_source,
+                           "sector": sector})
 
             st.session_state.update({
-                "result":   result,
-                "company1": company1,
-                "company2": company2,
-                "fy1":      fy1,
-                "fy2":      fy2,
+                "result": result, "company1": company1, "company2": company2,
+                "fy1": fy1, "fy2": fy2,
             })
 
-    # Results rendering
+    # ── Results ────────────────────────────────────────────────────────────────
     if "result" in st.session_state:
         result   = st.session_state["result"]
         c1n      = st.session_state.get("company1", "Company 1")
@@ -1676,81 +1712,90 @@ with tab_compare:
         filtered = result["filtered"]
         summary  = result["summary"]
         _sector  = result.get("sector", "")
+        src1     = result.get("src1", "db")
+        src2     = result.get("src2", "db")
 
         label_a = f"{profiles[0].company_name} FY{profiles[0].fiscal_year}"
         label_b = f"{profiles[1].company_name} FY{profiles[1].fiscal_year}"
         skipped = [c.kpi_name for c in report.comparisons if c not in filtered]
 
-        # Header
+        # Header row
         hc1, hc2 = st.columns([3, 1])
         with hc1:
-            st.markdown(f"""
-            <div style="margin-bottom:4px">
-                <span style="font-size:24px;font-weight:800;color:{C['text']}">{c1n}</span>
-                <span style="font-size:16px;color:{C['sub']};margin:0 10px">vs</span>
-                <span style="font-size:24px;font-weight:800;color:{C['text']}">{c2n}</span>
-            </div>
-            <div style="font-size:13px;color:{C['sub']}">
-                <span class="badge-blue">{_sector}</span>
-                &nbsp;&nbsp;FY{fy1v} &middot; FY{fy2v}
-                &nbsp;&middot;&nbsp;Intensity ratios (KPI / INR Crore)
-            </div>""", unsafe_allow_html=True)
+            same_co = c1n.strip().lower() == c2n.strip().lower()
+            title = (
+                f"{c1n}: FY{fy1v} vs FY{fy2v}"
+                if same_co else
+                f"{c1n}  vs  {c2n}"
+            )
+            st.markdown(
+                f"<div style='font-size:22px;font-weight:800;color:{C['text']};margin-bottom:4px'>"
+                f"{title}</div>"
+                f"<div style='font-size:12px;color:{C['sub']}'>"
+                f"<span class='badge-blue'>{_sector}</span>"
+                + (f"&nbsp;&nbsp;FY{fy1v} · FY{fy2v}&nbsp;·&nbsp;" if not same_co else
+                   f"&nbsp;&nbsp;")
+                + f"Intensity per ₹Crore revenue"
+                + f"&nbsp;&nbsp;|&nbsp;&nbsp;Data sources: "
+                + f"<span class='badge-amber'>{src1}</span> / <span class='badge-amber'>{src2}</span>"
+                + "</div>",
+                unsafe_allow_html=True,
+            )
 
         with hc2:
             pdf_bytes = _export_pdf_report(profiles, filtered, summary, _sector)
             st.download_button(
-                "Download PDF Report",
+                "⬇ Download Report",
                 data=pdf_bytes,
-                file_name=f"ESG_{c1n}_vs_{c2n}.pdf",
+                file_name=f"ESG_{c1n}_vs_{c2n}_FY{fy1v}_{fy2v}.pdf",
                 mime="application/pdf",
                 use_container_width=True,
             )
 
         if skipped:
-            st.info(
-                f"Excluded (intensity ratio exceeded ceiling): "
-                f"{', '.join(KPI_META.get(k, {}).get('label', k) for k in skipped)}"
-            )
+            skipped_labels = [KPI_META.get(k, {}).get("label", k) for k in skipped]
+            st.info(f"Excluded (ratio exceeded ceiling): {', '.join(skipped_labels)}")
 
         if not filtered:
             st.warning(
                 "No KPIs passed the sanity filter. "
-                "This typically means extraction found only intensity ratios "
-                "(small decimals) rather than absolute values. "
-                "Check the extraction log below."
+                "Check that PDFs contain absolute values (not intensity-only rows)."
             )
             with st.expander("Extraction log"):
-                for cname, lk in [(c1n, "log1"), (c2n, "log2")]:
-                    lines = result.get(lk, [])
-                    if lines:
-                        st.markdown(f"**{cname}**")
-                        for line in lines:
-                            st.code(line, language=None)
+                lc1, lc2 = st.columns(2)
+                with lc1:
+                    st.markdown(f"**{label_a}**")
+                    for line in result.get("log1", []):
+                        st.code(line, language=None)
+                with lc2:
+                    st.markdown(f"**{label_b}**")
+                    for line in result.get("log2", []):
+                        st.code(line, language=None)
             st.stop()
 
         st.markdown("---")
 
-        # Scorecard
+        # Scorecard row
         st.markdown('<div class="sec">Overview</div>', unsafe_allow_html=True)
         wins_a = sum(1 for c in filtered if c.winner == label_a)
         wins_b = sum(1 for c in filtered if c.winner == label_b)
-        leader = c1n if wins_a >= wins_b else c2n
+        leader = label_a.split(" FY")[0] if wins_a >= wins_b else label_b.split(" FY")[0]
 
-        score_cols = st.columns(4)
-        for col, (bc, bl, bv, bs) in zip(score_cols, [
+        sc = st.columns(4)
+        for col, (bcolor, blabel, bval, bsub) in zip(sc, [
             (C["blue"],  "KPIs Compared",  str(len(filtered)), f"of {len(report.comparisons)} total"),
-            (C["ca"],    f"{c1n} FY{fy1v}", str(wins_a),         "KPI wins"),
-            (C["cb"],    f"{c2n} FY{fy2v}", str(wins_b),         "KPI wins"),
-            (C["green"], "Leader",           leader,              "More KPI wins"),
+            (C["ca"],    label_a,           str(wins_a),         "KPI wins"),
+            (C["cb"],    label_b,           str(wins_b),         "KPI wins"),
+            (C["green"], "Leader",          leader,              "More KPI wins"),
         ]):
             col.markdown(f"""
-            <div class="card" style="border-top:3px solid {bc}">
-                <div class="label">{bl}</div>
-                <div style="font-size:28px;font-weight:800;color:{C['text']};
-                            white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                    {bv}
-                </div>
-                <div style="font-size:12px;color:{C['sub']};margin-top:2px">{bs}</div>
+            <div class="card" style="border-top:3px solid {bcolor}">
+              <div class="label-tag">{blabel}</div>
+              <div style="font-size:26px;font-weight:800;color:{C['text']};
+                          white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {bval}
+              </div>
+              <div style="font-size:12px;color:{C['sub']};margin-top:2px">{bsub}</div>
             </div>""", unsafe_allow_html=True)
 
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
@@ -1759,34 +1804,46 @@ with tab_compare:
         st.markdown('<div class="sec">Performance Overview</div>', unsafe_allow_html=True)
         vc1, vc2 = st.columns([2, 1])
         with vc1:
-            st.markdown("**Normalised Score Radar** — Higher score = lower environmental intensity")
+            st.markdown(
+                f"<span style='font-size:13px;font-weight:600;color:{C['text']}'>"
+                f"Normalised Score Radar</span> "
+                f"<span style='font-size:11px;color:{C['sub']}'>Higher = better</span>",
+                unsafe_allow_html=True,
+            )
             fig = _radar_chart(filtered, label_a, label_b)
             if fig:
                 st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         with vc2:
-            st.markdown("**Win Distribution**")
+            st.markdown(
+                f"<span style='font-size:13px;font-weight:600;color:{C['text']}'>"
+                f"Win Distribution</span>",
+                unsafe_allow_html=True,
+            )
             st.plotly_chart(
                 _donut_chart(filtered, label_a, label_b),
-                use_container_width=True,
-                config={"displayModeBar": False},
+                use_container_width=True, config={"displayModeBar": False},
             )
             st.markdown(f"""
-            <div style="display:flex;gap:12px;justify-content:center;margin-top:6px">
-                <div style="display:flex;align-items:center;gap:6px">
-                    <div style="width:12px;height:12px;border-radius:3px;background:{C['ca']}"></div>
-                    <span style="font-size:12px">{c1n}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px">
-                    <div style="width:12px;height:12px;border-radius:3px;background:{C['cb']}"></div>
-                    <span style="font-size:12px">{c2n}</span>
-                </div>
+            <div style="display:flex;gap:14px;justify-content:center;margin-top:4px">
+              <div style="display:flex;align-items:center;gap:5px">
+                <div style="width:10px;height:10px;border-radius:3px;background:{C['ca']}"></div>
+                <span style="font-size:12px;color:{C['text']}">{label_a.split(' FY')[0]} FY{fy1v}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:5px">
+                <div style="width:10px;height:10px;border-radius:3px;background:{C['cb']}"></div>
+                <span style="font-size:12px;color:{C['text']}">{label_b.split(' FY')[0]} FY{fy2v}</span>
+              </div>
             </div>""", unsafe_allow_html=True)
 
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
         # Gap bars
         st.markdown('<div class="sec">Intensity Comparison</div>', unsafe_allow_html=True)
-        st.caption("Lower bar = better environmental performance relative to revenue.")
+        st.markdown(
+            f"<div style='font-size:12px;color:{C['sub']};margin-bottom:8px'>"
+            f"Lower bar = better environmental performance per ₹Crore revenue.</div>",
+            unsafe_allow_html=True,
+        )
         gap = _gap_bar_chart(filtered, label_a, label_b)
         if gap:
             st.plotly_chart(gap, use_container_width=True, config={"displayModeBar": False})
@@ -1797,58 +1854,50 @@ with tab_compare:
         st.markdown('<div class="sec">KPI Detail</div>', unsafe_allow_html=True)
         for comp in filtered:
             meta   = KPI_META.get(comp.kpi_name, {})
-            vals   = {lbl: v for lbl, v, _ in comp.entries}
+            vals   = {l: v for l, v, _ in comp.entries}
             va, vb = vals.get(label_a), vals.get(label_b)
             wname  = comp.winner.split(" FY")[0]
             a_wins = comp.winner == label_a
 
             st.markdown(f"""
             <div class="card">
-                <div style="display:flex;justify-content:space-between;
-                            align-items:flex-start;margin-bottom:10px">
-                    <div>
-                        <span style="font-size:16px;font-weight:700">
-                            {meta.get('label', comp.display_name)}
-                        </span>
-                        <div style="font-size:11px;color:{C['sub']};margin-top:2px">
-                            {meta.get('desc', '')} &middot; {meta.get('unit', comp.unit)}
-                        </div>
-                    </div>
-                    <div style="text-align:right">
-                        <span class="badge-green">Leader: {wname}</span>
-                        <div style="font-size:12px;color:{C['sub']};margin-top:4px">
-                            {comp.pct_gap:.1f}% gap
-                        </div>
-                    </div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+                <div>
+                  <span style="font-size:15px;font-weight:700;color:{C['text']}">
+                    {meta.get('label', comp.display_name)}
+                  </span>
+                  <div style="font-size:11px;color:{C['sub']};margin-top:2px">
+                    {meta.get('desc','')} · {meta.get('unit', comp.unit)}
+                  </div>
                 </div>
+                <div style="text-align:right">
+                  <span class="badge-green">★ {wname}</span>
+                  <div style="font-size:11px;color:{C['sub']};margin-top:3px">{comp.pct_gap:.1f}% gap</div>
+                </div>
+              </div>
             </div>""", unsafe_allow_html=True)
 
             st.plotly_chart(
                 _mini_bar_chart(comp, label_a, label_b),
-                use_container_width=True,
-                config={"displayModeBar": False},
+                use_container_width=True, config={"displayModeBar": False},
             )
 
             mc1, mc2 = st.columns(2)
-            for col, val, color, is_win, dname in [
-                (mc1, va, C["ca"], a_wins,      c1n),
-                (mc2, vb, C["cb"], not a_wins,  c2n),
+            for col, label_full, val, color, is_win, dname in [
+                (mc1, label_a, va, C["ca"], a_wins,     label_a),
+                (mc2, label_b, vb, C["cb"], not a_wins, label_b),
             ]:
-                vs = (
-                    f"{val:.4e}" if (val is not None and val < 0.001)
-                    else (f"{val:.4f}" if val is not None else "N/A")
-                )
+                vs = (f"{val:.4e}" if (val is not None and val < 0.001)
+                      else (f"{val:.4f}" if val is not None else "N/A"))
                 col.markdown(f"""
-                <div style="background:{C['surface']};border-radius:8px;
-                            padding:10px 14px;border:1px solid {C['border']};
-                            border-left:4px solid {color}">
-                    <div style="font-size:11px;font-weight:600;color:{color}">
-                        {dname}{' (leader)' if is_win else ''}
-                    </div>
-                    <div style="font-size:13px;color:{C['text']};margin-top:4px;
-                                font-family:monospace">
-                        {vs} {meta.get('unit', '')}
-                    </div>
+                <div style="background:{C['surface']};border-radius:8px;padding:10px 14px;
+                            border:1px solid {C['border']};border-left:4px solid {color}">
+                  <div style="font-size:11px;font-weight:600;color:{color}">
+                    {dname}{'  ★' if is_win else ''}
+                  </div>
+                  <div style="font-size:13px;color:{C['text']};margin-top:4px;font-family:monospace">
+                    {vs} {meta.get('unit','')}
+                  </div>
                 </div>""", unsafe_allow_html=True)
 
             st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
@@ -1861,178 +1910,89 @@ with tab_compare:
             unsafe_allow_html=True,
         )
 
-        # Methodology
+        # Methodology expander
         st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-        with st.expander("Methodology and Data Provenance"):
-            st.markdown("""
-**DB-first pipeline**: When Compare is clicked, the system first checks whether
-a report already exists in the database for each company+year. If a report exists
-(regardless of which KPIs were extracted), no new search is run. The existing
-report is used for parse and extract.
+        with st.expander("Methodology & Data Provenance"):
+            st.markdown(f"""
+<p style="color:{C['text']}"><strong>Data sources</strong><br>
+Each company slot accepts either an uploaded PDF or existing DB records (or both).
+When a PDF is uploaded, it is registered, parsed, and KPIs are extracted immediately.
+If DB records also exist for that company+FY, they are merged: DB values fill in
+KPIs not found in the PDF and vice versa; for overlapping KPIs the higher-confidence
+value wins.</p>
 
-**Search (only when no report exists)**: All query templates for BRSR, ESG, and
-Integrated are run simultaneously. URLs are classified by keyword matching
-(BRSR > ESG > Integrated priority). One PDF per type is downloaded.
+<p style="color:{C['text']}"><strong>Same-company year-over-year</strong><br>
+Set both slots to the same company name with different fiscal years.
+Each year can have its own PDF upload or use its own DB records independently.</p>
 
-**Sequential processing**: Company 1 completes fully (parse, extract, store to DB)
-before Company 2 starts. This prevents any race condition or partial state.
+<p style="color:{C['text']}"><strong>Intensity ratios</strong><br>
+Every KPI is divided by annual revenue (₹Crore) to normalise for company size.</p>
 
-**Final comparison from DB**: After both pipelines complete, KPIs and revenue
-are read fresh from the database for both companies. The comparison charts are
-built from those DB values, not from in-memory pipeline results.
+<p style="color:{C['text']}"><strong>Unit normalisation</strong><br>
+Energy → GJ, Emissions → tCO₂e, Water → KL, Waste → MT.</p>
 
-**Intensity ratios**: Every KPI is divided by annual revenue (INR Crore) before
-comparison to normalise for company size differences.
+<p style="color:{C['text']}"><strong>Sanity filter</strong><br>
+KPIs with implausible intensity ratios (likely unit errors) are excluded automatically.</p>
+""", unsafe_allow_html=True)
 
-**Unit normalisation**: energy -> GJ, emissions -> tCO2e, water -> KL, waste -> MT.
-
-**Sanity filter**: KPIs with intensity ratios above a per-type ceiling are excluded
-to guard against unit errors in source PDFs.
-            """)
-
-        # Extraction logs
-        log1 = result.get("log1", [])
-        log2 = result.get("log2", [])
-        if log1 or log2:
-            with st.expander("Pipeline log"):
-                lc1, lc2 = st.columns(2)
-                with lc1:
-                    if log1:
-                        st.markdown(f"**{c1n} FY{fy1v}**")
-                        for line in log1:
-                            st.code(line, language=None)
-                with lc2:
-                    if log2:
-                        st.markdown(f"**{c2n} FY{fy2v}**")
-                        for line in log2:
-                            st.code(line, language=None)
+        # Pipeline logs
+        with st.expander("Pipeline log"):
+            lc1, lc2 = st.columns(2)
+            with lc1:
+                st.markdown(
+                    f"<span style='font-weight:600;color:{C['ca']}'>{label_a}</span>",
+                    unsafe_allow_html=True,
+                )
+                for line in result.get("log1", []):
+                    st.code(line, language=None)
+            with lc2:
+                st.markdown(
+                    f"<span style='font-weight:600;color:{C['cb']}'>{label_b}</span>",
+                    unsafe_allow_html=True,
+                )
+                for line in result.get("log2", []):
+                    st.code(line, language=None)
 
 
 # ---------------------------------------------------------------------------
-# TAB: UPLOAD PDF
+# Tab: How it works
 # ---------------------------------------------------------------------------
 
-with tab_upload:
-    st.markdown('<div class="sec">Upload ESG / BRSR Report PDF</div>', unsafe_allow_html=True)
+with tab_help:
     st.markdown(
-        "<div style='font-size:13px;color:#8B92A9;margin-bottom:20px'>"
-        "Upload a PDF directly. It will be saved as "
-        "<code>{year}_{TYPE}_{company}_{id8}.pdf</code> and run through the same "
-        "pipeline as auto-discovered reports. SHA-256 deduplication prevents "
-        "re-processing an identical file."
-        "</div>",
+        f"<h3 style='color:{C['text']}'>How to use this dashboard</h3>",
         unsafe_allow_html=True,
     )
 
-    up_col1, up_col2 = st.columns([2, 1])
-    with up_col1:
-        upload_company = st.text_input(
-            "Company name (required)", placeholder="e.g. Wipro", key="upload_company",
-        )
-        upload_fy = st.number_input(
-            "Fiscal year (required)", min_value=2010, max_value=2030, value=2024,
-            key="upload_fy", help="Fiscal year end, e.g. 2025 for FY2024-25.",
-        )
-    with up_col2:
-        upload_sector = st.selectbox("Sector", SECTORS, key="upload_sector")
-        upload_report_type = st.selectbox(
-            "Report type", UPLOAD_REPORT_TYPE_OPTIONS, key="upload_report_type",
-            help="Label stored in DB and used in filename.",
-        )
+    sections = [
+        ("🔵 Compare two companies",
+         f"Enter different company names in each slot. Upload their PDFs or rely on "
+         f"previously ingested data. Click <strong>Compare</strong>."),
+        ("📅 Year-over-year comparison",
+         f"Enter the <strong>same company name</strong> in both slots with "
+         f"<strong>different fiscal years</strong>. Upload separate PDFs for each year. "
+         f"The dashboard will label it as a year-over-year comparison automatically."),
+        ("📄 PDF upload",
+         f"Upload a BRSR, ESG, Integrated, or Annual Report PDF for either company slot. "
+         f"The PDF is saved to temporary storage, parsed, and KPIs are extracted immediately. "
+         f"If DB records already exist for that company+FY, they are merged with the PDF results."),
+        ("🗄️ DB-only (no PDF)",
+         f"If no PDF is uploaded but the company+FY combination exists in the database, "
+         f"the cached KPIs and revenue are used directly — no network calls, no parsing."),
+        ("⚠️ No data at all",
+         f"If neither a PDF is uploaded nor DB records exist, the slot will show an error. "
+         f"You must provide at least one data source per slot."),
+        ("📊 Charts",
+         f"All KPIs are shown as intensity ratios (value ÷ revenue in ₹Crore). "
+         f"Lower intensity = better environmental performance. "
+         f"KPIs with ratios above a safety ceiling are excluded to prevent unit-error artefacts."),
+    ]
 
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-    uploaded_file = st.file_uploader(
-        "Select a PDF file", type=["pdf"], key="pdf_uploader",
-        help="Maximum 50 MB.",
-    )
-
-    if uploaded_file is not None:
-        size_mb = round(uploaded_file.size / (1024 * 1024), 2)
-        if size_mb > 50:
-            st.error(f"File is {size_mb} MB which exceeds the 50 MB limit.")
-            uploaded_file = None
-        else:
-            st.markdown(
-                f"<div style='font-size:12px;color:{C['green']};margin-top:4px'>"
-                f"Ready: <strong>{uploaded_file.name}</strong> ({size_mb} MB)"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
-
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-    upload_ready = bool(uploaded_file and upload_company)
-    upload_btn   = st.button(
-        "Process Upload",
-        disabled=not upload_ready or not db_online,
-        key="upload_btn",
-        use_container_width=True,
-    )
-    if not db_online:
-        st.warning("Database is offline. Cannot process upload.")
-
-    if upload_btn and upload_ready and db_online:
-        st.markdown("---")
-        st.markdown(f"### Processing {uploaded_file.name} for {upload_company} FY{upload_fy}")
-        upload_status = st.empty()
-
-        upload_result = run_upload_pipeline(
-            uploaded_file      = uploaded_file,
-            company_name       = upload_company,
-            fy                 = int(upload_fy),
-            sector             = upload_sector,
-            report_type        = upload_report_type,
-            db_online          = db_online,
-            llm_service        = llm_service,
-            status_placeholder = upload_status,
-        )
-
-        if upload_result["success"]:
-            n_kpis = len(upload_result.get("kpi_records", {}))
-            st.success(
-                f"Upload processed. {n_kpis} KPI(s) extracted. "
-                f"{upload_company} FY{upload_fy} is available in the Comparison tab."
-            )
-            kpis = upload_result.get("kpi_records", {})
-            rev  = upload_result.get("revenue")
-            if kpis:
-                rows = [
-                    {
-                        "KPI":        KPI_META.get(k, {}).get("label", k),
-                        "Value":      f"{r['value']:,.2f}",
-                        "Unit":       r["unit"],
-                        "Method":     r["method"],
-                        "Confidence": f"{r['confidence']:.0%}",
-                    }
-                    for k, r in kpis.items()
-                ]
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-            if rev:
-                st.markdown(
-                    f"**Revenue:** INR {rev.value_cr:,.0f} Crore "
-                    f"[{rev.pattern_name}, confidence {rev.confidence:.0%}]"
-                )
-            st.info(
-                f"Go to the Comparison tab and enter '{upload_company}' "
-                f"with fiscal year {upload_fy} to compare it."
-            )
-        else:
-            st.error("Upload pipeline failed. See the processing log below.")
-
-        with st.expander("Processing log"):
-            for line in upload_result.get("log", []):
-                st.code(line, language=None)
-
-    elif uploaded_file is None:
-        st.markdown("""
-        <div class="upload-zone">
-            <div style="font-size:15px;font-weight:600;color:#E8EAF0;margin-bottom:8px">
-                Select a PDF to upload
-            </div>
-            <div style="font-size:13px;color:#8B92A9;line-height:1.7">
-                Supported: BRSR, ESG, Integrated, Annual, CSR<br>
-                Maximum size: 50 MB<br>
-                Saved as: <code>{year}_{TYPE}_{company}_{id8}.pdf</code><br>
-                Duplicate uploads (same SHA-256) are skipped automatically.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    for title, body in sections:
+        st.markdown(f"""
+        <div class="card" style="margin-bottom:12px">
+          <div style="font-size:14px;font-weight:700;color:{C['text']};margin-bottom:6px">
+            {title}
+          </div>
+          <div style="font-size:13px;color:{C['text']};line-height:1.7">{body}</div>
+        </div>""", unsafe_allow_html=True)

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://postgres:password@localhost:5432/esg_pipeline"
 
     # --- Tavily ---
-    tavily_api_key: str = ""
+    serpapi_api_key: str = ""
 
     # --- LLM ---
     llm_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
