@@ -84,73 +84,367 @@ st.set_page_config(
 # =============================================================================
 
 C = {
-    "bg":      "#0F1117",
-    "surface": "#1A1D27",
-    "border":  "#2D3142",
-    "text":    "#E8EAF0",
-    "sub":     "#8B92A9",
-    "green":   "#10B981",
-    "blue":    "#4B84DE",
-    "amber":   "#F59E0B",
-    "red":     "#EF4444",
-    "ca":      "#4B84DE",
-    "cb":      "#10B981",
-    "grid":    "#2D3142",
+    "bg":      "#FFFFFF",
+    "surface": "#F8F9FA",
+    "border":  "#DEE2E6",
+    "text":    "#212529",
+    "sub":     "#6C757D",
+    "green":   "#198754",
+    "blue":    "#0D6EFD",
+    "amber":   "#E6A817",
+    "red":     "#DC3545",
+    "ca":      "#0D6EFD",
+    "cb":      "#198754",
+    "grid":    "#E9ECEF",
     "font":    "Inter, 'Helvetica Neue', Arial, sans-serif",
 }
 
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-html,body,[class*="css"]{{font-family:{C['font']};background:{C['bg']};color:{C['text']};}}
-.stApp{{background:{C['bg']};}}
-[data-testid="stSidebar"]{{background:{C['surface']};border-right:1px solid {C['border']};}}
-.stButton>button{{
-    background:{C['blue']};color:#fff;border:none;border-radius:8px;
-    padding:0.55rem 1.4rem;font-family:{C['font']};font-weight:600;
-    font-size:14px;width:100%;letter-spacing:.02em;transition:background .2s;
+
+html, body, [class*="css"] {{
+    font-family: {C['font']};
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
 }}
-.stButton>button:hover{{background:#2563EB;}}
-.stButton>button:disabled{{background:{C['border']};color:{C['sub']};}}
-.stSelectbox>div>div,.stTextInput>div>div>input{{
-    border-radius:8px;border:1px solid {C['border']};
-    background:{C['surface']};color:{C['text']};
+.stApp {{ background-color: {C['bg']} !important; }}
+
+/* Sidebar */
+[data-testid="stSidebar"] {{
+    background-color: {C['surface']} !important;
+    border-right: 1px solid {C['border']};
 }}
-hr{{border-color:{C['border']};margin:1.2rem 0;}}
-.card{{
-    background:{C['surface']};border:1px solid {C['border']};
-    border-radius:12px;padding:18px 22px;margin-bottom:12px;
+[data-testid="stSidebar"] * {{
+    color: {C['text']} !important;
 }}
-.label{{
-    font-size:11px;font-weight:600;text-transform:uppercase;
-    letter-spacing:.08em;color:{C['sub']};margin-bottom:4px;
+
+/* All text elements */
+p, span, div, label, h1, h2, h3, h4, h5, h6,
+.stMarkdown, .stText, .stCaption {{
+    color: {C['text']} !important;
 }}
-.badge-green{{
-    background:#064E3B;color:#34D399;border-radius:20px;
-    font-size:11px;font-weight:700;padding:3px 12px;letter-spacing:.04em;
+
+/* ── All baseweb inputs (text, number, select) ── */
+[data-baseweb="input"],
+[data-baseweb="input-container"],
+[data-baseweb="base-input"] {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
 }}
-.badge-blue{{
-    background:#1E3A5F;color:#93C5FD;border-radius:6px;
-    font-size:11px;font-weight:600;padding:2px 9px;
+[data-baseweb="input"] *,
+[data-baseweb="input-container"] *,
+[data-baseweb="base-input"] * {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
 }}
-.sec{{
-    font-size:13px;font-weight:700;text-transform:uppercase;
-    letter-spacing:.1em;color:{C['sub']};margin-bottom:16px;
-    padding-bottom:8px;border-bottom:2px solid {C['border']};
+
+/* Text input */
+.stTextInput > div > div > input {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 6px;
 }}
-.summary-box{{
-    background:{C['surface']};border-left:4px solid {C['blue']};
-    border-radius:0 10px 10px 0;padding:20px 24px;
-    line-height:1.75;font-size:14.5px;
+
+/* Number input — the whole widget including stepper +/- buttons */
+.stNumberInput {{
+    background-color: {C['bg']} !important;
 }}
-.step-log{{
-    background:#0A0D14;border:1px solid {C['border']};border-radius:8px;
-    padding:12px 16px;font-family:monospace;font-size:12px;
-    color:#6EE7B7;line-height:1.6;
+.stNumberInput > div {{
+    background-color: {C['bg']} !important;
 }}
-.upload-zone{{
-    background:{C['surface']};border:2px dashed {C['border']};
-    border-radius:12px;padding:24px;text-align:center;
+.stNumberInput input {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 6px 0 0 6px;
+}}
+.stNumberInput button {{
+    background-color: {C['surface']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+}}
+.stNumberInput button:hover {{
+    background-color: {C['border']} !important;
+    color: {C['text']} !important;
+}}
+.stNumberInput button svg {{
+    fill: {C['text']} !important;
+    stroke: {C['text']} !important;
+}}
+/* baseweb number spinner container */
+[data-testid="stNumberInputContainer"] {{
+    background-color: {C['bg']} !important;
+}}
+[data-testid="stNumberInputContainer"] * {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+[data-testid="stNumberInputContainer"] button {{
+    background-color: {C['surface']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+}}
+
+/* Selectbox */
+.stSelectbox > div > div {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 6px;
+}}
+.stSelectbox [data-baseweb="select"],
+.stSelectbox [data-baseweb="select"] * {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+/* Selectbox dropdown popover */
+[data-baseweb="popover"] {{
+    background-color: {C['bg']} !important;
+}}
+[data-baseweb="menu"] {{
+    background-color: {C['bg']} !important;
+}}
+[data-baseweb="menu"] * {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+[data-baseweb="option"] {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+[data-baseweb="option"]:hover {{
+    background-color: {C['surface']} !important;
+    color: {C['text']} !important;
+}}
+li[role="option"] {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+li[role="option"]:hover {{
+    background-color: {C['surface']} !important;
+}}
+
+/* ── Buttons ── */
+.stButton > button {{
+    background-color: {C['blue']};
+    color: #ffffff !important;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1.2rem;
+    font-weight: 600;
+    font-size: 14px;
+    width: 100%;
+    transition: background 0.2s;
+}}
+.stButton > button:hover {{ background-color: #0b5ed7; color: #ffffff !important; }}
+.stButton > button:disabled {{
+    background-color: {C['border']} !important;
+    color: {C['sub']} !important;
+}}
+.stButton > button p {{
+    color: #ffffff !important;
+}}
+.stButton > button:disabled p {{
+    color: {C['sub']} !important;
+}}
+
+/* ── File uploader ── */
+[data-testid="stFileUploader"] {{
+    background-color: {C['surface']} !important;
+    border-radius: 8px;
+}}
+[data-testid="stFileUploader"] * {{
+    color: {C['text']} !important;
+}}
+/* Dropzone area */
+[data-testid="stFileUploaderDropzone"] {{
+    background-color: {C['surface']} !important;
+    border: 2px dashed {C['border']} !important;
+    border-radius: 8px;
+}}
+[data-testid="stFileUploaderDropzone"] * {{
+    color: {C['text']} !important;
+}}
+/* "Browse files" button inside file uploader */
+[data-testid="stFileUploaderDropzoneButton"] {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 6px !important;
+}}
+[data-testid="stFileUploaderDropzoneButton"]:hover {{
+    background-color: {C['surface']} !important;
+    color: {C['text']} !important;
+}}
+[data-testid="stFileUploaderDropzoneButton"] p,
+[data-testid="stFileUploaderDropzoneButton"] span {{
+    color: {C['text']} !important;
+}}
+
+/* Tabs */
+[data-testid="stTabs"] button {{
+    color: {C['text']} !important;
+    background: transparent !important;
+}}
+[data-testid="stTabs"] button[aria-selected="true"] {{
+    border-bottom: 2px solid {C['blue']} !important;
+    color: {C['blue']} !important;
+}}
+
+/* Expander */
+[data-testid="stExpander"] {{
+    background-color: {C['surface']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 8px;
+}}
+[data-testid="stExpander"] * {{
+    color: {C['text']} !important;
+}}
+
+/* Alerts / info boxes */
+.stAlert, .stInfo, .stWarning, .stError, .stSuccess {{
+    color: {C['text']} !important;
+}}
+.stAlert p, .stInfo p, .stWarning p, .stError p, .stSuccess p {{
+    color: {C['text']} !important;
+}}
+[data-testid="stAlertContainer"] {{
+    color: {C['text']} !important;
+}}
+[data-testid="stAlertContainer"] * {{
+    color: {C['text']} !important;
+}}
+
+/* Dataframe */
+[data-testid="stDataFrame"] * {{
+    color: {C['text']} !important;
+    background-color: {C['bg']} !important;
+}}
+
+/* Code blocks (step log) */
+.stCode, .stCodeBlock, code, pre {{
+    background-color: #F1F3F5 !important;
+    color: #212529 !important;
+    border: 1px solid {C['border']};
+    border-radius: 6px;
+}}
+
+/* Download button */
+[data-testid="stDownloadButton"] button {{
+    background-color: {C['surface']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+}}
+
+/* Dividers */
+hr {{ border-color: {C['border']}; margin: 1rem 0; }}
+
+/* Custom component classes */
+.card {{
+    background: {C['surface']};
+    border: 1px solid {C['border']};
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    color: {C['text']} !important;
+}}
+.card * {{ color: {C['text']} !important; }}
+
+.sec {{
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: {C['sub']};
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid {C['border']};
+}}
+
+.label {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: {C['text']};
+    margin-bottom: 3px;
+}}
+
+.label-tag {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: {C['text']};
+    margin-bottom: 3px;
+}}
+
+.badge-green {{
+    background: #D1E7DD;
+    color: #0F5132 !important;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 10px;
+}}
+.badge-blue {{
+    background: #CFE2FF;
+    color: #084298 !important;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+}}
+.badge-amber {{
+    background: #FFF3CD;
+    color: #664D03 !important;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+}}
+
+.summary-box {{
+    background: {C['surface']};
+    border-left: 4px solid {C['blue']};
+    border-radius: 0 8px 8px 0;
+    padding: 18px 22px;
+    line-height: 1.75;
+    font-size: 14px;
+    color: {C['text']} !important;
+}}
+.summary-box * {{ color: {C['text']} !important; }}
+
+.step-log {{
+    background: #F1F3F5;
+    border: 1px solid {C['border']};
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: monospace;
+    font-size: 12px;
+    color: {C['text']} !important;
+    line-height: 1.6;
+    min-height: 60px;
+}}
+
+.upload-info {{
+    background: #E8F4FD;
+    border: 1px solid #B8D9F5;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #084298 !important;
+    margin-top: 4px;
+}}
+
+.upload-zone {{
+    background: {C['surface']};
+    border: 2px dashed {C['border']};
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -806,6 +1100,8 @@ def run_company_pipeline(
     db_online:          bool,
     llm_service,
     status_placeholder,
+    uploaded_file=None,
+    upload_report_type: str = "BRSR",
 ) -> CompanyData:
     """
     Multi-source pipeline for one company+FY.
@@ -838,6 +1134,59 @@ def run_company_pipeline(
         )
 
     _update(f"Starting pipeline for {company_name} FY{fy}.")
+
+    # ── Upload-first path: if a PDF is uploaded, run the upload pipeline ──────
+    if uploaded_file is not None:
+        _update(f"PDF uploaded: {uploaded_file.name} ({round(uploaded_file.size/1e6,1)} MB). Running upload pipeline...")
+        upload_result = run_upload_pipeline(
+            uploaded_file=uploaded_file,
+            company_name=company_name,
+            fy=fy,
+            sector=sector,
+            report_type=upload_report_type,
+            db_online=db_online,
+            llm_service=llm_service,
+            status_placeholder=status_placeholder,
+        )
+        # Merge upload log into main log
+        for line in upload_result.get("log", []):
+            if line not in log:
+                log.append(line)
+        if upload_result.get("success"):
+            upload_kpis = upload_result.get("kpi_records", {})
+            upload_rev  = upload_result.get("revenue")
+            upload_ri   = upload_result.get("report_infos", [])
+            upload_cid  = upload_result.get("company_id")
+
+            # Also load any existing DB KPIs to fill gaps
+            db_fill: dict = {}
+            if db_online and upload_cid:
+                db_fill_data = _db_load_kpis_and_revenue(upload_cid, fy)
+                db_fill      = db_fill_data.get("kpis", {})
+                if not upload_rev:
+                    upload_rev = db_fill_data.get("revenue")
+
+            # Merge: PDF wins on overlap; DB fills missing KPIs
+            merged = {**db_fill, **upload_kpis}
+            ghg = _derive_total_ghg(merged)
+            if ghg:
+                merged["total_ghg_emissions"] = ghg
+
+            _update(f"Upload complete: {len(merged)} KPI(s). Done.")
+            return CompanyData(
+                company_name   = company_name,
+                fy             = fy,
+                sector         = sector,
+                kpi_records    = merged,
+                revenue_result = upload_rev,
+                log            = log,
+                company_id     = upload_cid,
+                report_infos   = upload_ri,
+                file_path      = upload_result.get("report_infos", [{}])[0].file_path
+                                 if upload_result.get("report_infos") else None,
+            )
+        else:
+            _update("Upload pipeline failed. Falling back to DB/search pipeline.")
 
     company_id:   Optional[uuid.UUID] = None
     report_infos: list[ReportInfo]    = []
@@ -1405,34 +1754,33 @@ if db_online:
 # =============================================================================
 
 with st.sidebar:
-    st.markdown("""
-    <div style="padding:0 0 14px">
-        <div style="font-size:22px;font-weight:800;color:#E8EAF0;letter-spacing:-0.5px">
-            ESG Intel
-        </div>
-        <div style="font-size:12px;color:#8B92A9;margin-top:2px">
-            Multi-Source Benchmarking Pipeline
-        </div>
-    </div>""", unsafe_allow_html=True)
-
-    db_color = C["green"] if db_online else C["red"]
-    db_label = (
-        f"Database connected ({len(known_companies)} companies)"
-        if db_online else "Database offline"
-    )
     st.markdown(
-        f"<div style='font-size:11px;color:{db_color};font-weight:600'>"
-        f"{db_label}</div>",
+        f"""<div style="padding:0 0 12px">
+          <div style="font-size:20px;font-weight:800;color:{C['text']}">
+            🌿 ESG Intelligence
+          </div>
+          <div style="font-size:11px;color:{C['sub']};margin-top:2px">
+            Multi-Source Benchmarking Pipeline
+          </div>
+        </div>""",
         unsafe_allow_html=True,
     )
-    if db_online:
-        llm_color = C["green"] if llm_service else C["amber"]
-        llm_label = "LLM enabled (Gemini)" if llm_service else "LLM disabled (no API key)"
-        st.markdown(
-            f"<div style='font-size:11px;color:{llm_color};font-weight:600'>"
-            f"{llm_label}</div>",
-            unsafe_allow_html=True,
-        )
+
+    db_col = C["green"] if db_online else C["red"]
+    st.markdown(
+        f"<div style='font-size:11px;color:{db_col};font-weight:600'>"
+        f"{'● DB connected' if db_online else '● DB offline'}"
+        + (f" ({len(known_companies)} companies)" if db_online else "")
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+    llm_col = C["green"] if llm_service else C["amber"]
+    st.markdown(
+        f"<div style='font-size:11px;color:{llm_col};font-weight:600'>"
+        f"{'● LLM enabled' if llm_service else '⚠ LLM disabled (no API key)'}"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
     st.markdown("---")
     sector = st.selectbox("Sector", SECTORS, key="sector")
@@ -1440,7 +1788,7 @@ with st.sidebar:
 
     # Company 1
     st.markdown(
-        f'<div class="label" style="color:{C["ca"]}">Company 1</div>',
+        f'<div class="label-tag" style="color:{C["ca"]}">Company / Dataset 1</div>',
         unsafe_allow_html=True,
     )
     company1 = st.text_input(
@@ -1451,11 +1799,24 @@ with st.sidebar:
         "FY1", min_value=2015, max_value=2030, value=2025,
         label_visibility="collapsed", key="c1_fy",
     )
-    if db_online and company1:
+    upload1 = st.file_uploader(
+        "Upload PDF (optional)", type=["pdf"], key="upload1",
+        help="Upload a BRSR/ESG/Annual report PDF. If omitted, existing DB data or search pipeline is used.",
+    )
+    rtype1 = st.selectbox("Report type", UPLOAD_REPORT_TYPE_OPTIONS, key="rtype1",
+                           label_visibility="collapsed") if upload1 else None
+
+    if upload1:
+        st.markdown(
+            f"<div class='upload-info'>📄 {upload1.name} "
+            f"({round(upload1.size/1e6,1)} MB)</div>",
+            unsafe_allow_html=True,
+        )
+    elif db_online and company1:
         check1 = _db_get_all_reports(company1, int(fy1))
         if check1["exists"]:
             types1 = [ri.report_type for ri in check1["reports"]]
-            st.caption(f"{len(check1['reports'])} report(s) in DB: {', '.join(types1)}")
+            st.caption(f"✓ {len(check1['reports'])} report(s) in DB: {', '.join(types1)}")
         else:
             st.caption("No reports in DB — full pipeline will run")
 
@@ -1463,7 +1824,7 @@ with st.sidebar:
 
     # Company 2
     st.markdown(
-        f'<div class="label" style="color:{C["cb"]}">Company 2</div>',
+        f'<div class="label-tag" style="color:{C["cb"]}">Company / Dataset 2</div>',
         unsafe_allow_html=True,
     )
     company2 = st.text_input(
@@ -1474,21 +1835,44 @@ with st.sidebar:
         "FY2", min_value=2015, max_value=2030, value=2024,
         label_visibility="collapsed", key="c2_fy",
     )
-    if db_online and company2:
+    upload2 = st.file_uploader(
+        "Upload PDF (optional)", type=["pdf"], key="upload2",
+        help="Upload a PDF for company 2.",
+    )
+    rtype2 = st.selectbox("Report type ", UPLOAD_REPORT_TYPE_OPTIONS, key="rtype2",
+                           label_visibility="collapsed") if upload2 else None
+
+    if upload2:
+        st.markdown(
+            f"<div class='upload-info'>📄 {upload2.name} "
+            f"({round(upload2.size/1e6,1)} MB)</div>",
+            unsafe_allow_html=True,
+        )
+    elif db_online and company2:
         check2 = _db_get_all_reports(company2, int(fy2))
         if check2["exists"]:
             types2 = [ri.report_type for ri in check2["reports"]]
-            st.caption(f"{len(check2['reports'])} report(s) in DB: {', '.join(types2)}")
+            st.caption(f"✓ {len(check2['reports'])} report(s) in DB: {', '.join(types2)}")
         else:
             st.caption("No reports in DB — full pipeline will run")
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
+    # Same company different year note
+    if (company1 and company2
+            and company1.strip().lower() == company2.strip().lower()
+            and int(fy1) != int(fy2)):
+        st.markdown(
+            f"<div style='font-size:11px;color:{C['amber']};font-weight:600'>"
+            f"📅 Year-over-year comparison mode</div>",
+            unsafe_allow_html=True,
+        )
+
     ready       = bool(company1 and company2 and company1.strip().lower() != company2.strip().lower())
     compare_btn = st.button("Compare", disabled=not ready, use_container_width=True)
 
     if not ready and (company1 or company2):
-        if company1.strip().lower() == company2.strip().lower():
+        if company1 and company2 and company1.strip().lower() == company2.strip().lower():
             st.caption("Enter two different company names.")
 
     st.markdown("---")
@@ -1510,22 +1894,24 @@ with tab_compare:
     if "result" not in st.session_state and not compare_btn:
         st.markdown(f"""
         <div style="display:flex;flex-direction:column;align-items:center;
-                    justify-content:center;padding:80px 40px;text-align:center">
-            <div style="font-size:28px;font-weight:800;color:#E8EAF0;
+                    justify-content:center;padding:60px 40px;text-align:center">
+            <div style="font-size:44px;margin-bottom:12px">🌿</div>
+            <div style="font-size:26px;font-weight:800;color:{C['text']};
                         letter-spacing:-0.5px;margin-bottom:8px">
                 ESG Competitive Intelligence
             </div>
-            <div style="font-size:14px;color:#8B92A9;max-width:560px;
-                        line-height:1.7;margin-bottom:24px">
-                Enter two company names and click Compare.<br><br>
-                The pipeline downloads and processes ALL available report types
-                (BRSR, ESG, Integrated) independently. KPI values from all sources
-                are stored separately in the database.<br><br>
-                For comparison, the BRSR value is preferred, then Integrated, then ESG.
+            <div style="font-size:14px;color:{C['sub']};max-width:560px;
+                        line-height:1.8;margin-bottom:24px">
+                Compare ESG intensity metrics for any two companies.<br><br>
+                <strong>With PDF upload:</strong> upload BRSR / ESG / Annual report
+                PDFs directly in the sidebar for instant extraction.<br>
+                <strong>DB-first:</strong> existing data is used automatically;
+                the pipeline downloads all report types if nothing is cached.
             </div>
-            <div style="font-size:13px;color:#6EE7B7;background:#064E3B;
-                        border-radius:8px;padding:10px 20px;display:inline-block">
-                Multi-source | All report types | BRSR > Integrated > ESG priority
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                <span class="badge-blue">PDF Upload</span>
+                <span class="badge-green">Multi-Source</span>
+                <span class="badge-amber">BRSR &gt; Integrated &gt; ESG</span>
             </div>
         </div>""", unsafe_allow_html=True)
 
@@ -1552,11 +1938,15 @@ with tab_compare:
                 company_name=company1, fy=int(fy1), sector=sector,
                 db_online=db_online, llm_service=llm_service,
                 status_placeholder=placeholder1,
+                uploaded_file=upload1,
+                upload_report_type=rtype1 or "BRSR",
             )
             data2 = run_company_pipeline(
                 company_name=company2, fy=int(fy2), sector=sector,
                 db_online=db_online, llm_service=llm_service,
                 status_placeholder=placeholder2,
+                uploaded_file=upload2,
+                upload_report_type=rtype2 or "BRSR",
             )
         except Exception as exc:
             pipeline_error = exc

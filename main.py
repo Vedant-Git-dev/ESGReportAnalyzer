@@ -48,6 +48,7 @@ def cmd_seed_kpis(_args) -> None:
     from models.db_models import KPIDefinition
 
     DEFAULT_KPIS = [
+        # ── Existing KPIs (unchanged) ─────────────────────────────────────────
         {
             "name": "scope_1_emissions",
             "display_name": "Scope 1 GHG Emissions",
@@ -55,11 +56,8 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Emissions",
             "expected_unit": "tCO2e",
             "regex_patterns": [
-                # Block pattern: "Total Scope 1 emissions...\nMetric tonnes...\nequivalent\n8,745"
                 r"total\s+scope\s*1\s+emissions[\s\S]{0,150}?equivalent\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # Inline: "Scope 1 ... 8,745 tCO2e"
                 r"scope[\s\-]*1[\s\S]{0,80}?([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2e?|metric\s*tonnes?\s*(?:of\s*)?co2)",
-                # Narrative
                 r"scope\s*1\s+emissions?\s+(?:were|was|of|:)\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2)",
             ],
             "retrieval_keywords": [
@@ -111,14 +109,22 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Energy",
             "expected_unit": "GJ",
             "regex_patterns": [
+                # Parenthetical total (BRSR A+B+C+D+E+F notation)
                 r"total\s+energy\s+consumed\s*\([A-Za-z+\s]+\)[\s\S]{0,10}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
                 r"total\s+energy\s+consumed[^\n]{0,50}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                r"total\s+energy\s+(?:consumption|consumed)[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj)",
-                r"energy\s+consumption\s+(?:was|of|:)\s*([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj)",
+                # Inline patterns
+                r"total\s+energy\s+(?:consumption|consumed)[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj|kwh|mj)",
+                r"energy\s+consumption\s+(?:was|of|:)\s*([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj|kwh|mj)",
+                # "total energy used" variant
+                r"total\s+energy\s+used[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj|kwh|mj)",
+                # "electricity consumed" standalone
+                r"electricity\s+consumed[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(mwh|gwh|kwh|gj)",
             ],
             "retrieval_keywords": [
                 "total energy consumed", "energy consumption", "GJ", "gigajoules",
                 "energy intensity", "A + B + C + D + E + F",
+                "total energy consumption", "energy used", "electricity consumed",
+                "fuel consumed", "MWh", "GWh", "energy use",
             ],
             "valid_min": 100, "valid_max": 1e13,
         },
@@ -146,14 +152,24 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Water",
             "expected_unit": "KL",
             "regex_patterns": [
+                # BRSR block patterns
                 r"total\s+volume\s+of\s+water\s+consumption[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
                 r"total\s+water\s+consumption[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                # Withdrawn / intake variants
+                r"total\s+water\s+withdrawn[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                r"total\s+water\s+(?:intake|sourced|used)[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                # Inline
                 r"water\s+consumption[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(kl|kilolitr\w*|m3)",
                 r"([\d,]+(?:\.\d+)?)\s*(kl|kilolitr\w*)\s*[\s\S]{0,30}?water\s+consumption",
+                # Net water / footprint
+                r"net\s+water\s+consumption[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(kl|kilolitr\w*|m3)",
             ],
             "retrieval_keywords": [
                 "water consumption", "total volume of water consumption",
                 "water withdrawal", "KL", "kilolitres", "kl",
+                "total water", "water intake", "water used",
+                "water withdrawn", "freshwater", "ground water",
+                "surface water", "municipal water", "water sourced",
             ],
             "valid_min": 0, "valid_max": 1e12,
         },
@@ -211,22 +227,46 @@ def cmd_seed_kpis(_args) -> None:
             ],
             "valid_min": 0, "valid_max": 100,
         },
+        
+        # ── NEW KPI: scope_3_emissions ────────────────────────────────────────
         {
-            "name": "csr_spend",
-            "display_name": "CSR / Social Investment Spend",
-            "category": "Social",
-            "subcategory": "Community",
-            "expected_unit": "INR Crore",
+            "name": "scope_3_emissions",
+            "display_name": "Scope 3 GHG Emissions",
+            "category": "Environmental",
+            "subcategory": "Emissions",
+            "expected_unit": "tCO2e",
             "regex_patterns": [
-                r"csr\s+(?:expenditure|spend|investment|amount\s+spent)[\s\S]{0,60}?([\d,]+(?:\.\d+)?)\s*(?:crore|cr|lakh|inr)?",
-                r"(?:amount\s+spent|expenditure)\s+on\s+csr[\s\S]{0,60}?([\d,]+(?:\.\d+)?)\s*(?:crore|cr)",
-                r"([\d,]+(?:\.\d+)?)\s*(?:crore|cr)\s*[\s\S]{0,40}?csr",
+                # Explicit "Total Scope 3" with inline unit
+                r"total\s+scope\s*3\s+emissions.{0,200}?metric\s+tonnes\s+of\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                # Multiline block: label then unit then value
+                r"total\s+scope\s*3\s+emissions[\s\S]{0,300}?equivalent\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                # Simple block: "Scope 3 emissions\nVALUE"
+                r"scope\s*3\s+(?:ghg\s+)?emissions[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                # Value chain total
+                r"total\s+value\s+chain\s+emissions[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                # GRI label: "Other indirect (Scope 3) GHG emissions"
+                r"other\s+indirect\s+\(scope\s*3\)[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+                # Inline: "Scope 3 ... 15,432 tCO2e"
+                r"scope[\s\-]*3[\s\S]{0,100}?([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2e?|metric\s*tonnes?\s*(?:of\s*)?co2)",
+                # Narrative: "scope 3 emissions were / amounted to X tCO2e"
+                r"scope\s*3\s+emissions?\s+(?:were|was|of|:|amount\w*\s+to)\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2)",
             ],
             "retrieval_keywords": [
-                "CSR expenditure", "CSR spend", "CSR investment",
-                "corporate social responsibility", "crore",
+                # Short keywords (high recall)
+                "scope 3", "scope-3", "scope iii",
+                "value chain emissions", "upstream emissions", "downstream emissions",
+                "supply chain emissions", "indirect value chain",
+                "total scope 3", "scope 3 ghg", "scope 3 tco2e",
+                # Category keywords (BRSR / GRI categories)
+                "purchased goods and services", "business travel emissions",
+                "employee commute", "use of sold products",
+                "end-of-life treatment", "capital goods",
+                "transportation and distribution",
+                # GRI label
+                "other indirect emissions",
             ],
-            "valid_min": 0, "valid_max": 1e6,
+            "valid_min": 0,
+            "valid_max": 1e10,   # scope 3 can be far larger than scope 1+2
         },
     ]
 
@@ -582,7 +622,6 @@ def cmd_kpi_retrieve(args) -> None:
     from models.db_models import KPIDefinition, ParsedDocument
     from services.retrieval_service import RetrievalService
 
-    # Resolve report_id from company name + year
     report_id = _resolve_report_id_from_company(args.company, args.year)
     if report_id is None:
         sys.exit(1)
@@ -740,12 +779,6 @@ def cmd_embed_status(_args) -> None:
 # ---------------------------------------------------------------------------
 
 def _resolve_report_id_from_company(company_name: str, year: int) -> "uuid.UUID | None":
-    """
-    Resolve the best report_id for a company name + year.
-
-    Preference order: BRSR > ESG > Integrated > any downloaded report.
-    Returns None and prints a helpful message if not found.
-    """
     import uuid as _uuid
     from core.database import get_db
     from models.db_models import Company, Report
@@ -781,12 +814,10 @@ def _resolve_report_id_from_company(company_name: str, year: int) -> "uuid.UUID 
             print(f"   Run: python main.py ingest --company \"{company_name}\" --year {year}")
             return None
 
-        # Pick best report: BRSR first, then ESG, then Integrated, then most recent
-        type_priority = {"BRSR": 0, "ESG": 1, "Integrated": 2}
+        type_priority = {"BRSR": 1, "ESG": 2, "Integrated": 0}
         reports_with_file = [r for r in reports if r.file_path and Path(r.file_path).exists()]
 
         if not reports_with_file:
-            # File may be gone but parse cache might still exist
             print(f"   Warning: PDF file not found on disk, but will attempt extraction from parse cache.")
             best = reports[0]
         else:
@@ -800,21 +831,10 @@ def _resolve_report_id_from_company(company_name: str, year: int) -> "uuid.UUID 
 
 
 def cmd_extract(args) -> None:
-    """
-    Run KPI extraction (regex → LLM → validation) on a report.
-
-    Supports two modes:
-      1. By company name + year (recommended):
-         python main.py extract --company "TCS" --year 2024
-
-      2. By report ID (legacy):
-         python main.py extract --report-id <UUID>
-    """
     import uuid as _uuid
     from core.database import get_db
     from agents.extraction_agent import ExtractionAgent
 
-    # ── Resolve report_id ─────────────────────────────────────────────────────
     report_id = None
 
     if args.company and args.year:
@@ -833,7 +853,6 @@ def cmd_extract(args) -> None:
         print("   Example: python main.py extract --company \"TCS\" --year 2024")
         sys.exit(1)
 
-    # ── Parse first (idempotent — safe to call even if already parsed) ────────
     if not args.skip_parse:
         print(f"\nEnsuring PDF is parsed (idempotent)...")
         try:
@@ -844,7 +863,6 @@ def cmd_extract(args) -> None:
             print(f"   Warning: Parse step failed: {exc}")
             print(f"   Continuing with existing parse cache if available...")
 
-    # ── Extract ───────────────────────────────────────────────────────────────
     kpi_names = [k.strip() for k in args.kpis.split(",")] if args.kpis else None
 
     agent = ExtractionAgent()
@@ -890,7 +908,6 @@ def cmd_extract(args) -> None:
             f"{row['method']:<8} {conf:<6} {valid:<6} {notes}"
         )
 
-    # ── Revenue extraction ────────────────────────────────────────────────────
     if not args.skip_revenue:
         print(f"\nExtracting revenue...")
         try:
@@ -973,154 +990,95 @@ def main():
     parser = argparse.ArgumentParser(description="ESG Competitive Intelligence Pipeline")
     sub = parser.add_subparsers(dest="command")
 
-    # init-db
     sub.add_parser("init-db", help="Create all database tables")
-
-    # seed-kpis
     sub.add_parser("seed-kpis", help="Seed default KPI definitions")
 
-    # ingest
     ingest_p = sub.add_parser("ingest", help="Discover and download ESG reports for a company")
-    ingest_p.add_argument("--company", required=True, help="Company name")
-    ingest_p.add_argument("--year", type=int, required=True, help="Report year")
+    ingest_p.add_argument("--company", required=True)
+    ingest_p.add_argument("--year", type=int, required=True)
     ingest_p.add_argument("--ticker", default=None)
     ingest_p.add_argument("--sector", default=None)
     ingest_p.add_argument("--report-type", default="BRSR",
-                          choices=["BRSR", "ESG", "Sustainability", "Annual"],
-                          help="Report type to search for (default: BRSR)")
-    ingest_p.add_argument("--no-download", action="store_true", help="Register but don't download")
+                          choices=["BRSR", "ESG", "Sustainability", "Annual"])
+    ingest_p.add_argument("--no-download", action="store_true")
     ingest_p.add_argument("--max-downloads", type=int, default=1)
 
-    # list-companies
     sub.add_parser("list-companies", help="List all companies in DB")
+    sub.add_parser("list-reports",   help="List all reports and their status")
 
-    # list-reports
-    sub.add_parser("list-reports", help="List all reports and their status")
-
-    # download
     dl_p = sub.add_parser("download", help="Download a specific report or retry next available URL")
-    dl_p.add_argument("--report-id", default=None, help="UUID of a specific registered report")
-    dl_p.add_argument("--company-id", default=None, help="Company UUID (use with --year)")
-    dl_p.add_argument("--year", type=int, default=None, help="Report year (use with --company-id)")
+    dl_p.add_argument("--report-id",  default=None)
+    dl_p.add_argument("--company-id", default=None)
+    dl_p.add_argument("--year",       type=int, default=None)
 
-    # retry-failed
     sub.add_parser("retry-failed", help="Retry all failed downloads using next registered URLs")
 
-    # list-chunks
     chunks_p = sub.add_parser("list-chunks", help="Show parsed chunks for a report")
-    chunks_p.add_argument("--report-id", required=True, help="UUID of the report")
-    chunks_p.add_argument("--type", default=None, choices=["text", "table", "footnote"], help="Filter by chunk type")
-    chunks_p.add_argument("--limit", type=int, default=20, help="Max chunks to display (default: 20)")
-    chunks_p.add_argument("--show", type=int, default=None, help="Print full content of chunk #N")
+    chunks_p.add_argument("--report-id", required=True)
+    chunks_p.add_argument("--type", default=None, choices=["text", "table", "footnote"])
+    chunks_p.add_argument("--limit", type=int, default=20)
+    chunks_p.add_argument("--show",  type=int, default=None)
 
-    # Phase 2: parse
     parse_p = sub.add_parser("parse", help="Parse a downloaded PDF and cache result")
-    parse_p.add_argument("--report-id", required=True, help="UUID of a downloaded report")
-    parse_p.add_argument("--force", action="store_true", help="Re-parse even if cache exists")
+    parse_p.add_argument("--report-id", required=True)
+    parse_p.add_argument("--force", action="store_true")
 
-    # Phase 2: parse-status
     sub.add_parser("parse-status", help="Show parse cache entries")
 
-    # Phase 3: search-chunks
     sc_p = sub.add_parser("search-chunks", help="Ad-hoc keyword search across parsed chunks")
-    sc_p.add_argument("--report-id", required=True, help="UUID of the report")
-    sc_p.add_argument("--keywords", required=True, help="Comma-separated keywords e.g. 'scope 1,emissions,tCO2e'")
-    sc_p.add_argument("--top-k", type=int, default=7, help="Max chunks to return (default: 7)")
-    sc_p.add_argument("--type", default=None, choices=["text", "table", "footnote"], help="Filter chunk type")
-    sc_p.add_argument("--show-top", action="store_true", help="Print full content of top result")
+    sc_p.add_argument("--report-id", required=True)
+    sc_p.add_argument("--keywords",  required=True)
+    sc_p.add_argument("--top-k",     type=int, default=7)
+    sc_p.add_argument("--type",      default=None, choices=["text", "table", "footnote"])
+    sc_p.add_argument("--show-top",  action="store_true")
 
-    # Phase 3: kpi-retrieve
-    kr_p = sub.add_parser(
-        "kpi-retrieve",
-        help="Retrieve top chunks for a KPI — by company name + year",
-    )
-    kr_p.add_argument("--company", required=True,
-                      help="Company name (fuzzy-matched, e.g. 'TCS')")
-    kr_p.add_argument("--year",    required=True, type=int,
-                      help="Fiscal year (e.g. 2024)")
-    kr_p.add_argument("--kpi",     required=True,
-                      help="KPI name (e.g. scope_1_emissions).  "
-                           "Run list-kpis to see all options.")
-    kr_p.add_argument("--top-k",   type=int, default=7,
-                      help="Number of chunks to return (default: 7)")
+    kr_p = sub.add_parser("kpi-retrieve", help="Retrieve top chunks for a KPI")
+    kr_p.add_argument("--company", required=True)
+    kr_p.add_argument("--year",    required=True, type=int)
+    kr_p.add_argument("--kpi",     required=True)
+    kr_p.add_argument("--top-k",   type=int, default=7)
 
-    # list-kpis
     sub.add_parser("list-kpis", help="List all KPI definitions")
 
-    # Embedding
     emb_p = sub.add_parser("embed", help="Compute semantic embeddings for a parsed report")
-    emb_p.add_argument("--report-id", required=True, help="UUID of a parsed report")
-    emb_p.add_argument("--force", action="store_true", help="Re-embed even if already done")
+    emb_p.add_argument("--report-id", required=True)
+    emb_p.add_argument("--force",     action="store_true")
 
     sub.add_parser("embed-status", help="Show embedding coverage across all reports")
 
-    # Phase 4: extract
-    # Supports BOTH --company + --year (preferred) AND --report-id (legacy)
-    ex_p = sub.add_parser(
-        "extract",
-        help=(
-            "Extract KPIs from a report.\n"
-            "Preferred: --company 'TCS' --year 2024\n"
-            "Legacy:    --report-id <UUID>"
-        ),
-    )
-    ex_p.add_argument(
-        "--company", default=None,
-        help="Company name (fuzzy-matched in DB). Use with --year.",
-    )
-    ex_p.add_argument(
-        "--year", type=int, default=None,
-        help="Fiscal year (e.g. 2024). Use with --company.",
-    )
-    ex_p.add_argument(
-        "--report-id", default=None,
-        help="UUID of a parsed report (legacy). Overrides --company/--year.",
-    )
-    ex_p.add_argument(
-        "--kpis", default=None,
-        help="Comma-separated KPI names to extract (default: all active).",
-    )
-    ex_p.add_argument(
-        "--no-fallback", action="store_true",
-        help="Disable fallback search in other reports.",
-    )
-    ex_p.add_argument(
-        "--max-fallback", type=int, default=3,
-        help="Max extra reports to search per missing KPI (default: 3).",
-    )
-    ex_p.add_argument(
-        "--skip-parse", action="store_true",
-        help="Skip the parse step (use existing parse cache only).",
-    )
-    ex_p.add_argument(
-        "--skip-revenue", action="store_true",
-        help="Skip revenue extraction.",
-    )
+    ex_p = sub.add_parser("extract", help="Extract KPIs from a report")
+    ex_p.add_argument("--company",       default=None)
+    ex_p.add_argument("--year",          type=int, default=None)
+    ex_p.add_argument("--report-id",     default=None)
+    ex_p.add_argument("--kpis",          default=None)
+    ex_p.add_argument("--no-fallback",   action="store_true")
+    ex_p.add_argument("--max-fallback",  type=int, default=3)
+    ex_p.add_argument("--skip-parse",    action="store_true")
+    ex_p.add_argument("--skip-revenue",  action="store_true")
 
-    # Phase 4: list-kpi-records
     rec_p = sub.add_parser("list-kpi-records", help="Show extracted KPI records for a report")
-    rec_p.add_argument("--report-id", required=True, help="UUID of the report")
+    rec_p.add_argument("--report-id", required=True)
 
     args = parser.parse_args()
 
     dispatch = {
-        "init-db":         cmd_init_db,
-        "seed-kpis":       cmd_seed_kpis,
-        "ingest":          cmd_ingest,
-        "list-companies":  cmd_list_companies,
-        "list-reports":    cmd_list_reports,
-        "download":        cmd_download,
-        "retry-failed":    cmd_retry_failed,
-        "list-chunks":     cmd_list_chunks,
-        "parse":           cmd_parse,
-        "parse-status":    cmd_parse_status,
-        "search-chunks":   cmd_search_chunks,
-        "kpi-retrieve":    cmd_kpi_retrieve,
-        "list-kpis":       cmd_list_kpis,
-        "embed":           cmd_embed,
-        "embed-status":    cmd_embed_status,
-        "extract":         cmd_extract,
-        "list-kpi-records":cmd_list_kpi_records,
+        "init-db":          cmd_init_db,
+        "seed-kpis":        cmd_seed_kpis,
+        "ingest":           cmd_ingest,
+        "list-companies":   cmd_list_companies,
+        "list-reports":     cmd_list_reports,
+        "download":         cmd_download,
+        "retry-failed":     cmd_retry_failed,
+        "list-chunks":      cmd_list_chunks,
+        "parse":            cmd_parse,
+        "parse-status":     cmd_parse_status,
+        "search-chunks":    cmd_search_chunks,
+        "kpi-retrieve":     cmd_kpi_retrieve,
+        "list-kpis":        cmd_list_kpis,
+        "embed":            cmd_embed,
+        "embed-status":     cmd_embed_status,
+        "extract":          cmd_extract,
+        "list-kpi-records": cmd_list_kpi_records,
     }
 
     if args.command not in dispatch:

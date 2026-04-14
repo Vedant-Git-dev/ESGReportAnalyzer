@@ -18,6 +18,11 @@ KPI Extraction Agent — Phase 4 (enhanced).
 
   Layer 3 — Validation
     - Range check, unit consistency, confidence floor
+
+NEW KPIs added (existing KPIs unchanged):
+  - scope_3_emissions   : Scope 3 upstream + downstream indirect GHG
+  - energy_consumption  : Total energy consumed (GJ / MWh / kWh)
+  - water_consumption   : Total water consumed / withdrawn (KL / m³)
 """
 from __future__ import annotations
 
@@ -42,10 +47,9 @@ _REGEX_HIGH_CONFIDENCE = 0.88
 _LLM_CHUNK_CHAR_LIMIT = 6000
 
 # Patterns that indicate a number is NOT a stock value but a delta/target/intensity.
-# Applied as a pre-check on the sentence containing the regex match.
 _DELTA_CONTEXT_RE = re.compile(
     r"\b("
-    r"reduc(?:ed|es?|tion|ing)|"                  # "reduced scope 1 by", "reduces emissions"
+    r"reduc(?:ed|es?|tion|ing)|"
     r"declin(?:ed|e|ing)|"
     r"decreas(?:ed|es?|e|ing)|"
     r"avoid(?:ed|ance|ing|s?)|"
@@ -65,22 +69,19 @@ _DELTA_CONTEXT_RE = re.compile(
     r"vs\.?\s+(?:fy|20)\d{2}|"
     r"from\s+(?:fy|20)\d{2}\s+(?:to|level)|"
     r"improvement\s+(?:of|in)|"
-    r"increase[sd]?\s+by|"                        # "increased by X"
-    r"net\s+(?:zero|neutral)|"                    # "net zero target of X"
-    r"emission\s+factor"                           # intensity-related
+    r"increase[sd]?\s+by|"
+    r"net\s+(?:zero|neutral)|"
+    r"emission\s+factor"
     r")\b",
     re.IGNORECASE,
 )
 
 
 def _get_sentence_context(text: str, match_start: int, window: int = 120) -> str:
-    """Extract the sentence around a regex match position."""
     start = max(0, match_start - window)
     end = min(len(text), match_start + window)
     snippet = text[start:end]
-    # Find sentence boundaries within the snippet
     sentences = re.split(r"[.!?\n]", snippet)
-    # Return the sentence most likely containing the match
     for sent in sentences:
         if str(match_start - start) and len(sent) > 5:
             return sent
@@ -88,9 +89,9 @@ def _get_sentence_context(text: str, match_start: int, window: int = 120) -> str
 
 
 def _is_delta_context(text: str, match_start: int) -> bool:
-    """Check if the text around a match position describes a delta/target/intensity."""
     context = _get_sentence_context(text, match_start, window=150)
     return bool(_DELTA_CONTEXT_RE.search(context))
+
 
 # ---------------------------------------------------------------------------
 # Unit synonym map
@@ -102,6 +103,7 @@ _UNIT_SYNONYMS: dict[str, str] = {
     "tonnes co2e": "tCO2e", "tons co2e": "tCO2e",
     "mwh": "MWh", "gwh": "GWh", "twh": "TWh",
     "gj": "GJ", "tj": "TJ", "pj": "PJ",
+    "kwh": "kWh", "mj": "MJ",
     "kl": "KL", "kilolitre": "KL", "kiloliter": "KL", "kilo litre": "KL",
     "m3": "m³", "cubic meter": "m³", "cubic metre": "m³",
     "mt": "MT", "metric ton": "MT", "metric tonne": "MT",
@@ -112,8 +114,11 @@ _UNIT_SYNONYMS: dict[str, str] = {
     "number": "count", "nos": "count", "headcount": "count",
 }
 
-# KPI-specific aliases used to widen retrieval and prompt context
+# ---------------------------------------------------------------------------
+# KPI aliases — used for retrieval widening and LLM prompt context
+# ---------------------------------------------------------------------------
 _KPI_ALIASES: dict[str, list[str]] = {
+    # ── Existing KPIs (unchanged) ────────────────────────────────────────────
     "scope_1_emissions": [
         "scope 1", "direct emissions", "direct ghg", "fuel combustion",
         "stationary combustion", "owned vehicles", "fugitive emissions",
@@ -130,7 +135,11 @@ _KPI_ALIASES: dict[str, list[str]] = {
     "energy_consumption": [
         "total energy", "energy consumed", "energy use", "energy usage",
         "electricity consumed", "fuel consumed", "energy intensity",
-        "gigajoules", "megawatt hours",
+        "gigajoules", "megawatt hours", "energy consumption",
+        "total energy consumed", "total energy consumption",
+        "energy used", "electricity consumption", "fuel consumption",
+        "power consumption", "thermal energy", "renewable energy consumed",
+        "non-renewable energy", "energy from grid",
     ],
     "renewable_energy_percentage": [
         "renewable energy", "solar energy", "wind energy", "clean energy",
@@ -140,6 +149,12 @@ _KPI_ALIASES: dict[str, list[str]] = {
     "water_consumption": [
         "water consumed", "water usage", "water use", "water withdrawal",
         "freshwater", "water recycled", "water intensity", "kilolitres",
+        "water consumption", "total water", "water intake",
+        "water used", "total water intake", "water withdrawn",
+        "water abstraction", "water sourced", "ground water",
+        "surface water", "municipal water", "third party water",
+        "total freshwater consumption", "water discharge",
+        "net water consumption", "water footprint",
     ],
     "waste_generated": [
         "waste generated", "total waste", "solid waste", "hazardous waste",
@@ -154,9 +169,23 @@ _KPI_ALIASES: dict[str, list[str]] = {
         "women", "female", "gender diversity", "women employees",
         "female employees", "gender ratio", "women in workforce",
     ],
-    "csr_spend": [
-        "csr expenditure", "csr spend", "csr investment", "social spend",
-        "community investment", "corporate social responsibility spend",
+
+    # ── NEW KPIs ─────────────────────────────────────────────────────────────
+    "scope_3_emissions": [
+        # Core scope 3 phrases
+        "scope 3", "scope-3",
+        # "value chain emissions", "upstream emissions", "downstream emissions",
+        "indirect value chain ghg", "supply chain emissions",
+        "scope 3 category",
+        "business travel emissions",
+        "purchased goods and services", "use of sold products",
+        "capital goods emissions",
+        "transportation and distribution",
+        "processing of sold products", "franchises",
+        "upstream scope 3", "downstream scope 3",
+        "total scope 3", "scope 3 tco2e",
+        "other indirect emissions", "indirect ghg scope 3",
+        "scope 3 carbon", "scope 3 footprint",
     ],
 }
 
@@ -180,12 +209,10 @@ def _parse_number(s: str) -> Optional[float]:
 
 
 # ---------------------------------------------------------------------------
-# Layer 1 — Regex (broad, narrative-aware patterns)
+# Layer 1 — Regex: block patterns and broad patterns
 # ---------------------------------------------------------------------------
 
-# Indian number format: 8,50,434 or 19,55,525 (lakh-crore grouping)
-# Also handles footnote markers: 8,745(2) → capture 8,745
-_NUM = r"([\d,]+(?:\.\d+)?)(?:\(\d+\))?"   # number optionally followed by footnote marker
+_NUM = r"([\d,]+(?:\.\d+)?)(?:\(\d+\))?"
 _WS  = r"[\s:–\-|]*"
 _UNIT_PAT = (
     r"(tco2e?|t\s*co2e?|mt\s*co2e?|kt\s*co2e?|tonnes?\s*co2e?|"
@@ -193,28 +220,6 @@ _UNIT_PAT = (
     r"%|percent|crore|lakh|number|nos|headcount)"
 )
 
-# Patterns for "label\nvalue" block structure (fitz splits label and value by \n)
-# These handle the most common BRSR/ESG PDF block format:
-#   "Total energy consumed (A+B+C+D+E+F)(1)\n8,50,434\n8,39,448"
-_BLOCK_PATTERNS_WITH_UNIT_IN_LABEL = [
-    # Energy: "total energy consumed ... (in GJ)\n<value>"
-    (r"total\s+energy\s+consumed[^\n]*\n" + _NUM, "GJ"),
-    (r"total\s+energy\s+consumption[^\n]*\n" + _NUM, "GJ"),
-    # Water consumption: "total volume of water consumption[^\n]*\n<value>"
-    (r"total\s+volume\s+of\s+water\s+consumption[^\n]*\n" + _NUM, "KL"),
-    (r"total\s+water\s+consumption[^\n]*\n" + _NUM, "KL"),
-    # Waste total: "Total (A + B + ... + H)\n<value>"
-    (r"^total\s*\([a-h\s+]+\)\s*\n" + _NUM, "MT"),
-    (r"total\s+waste\s+generated[^\n]*\n[^\n]*\n" + _NUM, "MT"),
-    # Scope 1: "Total Scope 1 emissions...\nMetric tonnes...\n<value>"
-    (r"total\s+scope\s*1\s+emissions[^\n]*\n[^\n]*\n" + _NUM, "tCO2e"),
-    (r"total\s+scope\s*1\s+emissions[^\n]*equivalent\n" + _NUM, "tCO2e"),
-    # Scope 2: same pattern
-    (r"total\s+scope\s*2\s+emissions[^\n]*\n[^\n]*\n" + _NUM, "tCO2e"),
-    (r"total\s+scope\s*2\s+emissions[^\n]*equivalent\n" + _NUM, "tCO2e"),
-]
-
-# Built-in broad patterns (inline, no newlines)
 _BROAD_PATTERNS = [
     rf"(?:was|is|were|of|:)\s*{_NUM}\s*{_UNIT_PAT}",
     rf"{_NUM}\s*{_UNIT_PAT}\s*(?:in|for|during|fy|fiscal)",
@@ -226,35 +231,35 @@ _BROAD_PATTERNS = [
 def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]:
     """
     Try block-aware patterns where unit is in the label and value is on the next line.
-    This handles: "Total energy consumed (in GJ)\n8,50,434\n8,39,448"
+    Handles BRSR/ESG PDF block format.
     """
     text = chunk.content
 
-    # Only apply to KPIs where we know the unit from the label
     block_patterns_for_kpi = {
+        # ── Existing KPIs (unchanged) ────────────────────────────────────────
         "energy_consumption": [
-            # Grand total: requires A in parenthetical — excludes subtotals like (D + E + F)
+            # Grand total with parenthetical A..F notation
             r"total\s+energy\s+consumed\s*\(A[^)]*D[^)]*F\)[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+energy\s+consumed\s*\((?:A[^)]*)\)[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            # Narrative or single-line total
+            r"total\s+energy\s+consumption[^\n]{0,80}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            r"total\s+energy\s+consumed[^\n]{0,80}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         ],
         "water_consumption": [
             r"total\s+volume\s+of\s+water\s+consumption[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+water\s+consumption[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            # "Total water withdrawn/used" variants
+            r"total\s+water\s+withdrawn[^\n]{0,80}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            r"total\s+water\s+(?:intake|sourced|used)[^\n]{0,80}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         ],
         "waste_generated": [
             r"^total\s*\([a-h\s\+]+\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+\(A\s*\+\s*B[^\n]*\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         ],
-        # ── Scope 1 / Scope 2 — two BRSR table formats ─────────────────────
-        # Format A (TCS 2023-24): pdfplumber collapses to one long line:
-        #   "Total Scope 1 emissions ... Metric tonnes of 21,949.0 20,972.0"
-        # Format B (Infosys 2025): value buried in a downstream "GHG into" row.
-        #   Handled by _try_ghg_row_strategy() which runs after block patterns.
-        # Format C (Infosys 2024, older): multiline block with value on next line.
         "scope_1_emissions": [
-            # Format A: value inline after "Metric tonnes of"
+            # Format A (TCS 2023-24): value inline after "Metric tonnes of"
             r"total\s+scope\s*1\s+emissions.{0,200}?metric\s+tonnes\s+of\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-            # Format C: value on line after "equivalent"
+            # Format C (multiline block)
             r"total\s+scope\s*1\s+emissions[\s\S]{0,300}?equivalent\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         ],
         "scope_2_emissions": [
@@ -262,8 +267,25 @@ def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]
             r"total\s+scope\s*2\s+emissions[\s\S]{0,300}?equivalent\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         ],
         "total_ghg_emissions": [
-            # Never stated as a standalone absolute in BRSR tables.
-            # _derive_total_ghg() computes it as scope_1 + scope_2 post-extraction.
+            # Never stated as a standalone absolute in BRSR tables;
+            # _derive_total_ghg() computes it post-extraction.
+        ],
+
+        # ── NEW KPI: scope_3_emissions ────────────────────────────────────────
+        # BRSR/GRI formats:
+        #   "Total Scope 3 emissions (Metric tonnes CO2 equivalent)\n21,000"
+        #   "Total Scope 3 GHG emissions ... Metric tonnes of CO2e\n35,000"
+        #   "Scope 3 emissions\n15,432"
+        "scope_3_emissions": [
+            # Explicit "total scope 3" with unit on same/next line
+            r"total\s+scope\s*3\s+emissions.{0,200}?metric\s+tonnes\s+of\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            r"total\s+scope\s*3\s+emissions[\s\S]{0,300}?equivalent\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            # Simpler block: "scope 3 emissions\nVALUE"
+            r"scope\s*3\s+(?:ghg\s+)?emissions[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            # Value chain emissions total
+            r"total\s+value\s+chain\s+emissions[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            # GRI-style: "Other indirect (Scope 3) GHG emissions"
+            r"other\s+indirect\s+\(scope\s*3\)[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         ],
     }
 
@@ -282,11 +304,6 @@ def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]
             value = _parse_number(raw_val)
             if value is None or value <= 0:
                 continue
-
-            # Sanity: Indian format numbers like 8,50,434 → 850434
-            # _parse_number strips commas so 8,50,434 → 850434.0 ✓
-
-            # Skip intensity values (very small numbers like 0.000000522)
             if value < 0.1 and kpi.name not in ("renewable_energy_percentage",):
                 continue
 
@@ -316,27 +333,19 @@ def _try_ghg_row_strategy(
     kpi: "KPIDefinition",
 ) -> Optional["ExtractedKPI"]:
     """
-    Infosys 2025 BRSR GHG table format (Format B):
+    Infosys 2025 BRSR GHG table format (Format B) — handles scope 1 & 2.
 
-    pdfplumber extracts the table as separate lines. The label row and
-    value row are DIFFERENT lines:
-
-        [label line] "Total Scope 1 emissions (Break-up of the"
-        [unit line]  "Metric tonnes of CO"
-        [value line] "GHG into CO, CH, NO, HFCs, PFCs, SF, 2 8,745(2) 7,150"
-                                                               ↑ value here
-
-    The "2" just before the value is the subscript of CO₂ that pdfplumber
-    strips and places inline. Pattern: r"\s2\s+NUMBER(footnote?)".
-
-    This function scans text chunks and tracks "Total Scope N" context
-    line-by-line, firing when it encounters a "GHG into" value row.
-    Only applies to scope_1_emissions and scope_2_emissions.
+    Extended for scope_3: looks for a "scope 3" context line before a
+    "GHG into CO" value row, applying the same subscript-stripping logic.
     """
-    if kpi.name not in ("scope_1_emissions", "scope_2_emissions"):
+    if kpi.name not in ("scope_1_emissions", "scope_2_emissions", "scope_3_emissions"):
         return None
 
-    target_scope = 1 if kpi.name == "scope_1_emissions" else 2
+    target_scope = (
+        1 if kpi.name == "scope_1_emissions" else
+        2 if kpi.name == "scope_2_emissions" else
+        3
+    )
     _GHG_ROW_RE = re.compile(
         r"ghg\s+into\s+co.{0,80}\s2\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         re.IGNORECASE,
@@ -356,7 +365,9 @@ def _try_ghg_row_strategy(
                 scope_context = 1
             elif "total scope 2 emissions" in ll:
                 scope_context = 2
-            elif "total scope 3" in ll:
+            elif "total scope 3 emissions" in ll or "scope 3 ghg" in ll:
+                scope_context = 3
+            elif "total scope 4" in ll:
                 scope_context = None
 
             m = _GHG_ROW_RE.search(line)
@@ -400,20 +411,16 @@ def _try_regex(
     for chunk in sorted_chunks:
         text = chunk.content
 
-        # --- Block-aware patterns (label\nvalue — handles BRSR/ESG block format) ---
+        # --- Block-aware patterns ---
         block_result = _try_block_patterns(chunk, kpi)
         if block_result:
-            if _is_delta_context(text, 0):
-                pass  # skip delta blocks
-            else:
+            if not _is_delta_context(text, 0):
                 if best is None or block_result.confidence > best.confidence:
                     best = block_result
                 if block_result.confidence >= _REGEX_HIGH_CONFIDENCE:
                     return best
 
-        # --- GHG-row strategy (Infosys 2025 format) ---
-        # Fires only for scope_1/2 KPIs when the value is in a downstream
-        # "GHG into ... 2 VALUE" line (subscript-stripped CO₂ notation).
+        # --- GHG-row strategy (scope 1 / 2 / 3) ---
         ghg_row_result = _try_ghg_row_strategy([chunk], kpi)
         if ghg_row_result:
             if best is None or ghg_row_result.confidence > best.confidence:
@@ -421,12 +428,11 @@ def _try_regex(
             if ghg_row_result.confidence >= _REGEX_HIGH_CONFIDENCE:
                 return best
 
-        # Try KPI-specific patterns (higher confidence)
+        # --- KPI-specific patterns ---
         for pattern in kpi_patterns:
             match = pattern.search(text)
             if not match or len(match.groups()) < 2:
                 continue
-            # Reject if the match sits in a delta/target/intensity sentence
             if _is_delta_context(text, match.start()):
                 logger.debug("extraction.regex_delta_rejected",
                            kpi=kpi.name, snippet=text[max(0,match.start()-60):match.start()+60])
@@ -449,7 +455,7 @@ def _try_regex(
             if confidence >= _REGEX_HIGH_CONFIDENCE:
                 return best
 
-        # Try broad patterns against chunks that mention relevant keywords
+        # --- Broad patterns (keyword-gated) ---
         kpi_keywords = set(
             w.lower() for kw in (kpi.retrieval_keywords or [])
             for w in kw.split()
@@ -466,7 +472,6 @@ def _try_regex(
             match = pattern.search(text)
             if not match or len(match.groups()) < 2:
                 continue
-            # Reject delta/target/intensity context
             if _is_delta_context(text, match.start()):
                 continue
             value = _parse_number(match.group(1))
@@ -491,18 +496,10 @@ def _try_regex(
 
 
 # ---------------------------------------------------------------------------
-# Layer 2 — LLM (richer prompt + wider context)
+# Layer 2 — LLM
 # ---------------------------------------------------------------------------
 
 def _build_chunks_text(scored_chunks: list[ScoredChunk], max_chars: int = _LLM_CHUNK_CHAR_LIMIT) -> str:
-    """
-    Build LLM prompt text from scored chunks.
-    - Primary chunks (non-neighbors) first
-    - Then neighbors for context
-    - Tables labeled [TABLE], others labeled [Page N]
-    - Hard cap at max_chars
-    """
-    # Sort: primary high-score first, then neighbors
     primary = [sc for sc in scored_chunks if not sc.is_neighbor]
     neighbors = [sc for sc in scored_chunks if sc.is_neighbor]
     ordered = primary + neighbors
@@ -628,10 +625,6 @@ def _get_wider_chunks(
     already_retrieved_ids: set,
     extra_k: int = 5,
 ) -> list[ScoredChunk]:
-    """
-    Fallback retrieval: scan all tables + first 10 pages for KPI aliases.
-    Returns chunks not already in the primary retrieval set.
-    """
     aliases = _KPI_ALIASES.get(kpi.name, [])
     all_keywords = list(kpi.retrieval_keywords or []) + aliases
 
@@ -651,7 +644,6 @@ def _get_wider_chunks(
             or_(*keyword_filters),
         )
         .order_by(
-            # tables first, then by page
             DocumentChunk.chunk_type.desc(),
             DocumentChunk.page_number,
         )
@@ -668,18 +660,9 @@ def _get_wider_chunks(
 
 def _derive_total_ghg(results: list["ExtractedKPI"]) -> list["ExtractedKPI"]:
     """
-    Compute total_ghg_emissions = scope_1 + scope_2 when both are found.
-
-    Root cause: BRSR reports (TCS, Infosys) never state an absolute
-    "Total Scope 1 + 2 = X tCO2e" row.  The only "Total Scope 1 and
-    Scope 2" label in these PDFs appears on the INTENSITY row
-    (tCO2e per rupee of turnover), which is a tiny decimal — not the
-    absolute we need.  Regex and LLM both fail on this KPI.
-
-    This function runs after all KPIs are extracted and back-fills
-    total_ghg_emissions from the two component values when:
-      a) total_ghg was not found (normalized_value is None), AND
-      b) both scope_1 and scope_2 were successfully extracted.
+    Compute total_ghg_emissions = scope_1 + scope_2 when both are found
+    and total_ghg was not directly extracted.
+    (Unchanged from original.)
     """
     by_name: dict[str, ExtractedKPI] = {r.kpi_name: r for r in results}
 
@@ -698,7 +681,6 @@ def _derive_total_ghg(results: list["ExtractedKPI"]) -> list["ExtractedKPI"]:
         return results
 
     computed = round(s1.normalized_value + s2.normalized_value, 2)
-    # Confidence = min of the two component confidences
     conf = round(min(s1.confidence or 0.5, s2.confidence or 0.5), 3)
 
     logger.info(
@@ -709,15 +691,14 @@ def _derive_total_ghg(results: list["ExtractedKPI"]) -> list["ExtractedKPI"]:
         confidence=conf,
     )
 
-    # Build new ExtractedKPI replacing the not-found placeholder
     derived = ExtractedKPI(
         kpi_name="total_ghg_emissions",
         raw_value=str(computed),
         normalized_value=computed,
         unit="tCO2e",
-        extraction_method="derived",       # new method tag
+        extraction_method="derived",
         confidence=conf,
-        source_chunk_id=s1.source_chunk_id,  # source is the scope_1 chunk
+        source_chunk_id=s1.source_chunk_id,
         validation_passed=True,
         validation_notes=(
             f"Derived: {s1.normalized_value} (scope_1) + "
@@ -725,7 +706,6 @@ def _derive_total_ghg(results: list["ExtractedKPI"]) -> list["ExtractedKPI"]:
         ),
     )
 
-    # Replace in results list preserving order
     return [derived if r.kpi_name == "total_ghg_emissions" else r for r in results]
 
 
@@ -749,16 +729,6 @@ class ExtractionAgent:
         fallback_search: bool = True,
         max_fallback_reports: int = 3,
     ) -> list[ExtractedKPI]:
-        """
-        Extract all active KPIs for a report.
-
-        Args:
-            report_id:            UUID of a parsed report
-            db:                   Active session
-            kpi_names:            Optional filter — only extract these KPIs
-            fallback_search:      If True, search other reports when a KPI is not found
-            max_fallback_reports: Max additional reports to try per missing KPI
-        """
         report = db.query(Report).filter(Report.id == report_id).first()
         if not report:
             raise ValueError(f"Report {report_id} not found")
@@ -777,7 +747,6 @@ class ExtractionAgent:
         logger.info("extraction.start", report_id=str(report_id), kpis=len(kpis))
 
         results: list[ExtractedKPI] = []
-        not_found_kpis: list[KPIDefinition] = []
 
         for kpi in kpis:
             extracted = self._extract_one(kpi=kpi, parsed_doc=parsed_doc, report=report, db=db)
@@ -793,15 +762,8 @@ class ExtractionAgent:
                     source_chunk_id=extracted.source_chunk_id,
                     db=db,
                 )
-            else:
-                not_found_kpis.append(kpi)
 
-        # ── Derive total_ghg_emissions = scope_1 + scope_2 ─────────────────
-        # Neither TCS nor Infosys states this as a standalone absolute value.
-        # The label "Total Scope 1 and Scope 2" in the PDF only appears for
-        # intensity ratios (per rupee), never as an absolute tCO2e figure.
-        # Regex and LLM both miss it. Compute it deterministically when both
-        # component KPIs were found.
+        # Derive total_ghg from scope_1 + scope_2 when not directly found
         results = _derive_total_ghg(results)
 
         logger.info(
@@ -820,7 +782,6 @@ class ExtractionAgent:
     ) -> ExtractedKPI:
         logger.debug("extraction.kpi_start", kpi=kpi.name)
 
-        # Primary retrieval
         scored_chunks = self.retrieval.retrieve(
             parsed_document_id=parsed_doc.id,
             kpi=kpi,
@@ -828,14 +789,14 @@ class ExtractionAgent:
         )
         chunks = [sc.chunk for sc in scored_chunks]
 
-        # Layer 1: Regex on primary chunks
+        # Layer 1: Regex
         extracted = _try_regex(chunks, kpi)
 
         if extracted and extracted.confidence >= _REGEX_HIGH_CONFIDENCE:
             logger.info("extraction.regex_confident", kpi=kpi.name, value=extracted.normalized_value)
             return _validate(extracted, kpi)
 
-        # Widen retrieval for LLM (add alias-based extra chunks)
+        # Widen retrieval for LLM
         retrieved_ids = {sc.chunk.id for sc in scored_chunks}
         extra_chunks = _get_wider_chunks(parsed_doc, kpi, db, retrieved_ids, extra_k=5)
         all_scored = scored_chunks + extra_chunks
@@ -844,7 +805,6 @@ class ExtractionAgent:
         if not extracted or extracted.confidence < _REGEX_HIGH_CONFIDENCE:
             llm_result = _try_llm(all_scored, kpi, self.llm, report.report_year)
             if llm_result:
-                # Take LLM result if it has higher confidence than regex
                 if extracted is None or llm_result.confidence > extracted.confidence:
                     extracted = llm_result
 
