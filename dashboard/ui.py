@@ -65,12 +65,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 import plotly.graph_objects as go
 import streamlit as st
 import pandas as pd
+
+from services.kpi_service import KPIService
+from services.kpi_cache_service import KPICacheService as _KPICacheService
+
+_kpi_cache_svc = _KPICacheService()
 
 st.set_page_config(
     page_title="ESG Intelligence",
@@ -509,11 +515,11 @@ _KPI_PLAUSIBILITY: dict[str, tuple[float, float]] = {
 _DEFAULT_REVENUE_CR = 315_322.0
 
 # Report-type priority for KPI selection: lower number = higher priority.
-# When multiple KPI records exist (one per downloaded report), we prefer
-# BRSR (most comprehensive, SEBI-mandated) > Integrated > ESG.
+# Applied PER KPI (not globally) — Integrated is most complete for large
+# conglomerates; BRSR is SEBI-mandated; ESG is the catch-all fallback.
 _REPORT_TYPE_PRIORITY: dict[str, int] = {
-    "BRSR":       0,
-    "Integrated": 1,
+    "Integrated": 0,
+    "BRSR":       1,
     "ESG":        2,
 }
 
@@ -661,56 +667,55 @@ def _db_get_all_reports(company_name: str, fy: int) -> dict:
 
 def _db_load_kpis_and_revenue(company_id: uuid.UUID, fy: int) -> dict:
     """
-    Load the best KPI record (per KPI) and revenue for a company+FY.
+    Load the best KPI record per KPI and revenue for a company+FY.
 
-    Multi-source selection rule:
-      When multiple KPIRecords exist for the same KPI (one per report type),
-      select by: BRSR first, Integrated second, ESG third.
-      Within the same report type, take the most recently extracted record.
+    Multi-source selection (applied INDEPENDENTLY per KPI):
+      Integrated (0) > BRSR (1) > ESG (2) priority.
+      Within the same type, most recently extracted record wins.
 
-    This is implemented by joining KPIRecord → Report and applying a
-    CASE-based sort on report_type before taking .first().
-
-    Revenue: from the most recently updated report that has revenue_cr set,
-    preferring BRSR if available.
+    This replaces the old report-level selection that picked one report and
+    read all KPIs from it — even when a higher-quality source existed for
+    individual KPIs in a different report type.
 
     Returns
     -------
     {
         "kpis":      {kpi_name: {"value","unit","method","confidence","report_type"}},
         "revenue":   RevenueResult | None,
-        "file_path": str | None,    # primary report file path
+        "file_path": str | None,
     }
     """
     empty = {"kpis": {}, "revenue": None, "file_path": None}
     try:
         from core.database import get_db
-        from models.db_models import Report, KPIRecord, KPIDefinition
-        from services.revenue_extractor import RevenueResult
+        from models.db_models import Report
         from sqlalchemy import case
 
         with get_db() as db:
-            # Priority expression: BRSR=0, Integrated=1, ESG=2, others=99
+            # Per-KPI selection: Integrated > BRSR > ESG
+            kpis = _kpi_cache_svc.select_best_per_kpi(
+                company_id=company_id,
+                fy=fy,
+                kpi_names=EXTRACTABLE_KPI_NAMES,
+                db=db,
+            )
+
+            # Apply plausibility filter
+            kpis = {
+                k: v for k, v in kpis.items()
+                if _KPI_PLAUSIBILITY.get(k, (0, float("inf")))[0]
+                   <= v["value"]
+                   <= _KPI_PLAUSIBILITY.get(k, (0, float("inf")))[1]
+            }
+
+            # Revenue and primary file path
             type_priority = case(
-                (Report.report_type == "BRSR",       0),
-                (Report.report_type == "Integrated",  1),
-                (Report.report_type == "ESG",         2),
+                (Report.report_type == "Integrated", 0),
+                (Report.report_type == "BRSR",       1),
+                (Report.report_type == "ESG",        2),
                 else_=99,
             )
 
-            # Revenue: prefer BRSR, then most recent
-            report_with_rev = (
-                db.query(Report)
-                .filter(
-                    Report.company_id == company_id,
-                    Report.report_year == fy,
-                    Report.revenue_cr.isnot(None),
-                )
-                .order_by(type_priority, Report.created_at.desc())
-                .first()
-            )
-
-            # Primary file path: highest-priority report with existing file
             best_report = (
                 db.query(Report)
                 .filter(
@@ -724,64 +729,7 @@ def _db_load_kpis_and_revenue(company_id: uuid.UUID, fy: int) -> dict:
             )
             file_path = best_report.file_path if best_report else None
 
-            cached_rev = None
-            if report_with_rev and getattr(report_with_rev, "revenue_cr", None) is not None:
-                try:
-                    cached_rev = RevenueResult(
-                        value_cr=float(report_with_rev.revenue_cr),
-                        raw_value=str(report_with_rev.revenue_cr),
-                        raw_unit=getattr(report_with_rev, "revenue_unit", None) or "INR_Crore",
-                        source=getattr(report_with_rev, "revenue_source", None) or "db",
-                        page_number=0,
-                        confidence=0.99,
-                        pattern_name="cached",
-                    )
-                except Exception:
-                    pass
-
-            # KPIs: priority-ordered selection across all reports
-            kpis: dict = {}
-            for kpi_name in EXTRACTABLE_KPI_NAMES:
-                kdef = (
-                    db.query(KPIDefinition)
-                    .filter(KPIDefinition.name == kpi_name)
-                    .first()
-                )
-                if not kdef:
-                    continue
-
-                rec = (
-                    db.query(KPIRecord)
-                    .join(Report, KPIRecord.report_id == Report.id)
-                    .filter(
-                        KPIRecord.company_id        == company_id,
-                        KPIRecord.kpi_definition_id == kdef.id,
-                        KPIRecord.report_year       == fy,
-                        KPIRecord.normalized_value.isnot(None),
-                    )
-                    .order_by(type_priority, KPIRecord.extracted_at.desc())
-                    .first()
-                )
-                if not rec:
-                    continue
-
-                val  = rec.normalized_value
-                unit = rec.unit or kdef.expected_unit
-                lo, hi = _KPI_PLAUSIBILITY.get(kpi_name, (0, float("inf")))
-                if not (lo <= val <= hi):
-                    continue
-
-                # Retrieve report_type for provenance display
-                rec_report = db.query(Report).filter(Report.id == rec.report_id).first()
-                rec_type   = rec_report.report_type if rec_report else "unknown"
-
-                kpis[kpi_name] = {
-                    "value":       val,
-                    "unit":        unit,
-                    "method":      rec.extraction_method,
-                    "confidence":  rec.confidence or 0.9,
-                    "report_type": rec_type,   # provenance tag
-                }
+            cached_rev = _kpi_cache_svc.load_revenue(company_id, fy, db)
 
         return {"kpis": kpis, "revenue": cached_rev, "file_path": file_path}
 
@@ -808,66 +756,25 @@ def _db_store_kpis(
     revenue_result,
 ) -> None:
     """
-    Persist KPIs and revenue for ONE report.
-
-    Skips exact duplicates (same company/KPI/year/value/report already present).
-    Revenue is written only if the report row does not already have a value.
-    Each KPIRecord is linked to its specific report_id — no merging.
+    Persist KPIs and revenue for ONE report via KPICacheService.
+    Dedup-safe: skips exact (company_id, report_id, kpi_definition_id, value) duplicates.
+    Revenue written only when the report row has no existing revenue_cr.
     """
     try:
         from core.database import get_db
-        from models.db_models import Report, KPIRecord, KPIDefinition
-        from services.revenue_extractor import store_revenue
-
         with get_db() as db:
-            if revenue_result:
-                report_row = db.query(Report).filter(Report.id == report_id).first()
-                if report_row and getattr(report_row, "revenue_cr", None) is None:
-                    try:
-                        store_revenue(report_row, revenue_result, db)
-                    except Exception:
-                        pass
-
-            for kpi_name, rec in kpi_records.items():
-                kdef = (
-                    db.query(KPIDefinition)
-                    .filter(KPIDefinition.name == kpi_name)
-                    .first()
-                )
-                if not kdef:
-                    continue
-
-                # Dedup: same report + KPI + value already stored
-                already = (
-                    db.query(KPIRecord)
-                    .filter(
-                        KPIRecord.company_id        == company_id,
-                        KPIRecord.report_id         == report_id,
-                        KPIRecord.kpi_definition_id == kdef.id,
-                        KPIRecord.report_year       == fy,
-                        KPIRecord.normalized_value  == rec["value"],
-                    )
-                    .first()
-                )
-                if already:
-                    continue
-
-                db.add(KPIRecord(
-                    company_id        = company_id,
-                    report_id         = report_id,   # linked to specific report
-                    kpi_definition_id = kdef.id,
-                    report_year       = fy,
-                    raw_value         = str(rec["value"]),
-                    normalized_value  = rec["value"],
-                    unit              = rec["unit"],
-                    extraction_method = rec["method"],
-                    confidence        = rec["confidence"],
-                    is_validated      = rec["confidence"] >= 0.85,
-                    validation_notes  = "esg_dashboard",
-                ))
-
+            _kpi_cache_svc.store(
+                company_id=company_id,
+                report_id=report_id,
+                fy=fy,
+                kpi_records=kpi_records,
+                revenue_result=revenue_result,
+                db=db,
+            )
     except Exception as exc:
         st.warning(f"DB store failed for report {str(report_id)[:8]}: {exc}")
+
+
 
 
 # =============================================================================
@@ -984,6 +891,7 @@ def _step_extract(
     fy:          int,
     log:         list[str],
     llm_service,
+    kpi_names_override: list[str] | None = None,
 ) -> dict:
     """
     Run KPI + revenue extraction for one report.
@@ -1003,7 +911,7 @@ def _step_extract(
             extracted_list = ExtractionAgent().extract_all(
                 report_id=report_id,
                 db=db,
-                kpi_names=EXTRACTABLE_KPI_NAMES,
+                kpi_names=kpi_names_override if kpi_names_override is not None else EXTRACTABLE_KPI_NAMES,
             )
 
         for ext in extracted_list:
@@ -1234,9 +1142,43 @@ def run_company_pipeline(
 
     _update(f"Processing {len(report_infos)} report(s)...")
 
-    # ── Phase 2: Parse + extract each report independently ────────────────────
-    for ri in report_infos:
+    # ── Phase 2: KPI-level cache check + extract ONLY missing KPIs ──────────────
+    # Determine which KPIs are missing from the DB cache (per KPI).
+    _missing_kpis: list[str] = []
+    if company_id:
+        try:
+            from core.database import get_db as _get_db2
+            with _get_db2() as _db2:
+                _cached_check = _kpi_cache_svc.select_best_per_kpi(
+                    company_id=company_id,
+                    fy=fy,
+                    kpi_names=EXTRACTABLE_KPI_NAMES,
+                    db=_db2,
+                )
+            _missing_kpis = [k for k in EXTRACTABLE_KPI_NAMES if k not in _cached_check]
+        except Exception:
+            _missing_kpis = list(EXTRACTABLE_KPI_NAMES)
+    else:
+        _missing_kpis = list(EXTRACTABLE_KPI_NAMES)
+
+    _need_revenue = True  # always check; step_extract handles the cache check
+
+    # Sort by type priority so best source is tried first
+    _sorted_report_infos = sorted(
+        report_infos,
+        key=lambda _r: _REPORT_TYPE_PRIORITY.get(_r.report_type, 99),
+    )
+
+    for ri in _sorted_report_infos:
+        # Early-stop when all KPIs have been found
+        if not _missing_kpis and not _need_revenue:
+            _update("All KPIs found — stopping report loop early.")
+            break
+
         _update(f"--- [{ri.report_type}] report_id={str(ri.id)[:8]} ---")
+
+        if not _missing_kpis:
+            _update(f"  All KPIs cached — only extracting revenue from [{ri.report_type}].")
 
         # 2a. Parse (idempotent)
         parse_ok = _step_parse(ri.id, ri.report_type, log)
@@ -1244,10 +1186,21 @@ def run_company_pipeline(
             _update(f"  Parse failed for [{ri.report_type}] — skipping extraction.")
             continue   # error isolation: move to next report
 
-        # 2b. Extract
-        extract_result = _step_extract(ri.id, ri.report_type, fy, log, llm_service)
+        # 2b. Extract ONLY missing KPIs (not all KPIs)
+        extract_result = _step_extract(
+            ri.id, ri.report_type, fy, log, llm_service,
+            kpi_names_override=_missing_kpis if _missing_kpis else None,
+        )
         new_kpis    = extract_result["kpis"]
         new_revenue = extract_result["revenue"]
+
+        # Remove newly found KPIs from the missing list so subsequent
+        # reports do not re-extract them.
+        for _found in list(new_kpis.keys()):
+            if _found in _missing_kpis:
+                _missing_kpis.remove(_found)
+        if new_revenue:
+            _need_revenue = False
 
         # 2c. Derive total_ghg from this report's scope components
         ghg = _derive_total_ghg(new_kpis)
@@ -1260,7 +1213,7 @@ def run_company_pipeline(
                 f"{ghg['value']:,.2f} tCO2e ({s1v:,.0f} + {s2v:,.0f})"
             )
 
-        # 2d. Store — linked to this specific report_id
+        # 2d. Store — linked to this specific report_id (dedup-safe)
         if company_id and (new_kpis or new_revenue):
             _db_store_kpis(
                 company_id     = company_id,
@@ -1273,7 +1226,7 @@ def run_company_pipeline(
                 f"  Stored {len(new_kpis)} KPI(s) for [{ri.report_type}]."
             )
         else:
-            _update(f"  Nothing extracted from [{ri.report_type}].")
+            _update(f"  Nothing new extracted from [{ri.report_type}].")
 
     # ── Phase 3: Final priority-ordered read from DB ──────────────────────────
     _update("Loading final KPI state from DB (BRSR > Integrated > ESG priority)...")
