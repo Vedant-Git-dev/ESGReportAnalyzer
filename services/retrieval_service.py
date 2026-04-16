@@ -263,6 +263,52 @@ KPI_STRICT_FILTERS: dict[str, dict] = {
         ],
         "unit_hints":    ["tco2e", "t co2e", "tonne co2e", "kt co2e", "mt co2e"],
     },
+    "complaints_filed": {
+        "must_match": [
+            "complaints filed", "complaints received", "number of complaints",
+            "filed during the year", "grievances filed", "grievances received",
+            "complaints lodged", "sexual harassment complaint",
+            "working conditions", "health and safety complaint",
+            "ngrbc", "principle", "stakeholder complaints",
+            "employees and workers", "customers", "shareholders",
+            "number of complaints filed", "filed during",
+        ],
+        "must_exclude": [
+            "scope 1 emissions", "scope 2 emissions",
+            "energy consumed", "revenue from operations",
+            "tco2e", "water consumption", "waste generated",
+        ],
+        "unit_fallback": [],
+        "penalty_terms": [
+            "salary", "remuneration", "energy consumption", "tco2e",
+            "water consumption", "waste generated", "revenue from operations",
+            "profit", "ebitda",
+        ],
+        "unit_hints": ["number", "nos", "count"],
+    },
+    "complaints_pending": {
+        "must_match": [
+            "complaints pending", "pending resolution", "pending complaints",
+            "unresolved complaints", "outstanding complaints",
+            "pending at close", "pending at end", "grievances pending",
+            "filed during the year", "pending resolution at close",
+            "employees and workers", "customers", "shareholders",
+            "ngrbc", "principle", "number of complaints",
+            "close of the year", "end of year",
+        ],
+        "must_exclude": [
+            "scope 1 emissions", "scope 2 emissions",
+            "energy consumed", "revenue from operations",
+            "tco2e", "water consumption", "waste generated",
+        ],
+        "unit_fallback": [],
+        "penalty_terms": [
+            "salary", "remuneration", "energy consumption", "tco2e",
+            "water consumption", "waste generated", "revenue from operations",
+            "profit", "ebitda",
+        ],
+        "unit_hints": ["number", "nos", "count"],
+    },
 }
 
 _DEFAULT_FILTER: dict = {

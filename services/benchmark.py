@@ -1,37 +1,26 @@
 """
 services/benchmark.py
 
-Converts extracted KPI values → intensity ratios (KPI / revenue).
+Converts extracted KPI values → intensity ratios (KPI / revenue or / FTE).
 
-Design principles:
-- No hardcoded company data
-- Checks for pre-reported intensity ratios first (more accurate)
-- Falls back to computing absolute / revenue
-- Emits clear provenance for every ratio (reported vs computed)
+v2 changes
+----------
+KPI groups with distinct normalization:
 
-Bug fixes in this version
---------------------------
-Bug 1 — _find_reported_ratio returns wrong value (ratio=580 for scope_1)
-  Root cause (a): The BRSR intensity search regex required only 3+ zeros
-  (pattern 0.0{3,}\\d+), so values like 0.0000580 (only 4 zeros) matched.
-  Real BRSR intensity ratios have 6-9 zeros (1e-6 to 1e-9 per rupee).
-  Fix: tighten to 6+ zeros (pattern 0.0{6,}\\d+).
+  Environmental (divide by revenue INR Crore):
+    scope_1_emissions, scope_2_emissions, scope_3_emissions,
+    energy_consumption, waste_generated, water_consumption
 
-  Root cause (b): Even when the correct 6-zero value is found, BRSR uses a
-  *combined* scope1+scope2 label for GHG intensity, so the same value gets
-  applied to BOTH scope_1 and scope_2 individually — producing a 2× overcount.
-  Fix: validate the implied revenue (abs_value / (ratio * 1e7)) is within the
-  plausible corporate revenue range [1_000, 9_000_000] Cr. If not, discard
-  the reported ratio and fall back to computed (absolute / revenue).
+  Social (divide by revenue INR Crore):
+    employee_count, women_in_workforce_percentage
 
-Bug 2 — waste/water reported_ratio also affected
-  Same root-cause as Bug 1 — the regex matched any 3+ zero decimal.
-  Both fixes apply equally to all KPI categories.
+  Governance (NO normalization — absolute values):
+    complaints_filed, complaints_pending
 
-Public API:
-    build_company_profile(kpi_records, revenue_result, company_name, fy) -> CompanyProfile
-    compare_profiles(profiles) -> BenchmarkReport
-    print_report(report)        -> terminal output
+  Removed: total_ghg_emissions
+
+Lower is better for all environmental metrics, complaints, and most social.
+Higher is better for renewable_energy_percentage, women_in_workforce_percentage.
 """
 from __future__ import annotations
 
@@ -40,133 +29,174 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from services.normalizer import NormalizedKPI, normalize, NormalizationError
-
 from core.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# ── KPIs benchmarked in this module ──────────────────────────────────────────
-BENCHMARK_KPI_NAMES = [
-    "energy_consumption",
+# ── KPI catalogue ─────────────────────────────────────────────────────────────
+
+# Environmental — ratio = KPI / revenue_cr
+ENVIRONMENTAL_KPI_NAMES = [
     "scope_1_emissions",
     "scope_2_emissions",
-    "total_ghg_emissions",
-    "water_consumption",
+    "scope_3_emissions",
+    "energy_consumption",
     "waste_generated",
+    "water_consumption",
 ]
 
-# Lower intensity is better for all environmental KPIs
+# Social — ratio = KPI / revenue_cr  (employee_count gives employees per Crore)
+SOCIAL_KPI_NAMES = [
+    "employee_count",
+    "women_in_workforce_percentage",
+]
+
+# Governance — NO ratio; raw absolute value used directly
+GOVERNANCE_KPI_NAMES = [
+    "complaints_filed",
+    "complaints_pending",
+]
+
+BENCHMARK_KPI_NAMES = (
+    ENVIRONMENTAL_KPI_NAMES + SOCIAL_KPI_NAMES + GOVERNANCE_KPI_NAMES
+)
+
+# For these KPIs lower ratio = better performance
 LOWER_IS_BETTER = {
-    "energy_consumption", "scope_1_emissions", "scope_2_emissions",
-    "total_ghg_emissions", "water_consumption", "waste_generated",
+    "scope_1_emissions", "scope_2_emissions", "scope_3_emissions",
+    "energy_consumption", "waste_generated", "water_consumption",
+    "employee_count",      # lower employees/Crore = higher productivity
+    "complaints_filed",    # fewer complaints = better
+    "complaints_pending",
 }
 
-# Canonical units for display
+# For these KPIs higher = better
+HIGHER_IS_BETTER = {
+    "women_in_workforce_percentage",
+    "renewable_energy_percentage",
+}
+
+# Canonical display units
 CANONICAL_UNITS = {
-    "energy_consumption":  "GJ",
-    "scope_1_emissions":   "tCO2e",
-    "scope_2_emissions":   "tCO2e",
-    "total_ghg_emissions": "tCO2e",
-    "water_consumption":   "KL",
-    "waste_generated":     "MT",
+    "scope_1_emissions":             "tCO2e",
+    "scope_2_emissions":             "tCO2e",
+    "scope_3_emissions":             "tCO2e",
+    "energy_consumption":            "GJ",
+    "waste_generated":               "MT",
+    "water_consumption":             "KL",
+    "employee_count":                "count",
+    "women_in_workforce_percentage": "%",
+    "complaints_filed":              "count",
+    "complaints_pending":            "count",
 }
 
-# Hard ceilings on intensity ratio (per INR Crore).
-# Any computed ratio above the ceiling is an extraction/unit error and
-# must be excluded from comparisons rather than shown to the user.
-# Calibrated for Indian large-cap companies across sectors.
+# Ratio unit labels (shown in UI)
+RATIO_UNIT_LABELS = {
+    "scope_1_emissions":             "tCO2e / INR_Crore",
+    "scope_2_emissions":             "tCO2e / INR_Crore",
+    "scope_3_emissions":             "tCO2e / INR_Crore",
+    "energy_consumption":            "GJ / INR_Crore",
+    "waste_generated":               "MT / INR_Crore",
+    "water_consumption":             "KL / INR_Crore",
+    "employee_count":                "count / INR_Crore",
+    "women_in_workforce_percentage": "%",          # no ratio
+    "complaints_filed":              "count",      # no ratio
+    "complaints_pending":            "count",      # no ratio
+}
+
+# Hard ceilings on ratio values — anything above is likely an extraction error
 RATIO_CEILINGS: dict[str, float] = {
-    "energy_consumption":  1_000,   # GJ / Cr   — typical IT ≈ 5, heavy industry ≈ 500
-    "scope_1_emissions":   10,      # tCO2e / Cr
+    "scope_1_emissions":   10,
     "scope_2_emissions":   10,
-    "total_ghg_emissions": 20,
-    "water_consumption":   500,     # KL / Cr
-    "waste_generated":     5,       # MT / Cr
+    "scope_3_emissions":   50,
+    "energy_consumption":  1_000,
+    "waste_generated":     5,
+    "water_consumption":   500,
+    "employee_count":      5_000,     # employees per Crore
+    "women_in_workforce_percentage": 100,
+    "complaints_filed":    1_000_000,
+    "complaints_pending":  100_000,
 }
 
-# ── Plausible corporate revenue range (INR Crore) ─────────────────────────────
-# Used to validate back-computed revenue from reported intensity ratios.
-# Too small → the ratio was picked up from a subsection (CSR, standalone)
-# Too large → the ratio is for an entirely different metric
-_IMPLIED_REV_MIN_CR = 1_000       # ₹1,000 Cr minimum
-_IMPLIED_REV_MAX_CR = 9_000_000   # ₹90 lakh Cr maximum
+# Implied revenue sanity (for back-calculation validation)
+_IMPLIED_REV_MIN_CR = 1_000
+_IMPLIED_REV_MAX_CR = 9_000_000
 
-# Category-aware intensity labels searched in BRSR PDF pages
+# BRSR intensity label search (for pre-reported ratios)
 _KPI_INTENSITY_LABELS: dict[str, list[str]] = {
     "energy_consumption": [
-        "energy intensity per rupee",
         "energy intensity per rupee of turnover",
-        "energy intensity per rupee turnover",
-    ],
-    # Note: BRSR only publishes a *combined* scope1+scope2 intensity.
-    # We deliberately do NOT list scope_1 or scope_2 here so that the
-    # combined label never gets applied to just one component.
-    # Both are computed from absolute / revenue instead.
-    "total_ghg_emissions": [
-        "scope 1 and scope 2 emission intensity per rupee",
-        "scope 1 and 2 emission intensity per rupee",
-        "total scope 1 and scope 2 emissions per rupee",
+        "energy intensity per rupee of turnover",
     ],
     "water_consumption": [
-        "water intensity per rupee",
         "water intensity per rupee of turnover",
+        "water intensity per rupee",
     ],
     "waste_generated": [
-        "waste intensity per rupee",
         "waste intensity per rupee of turnover",
+        "waste intensity per rupee",
     ],
 }
 
+_DISPLAY_NAMES = {
+    "scope_1_emissions":             "Scope 1 GHG Emissions",
+    "scope_2_emissions":             "Scope 2 GHG Emissions",
+    "scope_3_emissions":             "Scope 3 GHG Emissions",
+    "energy_consumption":            "Total Energy Consumption",
+    "waste_generated":               "Total Waste Generated",
+    "water_consumption":             "Total Water Consumption",
+    "employee_count":                "Total Employees",
+    "women_in_workforce_percentage": "Women in Workforce (%)",
+    "complaints_filed":              "Complaints Filed",
+    "complaints_pending":            "Complaints Pending",
+}
+
+
+# ── Data classes ──────────────────────────────────────────────────────────────
 
 @dataclass
 class RatioResult:
-    kpi_name: str
-    display_name: str
-    normalized_value: float        # absolute in canonical unit
-    normalized_unit: str
-    revenue_cr: float
-    ratio_value: float             # normalized_value / revenue_cr
-    ratio_unit: str                # e.g. "GJ / INR_Crore"
-    ratio_source: str              # "reported_ratio" | "computed"
-    reported_ratio_raw: Optional[float] = None  # raw per-rupee ratio from PDF
+    kpi_name:           str
+    display_name:       str
+    group:              str          # "environmental" | "social" | "governance"
+    normalized_value:   float        # absolute in canonical unit
+    normalized_unit:    str
+    revenue_cr:         float
+    ratio_value:        float        # normalized_value / revenue_cr  OR absolute (governance)
+    ratio_unit:         str
+    ratio_source:       str          # "reported_ratio" | "computed" | "absolute"
+    reported_ratio_raw: Optional[float] = None
 
 
 @dataclass
 class CompanyProfile:
-    company_name: str
-    fiscal_year: int
-    revenue_cr: float
+    company_name:   str
+    fiscal_year:    int
+    revenue_cr:     float
     revenue_source: str
-    ratios: dict[str, RatioResult] = field(default_factory=dict)
-    raw_kpis: dict[str, NormalizedKPI] = field(default_factory=dict)
+    ratios:         dict[str, RatioResult] = field(default_factory=dict)
+    raw_kpis:       dict[str, NormalizedKPI] = field(default_factory=dict)
 
 
 @dataclass
 class KPIComparison:
-    kpi_name: str
+    kpi_name:    str
     display_name: str
-    unit: str
-    entries: list[tuple[str, float, str]]  # (company_label, ratio_value, source)
-    winner: str                             # company_label with best (lowest) ratio
-    pct_gap: float                          # % gap between best and worst
+    group:       str
+    unit:        str
+    entries:     list[tuple[str, float, str]]  # (company_label, ratio_value, source)
+    winner:      str
+    pct_gap:     float
 
 
 @dataclass
 class BenchmarkReport:
-    comparisons: list[KPIComparison]
+    comparisons:    list[KPIComparison]
     company_labels: list[str]
     overall_winner: Optional[str]
 
 
-_KPI_DISPLAY_NAMES = {
-    "energy_consumption":  "Total Energy Consumption",
-    "scope_1_emissions":   "Scope 1 GHG Emissions",
-    "scope_2_emissions":   "Scope 2 GHG Emissions",
-    "total_ghg_emissions": "Total GHG Emissions (Scope 1+2)",
-    "water_consumption":   "Total Water Consumption",
-    "waste_generated":     "Total Waste Generated",
-}
-
+# ── Pre-reported ratio search ─────────────────────────────────────────────────
 
 def _find_reported_ratio(
     kpi_name: str,
@@ -174,40 +204,14 @@ def _find_reported_ratio(
     abs_normalized_value: float,
 ) -> Optional[float]:
     """
-    Search page texts for a pre-reported intensity ratio (KPI per INR Crore).
-
-    Returns the per-Crore ratio, or None if not found / implausible.
-
-    Bug 1 fix (a) — tighter regex: require 6+ zeros after the decimal point.
-    Real BRSR per-rupee intensities are in the range 1e-6 to 1e-9, so they
-    always have 6+ leading zeros:
-        energy:  ~5e-7  -> 0.000000522   (6 zeros)
-        GHG:     ~1e-8  -> 0.000000015   (7 zeros)
-        water:   ~3e-7  -> 0.00000030    (6 zeros)
-        waste:   ~2e-9  -> 0.0000000023  (8 zeros)
-    Values with only 4-5 zeros (e.g. 0.0000580) come from other sections
-    of the BRSR and must be excluded.
-
-    Bug 1 fix (b) — implied-revenue sanity check: after finding a ratio,
-    compute the implied company revenue:
-        implied_rev = abs_value / (ratio_per_rupee * 1e7)
-    If this falls outside [1_000, 9_000_000] Crore, the ratio is wrong
-    and we return None so the caller falls back to computed ratio.
-
-    Args:
-        kpi_name:             Name of the KPI (used to look up label list).
-        page_texts:           List of page text strings from the PDF.
-        abs_normalized_value: The already-normalised absolute KPI value
-                              (tCO2e, GJ, KL, MT etc.). Used for validation.
-
-    Returns:
-        per-Crore ratio (float) or None.
+    Search for pre-reported intensity ratio (per INR Crore) in PDF text.
+    Only applies to environmental KPIs that appear in BRSR intensity tables.
+    Returns per-Crore ratio or None.
     """
     labels = _KPI_INTENSITY_LABELS.get(kpi_name, [])
     if not labels:
         return None
 
-    # Bug 1 fix (a): 6+ zeros = per-rupee intensity in the right range
     _INTENSITY_VALUE_RE = re.compile(r"\b(0\.0{6,}\d+)\b")
 
     for text in page_texts:
@@ -216,7 +220,6 @@ def _find_reported_ratio(
             idx = text_lower.find(label)
             if idx < 0:
                 continue
-            # Grab the text after the label — the ratio should appear nearby
             snippet = text[idx: idx + 400]
             m = _INTENSITY_VALUE_RE.search(snippet)
             if not m:
@@ -225,60 +228,54 @@ def _find_reported_ratio(
                 ratio_per_rupee = float(m.group(1))
             except ValueError:
                 continue
-
             if ratio_per_rupee <= 0:
                 continue
-
-            # Convert per-rupee → per-Crore (1 Crore = 1e7 rupees)
             ratio_per_cr = ratio_per_rupee * 1e7
-
-            # Bug 1 fix (b): validate implied revenue
             if abs_normalized_value > 0:
                 implied_rev = abs_normalized_value / ratio_per_cr
                 if not (_IMPLIED_REV_MIN_CR <= implied_rev <= _IMPLIED_REV_MAX_CR):
-                    logger.debug(
-                        "benchmark.reported_ratio_implausible",
-                        kpi=kpi_name,
-                        ratio_per_rupee=ratio_per_rupee,
-                        ratio_per_cr=ratio_per_cr,
-                        abs_value=abs_normalized_value,
-                        implied_rev=implied_rev,
-                    )
-                    continue  # discard — ratio leads to nonsensical revenue
-
-            logger.debug(
-                "benchmark.reported_ratio_accepted",
-                kpi=kpi_name,
-                ratio_per_rupee=ratio_per_rupee,
-                ratio_per_cr=ratio_per_cr,
-            )
+                    continue
             return ratio_per_cr
 
     return None
 
 
+# ── KPI group classifier ──────────────────────────────────────────────────────
+
+def _kpi_group(kpi_name: str) -> str:
+    if kpi_name in GOVERNANCE_KPI_NAMES:
+        return "governance"
+    if kpi_name in SOCIAL_KPI_NAMES:
+        return "social"
+    return "environmental"
+
+
+# ── Profile builder ───────────────────────────────────────────────────────────
+
 def build_company_profile(
-    kpi_records: dict[str, dict],
-    revenue_cr: float,
+    kpi_records:    dict[str, dict],
+    revenue_cr:     float,
     revenue_source: str,
-    company_name: str,
-    fiscal_year: int,
-    page_texts: Optional[list[str]] = None,
+    company_name:   str,
+    fiscal_year:    int,
+    page_texts:     Optional[list[str]] = None,
 ) -> CompanyProfile:
     """
-    Build a CompanyProfile with KPI/revenue intensity ratios.
+    Build a CompanyProfile with per-KPI ratios.
 
-    Args:
-        kpi_records:    {kpi_name: {"value": float, "unit": str}} — already extracted
-        revenue_cr:     Revenue in INR Crore
-        revenue_source: How revenue was obtained
-        company_name:   Display name
-        fiscal_year:    FY year
-        page_texts:     Optional list of page text strings to search for
-                        pre-reported intensity ratios
+    Ratio logic by group
+    --------------------
+    Environmental / Social:
+        ratio = normalized_value / revenue_cr
+        (pre-reported ratio used when found in PDF pages)
 
-    Returns:
-        CompanyProfile with .ratios populated
+    Governance (complaints_filed, complaints_pending):
+        ratio = normalized_value  (absolute count — no denominator)
+        ratio_source = "absolute"
+
+    Women / Renewable percentage:
+        ratio = normalized_value  (already a %)
+        ratio_source = "absolute" (percentage is self-normalizing)
     """
     profile = CompanyProfile(
         company_name=company_name,
@@ -292,7 +289,8 @@ def build_company_profile(
         if not rec or rec.get("value") is None:
             continue
 
-        # Normalise the raw KPI value to canonical unit
+        group = _kpi_group(kpi_name)
+
         try:
             norm = normalize(
                 kpi_name=kpi_name,
@@ -301,66 +299,80 @@ def build_company_profile(
             )
         except NormalizationError as e:
             logger.warning("benchmark.normalisation_failed", kpi=kpi_name, error=str(e))
-            print(f"  [WARN] Normalisation failed for {kpi_name}: {e}")
             continue
 
         profile.raw_kpis[kpi_name] = norm
 
-        # Try to find a pre-reported intensity ratio in PDF pages.
-        # Pass the absolute value so the validator can sanity-check.
-        reported_ratio_per_cr: Optional[float] = None
-        if page_texts:
-            reported_ratio_per_cr = _find_reported_ratio(
-                kpi_name=kpi_name,
-                page_texts=page_texts,
-                abs_normalized_value=norm.normalized_value,
-            )
+        # ── Ratio calculation ─────────────────────────────────────────────────
+        if group == "governance":
+            # Complaints: use absolute count, no revenue denominator
+            ratio_val    = norm.normalized_value
+            ratio_source = "absolute"
+            ratio_unit   = RATIO_UNIT_LABELS.get(kpi_name, "count")
 
-        if reported_ratio_per_cr is not None:
-            ratio_per_cr = reported_ratio_per_cr
-            source = "reported_ratio"
+        elif kpi_name in ("women_in_workforce_percentage", "renewable_energy_percentage"):
+            # Percentages: already normalized, no denominator
+            ratio_val    = norm.normalized_value
+            ratio_source = "absolute"
+            ratio_unit   = "%"
+
         else:
-            # Compute from absolute / revenue
-            ratio_per_cr = norm.normalized_value / revenue_cr
-            source = "computed"
+            # Environmental / Social: ratio = value / revenue
+            reported = None
+            if page_texts:
+                reported = _find_reported_ratio(
+                    kpi_name=kpi_name,
+                    page_texts=page_texts,
+                    abs_normalized_value=norm.normalized_value,
+                )
 
-        # Guard: drop ratios that exceed plausibility ceiling.
+            if reported is not None:
+                ratio_val    = reported
+                ratio_source = "reported_ratio"
+            else:
+                if revenue_cr <= 0:
+                    logger.warning("benchmark.zero_revenue", kpi=kpi_name)
+                    continue
+                ratio_val    = norm.normalized_value / revenue_cr
+                ratio_source = "computed"
+
+            ratio_unit = RATIO_UNIT_LABELS.get(kpi_name, "")
+
+        # ── Ceiling guard ─────────────────────────────────────────────────────
         ceiling = RATIO_CEILINGS.get(kpi_name)
-        if ceiling and (ratio_per_cr <= 0 or ratio_per_cr > ceiling):
+        if ceiling and ratio_val > ceiling:
             logger.warning(
                 "benchmark.ratio_exceeds_ceiling",
-                kpi=kpi_name,
-                ratio=ratio_per_cr,
-                ceiling=ceiling,
+                kpi=kpi_name, ratio=ratio_val, ceiling=ceiling,
                 company=company_name,
             )
-            continue  # exclude this KPI from the profile entirely
+            continue
 
-        display = _KPI_DISPLAY_NAMES.get(kpi_name, kpi_name)
-        canonical = CANONICAL_UNITS.get(kpi_name, norm.normalized_unit)
+        display = _DISPLAY_NAMES.get(kpi_name, kpi_name)
 
         profile.ratios[kpi_name] = RatioResult(
             kpi_name=kpi_name,
             display_name=display,
+            group=group,
             normalized_value=norm.normalized_value,
-            normalized_unit=canonical,
+            normalized_unit=CANONICAL_UNITS.get(kpi_name, norm.normalized_unit),
             revenue_cr=revenue_cr,
-            ratio_value=ratio_per_cr,
-            ratio_unit=f"{canonical} / INR_Crore",
-            ratio_source=source,
+            ratio_value=ratio_val,
+            ratio_unit=ratio_unit,
+            ratio_source=ratio_source,
             reported_ratio_raw=(
-                reported_ratio_per_cr / 1e7
-                if reported_ratio_per_cr is not None else None
+                reported / 1e7 if ratio_source == "reported_ratio" else None
             ),
         )
 
     return profile
 
 
+# ── Comparison ────────────────────────────────────────────────────────────────
+
 def compare_profiles(profiles: list[CompanyProfile]) -> BenchmarkReport:
     """
     Compare N company profiles across all benchmark KPIs.
-    Returns a BenchmarkReport with per-KPI comparisons and overall winner.
     """
     if len(profiles) < 2:
         raise ValueError("Need at least 2 profiles to compare")
@@ -369,10 +381,9 @@ def compare_profiles(profiles: list[CompanyProfile]) -> BenchmarkReport:
     comparisons: list[KPIComparison] = []
 
     for kpi_name in BENCHMARK_KPI_NAMES:
-        display = _KPI_DISPLAY_NAMES.get(kpi_name, kpi_name)
-        canonical = CANONICAL_UNITS.get(kpi_name, "")
+        display = _DISPLAY_NAMES.get(kpi_name, kpi_name)
+        group   = _kpi_group(kpi_name)
 
-        # Collect ratio for each company
         entries: list[tuple[str, float, str]] = []
         for label, profile in zip(labels, profiles):
             ratio = profile.ratios.get(kpi_name)
@@ -383,24 +394,26 @@ def compare_profiles(profiles: list[CompanyProfile]) -> BenchmarkReport:
             continue
 
         lower = kpi_name in LOWER_IS_BETTER
-        best_entry  = min(entries, key=lambda e: e[1]) if lower else max(entries, key=lambda e: e[1])
-        worst_entry = max(entries, key=lambda e: e[1]) if lower else min(entries, key=lambda e: e[1])
+        best  = min(entries, key=lambda e: e[1]) if lower else max(entries, key=lambda e: e[1])
+        worst = max(entries, key=lambda e: e[1]) if lower else min(entries, key=lambda e: e[1])
 
         pct_gap = (
-            abs(best_entry[1] - worst_entry[1]) / worst_entry[1] * 100
-            if worst_entry[1] > 0 else 0.0
+            abs(best[1] - worst[1]) / worst[1] * 100
+            if worst[1] > 0 else 0.0
         )
+
+        unit = RATIO_UNIT_LABELS.get(kpi_name, CANONICAL_UNITS.get(kpi_name, ""))
 
         comparisons.append(KPIComparison(
             kpi_name=kpi_name,
             display_name=display,
-            unit=f"{canonical}/Cr",
+            group=group,
+            unit=unit,
             entries=entries,
-            winner=best_entry[0],
+            winner=best[0],
             pct_gap=pct_gap,
         ))
 
-    # Overall winner: most KPI wins
     win_counts: dict[str, int] = {label: 0 for label in labels}
     for comp in comparisons:
         win_counts[comp.winner] = win_counts.get(comp.winner, 0) + 1
@@ -413,31 +426,40 @@ def compare_profiles(profiles: list[CompanyProfile]) -> BenchmarkReport:
     )
 
 
+# ── Terminal output ───────────────────────────────────────────────────────────
+
 def print_report(report: BenchmarkReport) -> None:
-    """Print benchmarking results to terminal."""
     W = 80
     print("\n" + "=" * W)
     print("  ESG COMPETITIVE BENCHMARKING REPORT")
-    print("  Comparison basis: KPI intensity per INR Crore revenue")
+    print("  Groups: Environmental | Social | Governance")
     print("=" * W)
-
     print(f"\n  Companies compared: {' vs '.join(report.company_labels)}")
     print(f"  Overall winner:     {report.overall_winner or 'N/A'}")
 
-    print("\n" + "-" * W)
-    print(f"  {'KPI':<32} {'Metric':<18} {'Value':>16} {'Source':<18} {'Winner'}")
-    print("-" * W)
-
+    current_group = None
     for comp in report.comparisons:
-        winner_label = comp.winner.split(" FY")[0]
+        if comp.group != current_group:
+            current_group = comp.group
+            print(f"\n  {'─'*70}")
+            print(f"  {current_group.upper()}")
+            print(f"  {'─'*70}")
+
         print(f"\n  ── {comp.display_name} ──")
         for company_label, ratio_val, source in comp.entries:
             is_winner = company_label == comp.winner
-            marker = "★" if is_winner else " "
-            val_str = f"{ratio_val:.4e}" if ratio_val < 0.001 else f"{ratio_val:.4f}"
-            src_short = "reported" if "reported" in source else "computed"
-            print(f"  {marker} {company_label:<35} {val_str:>16} {comp.unit:<18} [{src_short}]")
-        print(f"    Gap: {comp.pct_gap:.1f}%  |  Winner: {winner_label}")
+            marker    = "★" if is_winner else " "
+            val_str   = (
+                f"{ratio_val:.4e}" if 0 < ratio_val < 0.001
+                else f"{ratio_val:.4f}" if ratio_val < 1
+                else f"{ratio_val:,.2f}"
+            )
+            src_short = (
+                "reported" if "reported" in source else
+                "absolute" if source == "absolute" else "computed"
+            )
+            print(f"  {marker} {company_label:<35} {val_str:>16} {comp.unit:<25} [{src_short}]")
+        print(f"    Gap: {comp.pct_gap:.1f}%  |  Winner: {comp.winner.split(' FY')[0]}")
 
     print("\n" + "=" * W)
     print("  SUMMARY — WINS PER COMPANY")

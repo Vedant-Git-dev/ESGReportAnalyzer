@@ -63,7 +63,7 @@ def cmd_seed_kpis(_args) -> None:
             "retrieval_keywords": [
                 "scope 1", "direct emissions", "direct ghg", "tCO2e",
                 "metric tonnes CO2", "GHG emissions scope 1",
-                "greenhouse gas emission", "total scope",
+                "greenhouse gas emission", "total scope"
             ],
             "valid_min": 0, "valid_max": 1e8,
         },
@@ -128,23 +128,56 @@ def cmd_seed_kpis(_args) -> None:
             ],
             "valid_min": 100, "valid_max": 1e13,
         },
-        {
-            "name": "renewable_energy_percentage",
-            "display_name": "Renewable Energy Percentage",
-            "category": "Environmental",
-            "subcategory": "Energy",
-            "expected_unit": "%",
-            "regex_patterns": [
-                r"renewable\s+energy[\s\S]{0,80}?([\d]+(?:\.\d+)?)\s*%",
-                r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,40}?(?:from\s+)?renewable",
-                r"renewable[\s\S]{0,40}?([\d]+(?:\.\d+)?)\s*percent",
-            ],
-            "retrieval_keywords": [
-                "renewable energy", "solar", "wind", "clean energy",
-                "non-fossil", "renewable electricity",
-            ],
-            "valid_min": 0, "valid_max": 100,
-        },
+                    {
+                "name": "renewable_energy_percentage",
+                "display_name": "Renewable Energy Percentage",
+                "category": "Environmental",
+                "subcategory": "Energy",
+                "expected_unit": "%",
+                "regex_patterns": [
+                    # ── Original patterns (unchanged) ───────────────────────────────────
+                    r"renewable\s+energy[\s\S]{0,80}?([\d]+(?:\.\d+)?)\s*%",
+                    r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,40}?(?:from\s+)?renewable",
+                    r"renewable[\s\S]{0,40}?([\d]+(?:\.\d+)?)\s*percent",
+            
+                    # ── New patterns — Integrated-report language ────────────────────────
+                    # "67.52% of our electricity in India operations was met through renewables."
+                    r"([\d]+(?:\.\d+)?)\s*%\s+of\s+(?:our\s+)?(?:\w+\s+){0,5}electricity[^\n]{0,150}renew\w*",
+            
+                    # "67.52% electricity from renewable sources"
+                    r"([\d]+(?:\.\d+)?)\s*%[^\n]{0,150}?(?:electricity|power)[^\n]{0,150}?from\s+renewable\s+sources?",
+            
+                    # "Share of renewables in our India operations 67.52%"
+                    r"share\s+of\s+renew\w*[^\n]{0,80}?([\d]+(?:\.\d+)?)\s*%",
+            
+                    # "67.52% ... met through renewables"
+                    r"([\d]+(?:\.\d+)?)\s*%[^\n]{0,120}met\s+through\s+renew\w*",
+            
+                    # Multiline: "67.52%\n...\nOf electricity ... from renewable sources"
+                    r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,250}?from\s+renewable\s+sources?",
+            
+                    # Multiline: "X% ... comes from renewable"
+                    r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,200}comes?\s+from\s+renew\w*",
+            
+                    # Reverse order: "renewables ... X%"  (2+ digit guard avoids footnote "2")
+                    r"renew(?:able\s+sources?|ables?|able\s+energy)\b[^\n]{0,120}([\d]{2,}(?:\.\d+)?)\s*%",
+            
+                    # Solar / wind / hydro sub-type: "Solar energy accounts for 45% ..."
+                    r"(?:solar|wind|hydro|geotherm\w+)\s+energy[^\n]{0,80}?([\d]+(?:\.\d+)?)\s*%",
+                ],
+                "retrieval_keywords": [
+                    "renewable energy", "solar energy", "wind energy", "clean energy",
+                    "green energy", "renewable electricity", "non-fossil", "re share",
+                    "percent renewable", "% renewable",
+                    # NEW keywords covering Integrated-report phrasing
+                    "share of renewables", "renewables", "met through renewables",
+                    "from renewable sources", "electricity from renewable",
+                    "renewable sources electricity", "solar pv", "green power",
+                    "electricity from renewables", "renewables in our operations",
+                ],
+                "valid_min": 50,
+                "valid_max": 100,
+            },
         {
             "name": "water_consumption",
             "display_name": "Total Water Consumption",
@@ -229,44 +262,151 @@ def cmd_seed_kpis(_args) -> None:
         },
         
         # ── NEW KPI: scope_3_emissions ────────────────────────────────────────
-        {
+                {
             "name": "scope_3_emissions",
             "display_name": "Scope 3 GHG Emissions",
             "category": "Environmental",
             "subcategory": "Emissions",
             "expected_unit": "tCO2e",
             "regex_patterns": [
-                # Explicit "Total Scope 3" with inline unit
+                # ── Original patterns (unchanged) ───────────────────────────────────
                 r"total\s+scope\s*3\s+emissions.{0,200}?metric\s+tonnes\s+of\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # Multiline block: label then unit then value
                 r"total\s+scope\s*3\s+emissions[\s\S]{0,300}?equivalent\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # Simple block: "Scope 3 emissions\nVALUE"
                 r"scope\s*3\s+(?:ghg\s+)?emissions[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # Value chain total
                 r"total\s+value\s+chain\s+emissions[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # GRI label: "Other indirect (Scope 3) GHG emissions"
                 r"other\s+indirect\s+\(scope\s*3\)[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # Inline: "Scope 3 ... 15,432 tCO2e"
                 r"scope[\s\-]*3[\s\S]{0,100}?([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2e?|metric\s*tonnes?\s*(?:of\s*)?co2)",
-                # Narrative: "scope 3 emissions were / amounted to X tCO2e"
                 r"scope\s*3\s+emissions?\s+(?:were|was|of|:|amount\w*\s+to)\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2)",
+        
+                # ── NEW Pattern A — pdfplumber/spatial (two-line skip via equivalent) ─
+                # "Total Scope 3 emissions (Break-up of the GHG into CO2,\n
+                #  CH4, N2O, HFCs, PFCs, SF6, NF3, if available)(1) equivalent\n
+                #  1,80,737  1,83,976 (2)"
+                r"total\s+scope\s*3\s+emissions[^\n]*\n[^\n]*equivalent[^\n]*\n\s*([\d,]+(?:\.\d+)?)(?:\s*\(\d+\))?",
+        
+                # ── NEW Pattern B — pdftotext/layout-mode (value embedded in long line) ─
+                # "Total Scope 3 emissions (Break-up...CO2, [110 spaces] 1,80,737 ..."
+                # Indian-format number (comma-grouped) distinguishes from footnote digits
+                r"total\s+scope\s*3\s+emissions[^\n]{0,400}?\b([\d]{1,3}(?:,\d{2,3})+(?:\.\d+)?)\b",
+        
+                # ── NEW Pattern C — inline with GHG unit (generic fallback) ─────────
+                # "Scope 3 emissions 1,80,737 tCO2e" or "Total Scope 3 GHG: 1,80,737 MT CO2e"
+                r"scope\s*3\s+(?:ghg\s+)?emissions[^\n]{0,100}?([\d]{1,3}(?:,\d{2,3})+(?:\.\d+)?)\s*(?:tco2e?|metric\s*tonn\w*)",
             ],
             "retrieval_keywords": [
-                # Short keywords (high recall)
                 "scope 3", "scope-3", "scope iii",
                 "value chain emissions", "upstream emissions", "downstream emissions",
                 "supply chain emissions", "indirect value chain",
                 "total scope 3", "scope 3 ghg", "scope 3 tco2e",
-                # Category keywords (BRSR / GRI categories)
                 "purchased goods and services", "business travel emissions",
                 "employee commute", "use of sold products",
                 "end-of-life treatment", "capital goods",
                 "transportation and distribution",
-                # GRI label
                 "other indirect emissions",
             ],
             "valid_min": 0,
-            "valid_max": 1e10,   # scope 3 can be far larger than scope 1+2
+            "valid_max": 1e10,
+        },
+        {
+            "name": "complaints_filed",
+            "display_name": "Total Complaints Filed",
+            "category": "Social",
+            "subcategory": "Governance",
+            "expected_unit": "count",
+            "regex_patterns": [
+                # ── BRSR Section 25 — "filed during the year" column header + value ──
+                r"filed\s+during\s+(?:the\s+)?year[^\n]{0,60}?[:\s]+(\d[\d,]*)",
+        
+                # ── "Number of complaints filed ... NUMBER" ───────────────────────────
+                r"number\s+of\s+complaints?\s+filed[^\n]{0,100}?(\d[\d,]+)",
+        
+                # ── "X complaints were filed" / "NUMBER complaints filed" ────────────
+                r"(\d[\d,]+)\s+complaints?\s+(?:were\s+)?filed",
+        
+                # ── "complaints received: NUMBER" ─────────────────────────────────────
+                r"complaints?\s+received[^\n]{0,60}?[:\s]+(\d[\d,]+)",
+        
+                # ── BRSR table stakeholder row: "Employees and workers ... 180 19" ───
+                # First number in a two-number pair after a stakeholder label
+                r"(?:employees?\s+and\s+workers?|customers?|shareholders?)[^\n]{0,150}?(\d[\d,]+)\s+\d+",
+        
+                # ── Sexual harassment / conflict-of-interest inline ──────────────────
+                r"complaints?\s+filed[^\n]{0,80}?[:\s]+(\d[\d,]+)",
+        
+                # ── Total complaints filed aggregate ─────────────────────────────────
+                r"total\s+complaints?\s+(?:filed|received)[^\n]{0,80}?(\d[\d,]+)",
+        
+                # ── Narrative: "N complaints lodged / raised / reported" ─────────────
+                r"(\d[\d,]+)\s+complaints?\s+(?:lodged|raised|reported|submitted)",
+        
+                # ── H&S table rows: "Working conditions 16 0" ────────────────────────
+                r"(?:working\s+conditions?|health\s+and\s+safety)[^\n]{0,60}?(\d+)\s+\d+",
+        
+                # ── "grievances filed / received ... NUMBER" ──────────────────────────
+                r"grievances?\s+(?:filed|received)[^\n]{0,80}?[:\s]+(\d[\d,]+)",
+            ],
+            "retrieval_keywords": [
+                "complaints filed", "complaints received",
+                "number of complaints filed", "number of complaints received",
+                "complaints filed during the year", "grievances filed",
+                "grievances received", "complaints lodged",
+                "filed during the year", "sexual harassment complaints",
+                "BRSR complaints", "stakeholder complaints",
+                "working conditions complaints", "health and safety complaints",
+                "NGRBC complaints", "complaints grievances",
+            ],
+            "valid_min": 0,
+            "valid_max": 1_000_000,
+        },
+        {
+            "name": "complaints_pending",
+            "display_name": "Total Complaints Pending",
+            "category": "Social",
+            "subcategory": "Governance",
+            "expected_unit": "count",
+            "regex_patterns": [
+                # ── BRSR table — "pending resolution at close/end of year" ───────────
+                r"pending\s+resolution\s+at\s+(?:close|end)[^\n]{0,100}?(\d[\d,]*)",
+        
+                # ── "complaints pending: NUMBER" / "pending resolution: X" ───────────
+                r"complaints?\s+pending\s+(?:resolution\s+)?[^\n]{0,60}?[:\s]+(\d[\d,]*)",
+        
+                # ── "NUMBER pending" / "NUMBER complaints pending" ───────────────────
+                r"(\d[\d,]*)\s+(?:complaints?\s+)?(?:are\s+)?pending\b",
+        
+                # ── BRSR table row: second number (pending) in "180 19" pair ─────────
+                r"(?:employees?\s+and\s+workers?|customers?|shareholders?)[^\n]{0,150}?\d[\d,]+\s+(\d+)",
+        
+                # ── Narrative: "X were pending at year/end/close" ────────────────────
+                r"(\d[\d,]*)\s+(?:complaints?\s+)?(?:were\s+)?pending\s+at\s+(?:year|the\s+(?:end|close))",
+        
+                # ── "pending: NUMBER" / "outstanding: NUMBER" ─────────────────────────
+                r"(?:pending|outstanding)[^\n]{0,40}?[:\s]+(\d+)",
+        
+                # ── Sexual harassment / governance inline ─────────────────────────────
+                r"complaints?\s+pending[^\n]{0,80}?[:\s]+(\d+)",
+        
+                # ── Total pending aggregate ────────────────────────────────────────────
+                r"total\s+(?:complaints?\s+)?pending[^\n]{0,80}?(\d+)",
+        
+                # ── "close of the year\nNUMBER" — end-of-table-cell format ───────────
+                r"close\s+of\s+the\s+year[^\n]{0,20}\n\s*(\d+)",
+        
+                # ── "grievances pending ... NUMBER" ───────────────────────────────────
+                r"grievances?\s+pending[^\n]{0,80}?[:\s]+(\d+)",
+            ],
+            "retrieval_keywords": [
+                "complaints pending", "pending complaints",
+                "pending resolution", "complaints pending resolution",
+                "pending at close of year", "pending at end of year",
+                "unresolved complaints", "grievances pending",
+                "complaints not resolved", "complaints outstanding",
+                "pending resolution at close", "complaints pending at year end",
+                "number of complaints pending", "pending grievances",
+                "NGRBC complaints pending",
+            ],
+            "valid_min": 0,
+            "valid_max": 100_000,
         },
     ]
 
