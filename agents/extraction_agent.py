@@ -256,7 +256,7 @@ _BROAD_PATTERNS = [
     rf"(?:was|is|were|of|:)\s*{_NUM}\s*{_UNIT_PAT}",
     rf"{_NUM}\s*{_UNIT_PAT}\s*(?:in|for|during|fy|fiscal)",
     rf"\|\s*{_NUM}\s*\|\s*{_UNIT_PAT}",
-    rf"(?:total(?:led|s)?|amount(?:ed|s)?|reached|stood at|equat\w+)\s*{_WS}{_NUM}\s*{_UNIT_PAT}",
+    # rf"(?:total(?:led|s)?|amount(?:ed|s)?|reached|stood at|equat\w+)\s*{_WS}{_NUM}\s*{_UNIT_PAT}",
 ]
 
 

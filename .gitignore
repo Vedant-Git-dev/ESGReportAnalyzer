@@ -4,3 +4,4 @@ storage/
 logs/
 *.log
 *.db
+*.txt

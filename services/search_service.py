@@ -650,8 +650,6 @@ def score_year_relevance(
     for adj in adjacent_pats:
         haystack_stripped = haystack_stripped.replace(adj, " ")
     has_weak = weak_target in haystack_stripped
-    print(f"DEBUG year scoring: has_strong={has_strong}, has_weak={has_weak}, has_adjacent={has_adjacent}")
-    print(f"DEBUG haystack: {haystack}")
 
     if has_strong:
         # Explicit target year — best case

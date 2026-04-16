@@ -14,11 +14,17 @@ Each Report row has exactly one ParsedDocument row per parser version.
 Bumping parser_version in config.py (settings.parser_version) invalidates
 the cache and triggers a fresh parse on next run.
 
-No content-level (SHA-256) deduplication is performed here. That was
-reverted per the design decision to keep parse dedup simple and keyed
-only on (report_id, parser_version).
-
-Entry point: ParseOrchestrator.run(report_id, force=False)
+FIXES (v2)
+----------
+- Pre-embedding diagnostic: logs chunk count and how many already have
+  embeddings before calling embed_document().
+- Post-embedding diagnostic: logs how many chunks now have embeddings,
+  broken down by type (table / text / footnote).
+- Embedding failure is still non-fatal but now logs an explicit actionable
+  ERROR instead of a generic WARNING, making it easy to spot in logs.
+- embed_document() return value is checked: 0 means nothing was embedded,
+  which now triggers a dedicated log message pointing at the most likely
+  causes (missing pgvector extension, model load failure, no internet).
 """
 from __future__ import annotations
 
@@ -28,11 +34,46 @@ from pathlib import Path
 from core.config import get_settings
 from core.database import get_db
 from core.logging_config import get_logger
-from models.db_models import Report
+from models.db_models import Report, DocumentChunk
 from models.schemas import ParsedDocumentRead
 from services.parse_cache import get_cached_parse, is_cached, store_parse
 
 logger = get_logger(__name__)
+
+
+def _log_embedding_coverage(
+    parsed_document_id: uuid.UUID,
+    db,
+    label: str,
+) -> None:
+    """
+    Query and log the current embedding coverage for a parsed document.
+    Called before and after embed_document() to make the effect visible.
+    """
+    try:
+        from sqlalchemy import func as sa_func
+        total = db.query(sa_func.count(DocumentChunk.id)).filter(
+            DocumentChunk.parsed_document_id == parsed_document_id,
+        ).scalar() or 0
+        embedded = db.query(sa_func.count(DocumentChunk.id)).filter(
+            DocumentChunk.parsed_document_id == parsed_document_id,
+            DocumentChunk.is_embedded == True,
+            DocumentChunk.embedding.isnot(None),
+        ).scalar() or 0
+        pct = round(100 * embedded / total, 1) if total else 0
+        logger.info(
+            f"parse_orchestrator.embedding_coverage_{label}",
+            parsed_document_id=str(parsed_document_id),
+            total_chunks=total,
+            embedded_chunks=embedded,
+            coverage_pct=pct,
+        )
+    except Exception as exc:
+        logger.warning(
+            "parse_orchestrator.coverage_query_failed",
+            label=label,
+            error=str(exc),
+        )
 
 
 class ParseOrchestrator:
@@ -104,6 +145,10 @@ class ParseOrchestrator:
                     parser_version=parser_version,
                 )
                 cached = get_cached_parse(report_id, parser_version, db)
+                # Even on cache hit, run embeddings if chunks are missing them
+                _log_embedding_coverage(cached.id, db, "cache_hit_check")
+                self._embed_if_needed(cached.id, db)
+                _log_embedding_coverage(cached.id, db, "cache_hit_after_embed")
                 return ParsedDocumentRead.model_validate(cached)
 
             # Cache miss: run the full parse pipeline
@@ -131,8 +176,6 @@ class ParseOrchestrator:
                 raise
 
             # Store the ParsedDocument cache entry.
-            # store_parse() clears any stale entry for this (report_id, parser_version)
-            # before inserting the new one.
             parsed_doc = store_parse(
                 report_id=report_id,
                 parser_version=parser_version,
@@ -144,32 +187,51 @@ class ParseOrchestrator:
             # Chunk and store DocumentChunks
             db_chunks = ChunkingAgent().chunk_and_store(raw_chunks, parsed_doc, db)
 
-            # Compute and store embeddings using the local sentence-transformers
-            # model. This is zero API cost. Falls back gracefully if the model
-            # is not installed.
-            try:
-                from services.embedding_service import EmbeddingService
-                emb = EmbeddingService()
-                if emb.is_available():
-                    n_embedded = emb.embed_document(parsed_doc.id, db)
-                    logger.info(
-                        "parse_orchestrator.embedded",
-                        chunks_embedded=n_embedded,
-                    )
-                else:
-                    logger.warning(
-                        "parse_orchestrator.embedding_skipped",
-                        reason="sentence-transformers model not available",
-                    )
-            except Exception as exc:
-                # Embedding failure is non-fatal. Keyword-only retrieval
-                # still works without embeddings.
-                logger.warning(
-                    "parse_orchestrator.embedding_failed",
-                    error=str(exc),
+            logger.info(
+                "parse_orchestrator.chunking_done",
+                report_id=str(report_id),
+                total_chunks=len(db_chunks),
+                table_chunks=sum(1 for c in db_chunks if c.chunk_type == "table"),
+                text_chunks=sum(1 for c in db_chunks if c.chunk_type == "text"),
+            )
+
+            # Log coverage before embedding attempt
+            _log_embedding_coverage(parsed_doc.id, db, "before_embed")
+
+            # Compute and store embeddings
+            n_embedded = self._embed_if_needed(parsed_doc.id, db)
+
+            # Log coverage after embedding attempt
+            _log_embedding_coverage(parsed_doc.id, db, "after_embed")
+
+            if n_embedded == 0:
+                logger.error(
+                    "parse_orchestrator.embedding_produced_zero",
+                    report_id=str(report_id),
+                    parsed_document_id=str(parsed_doc.id),
+                    total_chunks=len(db_chunks),
+                    action=(
+                        "Zero embeddings were stored. Likely causes: "
+                        "(1) sentence-transformers model could not be loaded "
+                        "(check for HuggingFace connectivity or run: "
+                        "python -c \"from sentence_transformers import SentenceTransformer; "
+                        "SentenceTransformer('BAAI/bge-small-en-v1.5')\"); "
+                        "(2) pgvector extension not installed "
+                        "(run: CREATE EXTENSION IF NOT EXISTS vector;); "
+                        "(3) DB column type mismatch "
+                        f"(expected Vector({384})). "
+                        "Retrieval will fall back to keyword-only mode."
+                    ),
+                )
+            else:
+                logger.info(
+                    "parse_orchestrator.embedding_success",
+                    report_id=str(report_id),
+                    n_embedded=n_embedded,
+                    total_chunks=len(db_chunks),
                 )
 
-            # Update meta with the final chunk count (known only after chunking)
+            # Update meta with the final chunk count
             parsed_doc.meta = {**meta, "chunk_count": len(db_chunks)}
 
             # Advance report status
@@ -181,5 +243,56 @@ class ParseOrchestrator:
                 report_id=str(report_id),
                 pages=meta["page_count"],
                 chunks=len(db_chunks),
+                embedded=n_embedded,
             )
             return ParsedDocumentRead.model_validate(parsed_doc)
+
+    def _embed_if_needed(self, parsed_document_id: uuid.UUID, db) -> int:
+        """
+        Run embed_document() if the embedding service is available.
+        Returns the number of chunks embedded (0 on failure or unavailability).
+        Non-fatal: keyword-only retrieval continues even if this returns 0.
+        """
+        try:
+            from services.embedding_service import EmbeddingService
+            emb = EmbeddingService()
+
+            logger.info(
+                "parse_orchestrator.embedding_check",
+                parsed_document_id=str(parsed_document_id),
+                model=emb.model_name,
+            )
+
+            if not emb.is_available():
+                logger.warning(
+                    "parse_orchestrator.embedding_model_unavailable",
+                    parsed_document_id=str(parsed_document_id),
+                    model=emb.model_name,
+                    action=(
+                        "Embedding model is not available. "
+                        "Semantic retrieval will be disabled. "
+                        "To fix: ensure sentence-transformers is installed and "
+                        "the model can be downloaded from HuggingFace, or "
+                        "pre-cache it: python -c \"from sentence_transformers "
+                        "import SentenceTransformer; "
+                        f"SentenceTransformer('{emb.model_name}')\""
+                    ),
+                )
+                return 0
+
+            n_embedded = emb.embed_document(parsed_document_id, db)
+            return n_embedded
+
+        except Exception as exc:
+            logger.error(
+                "parse_orchestrator.embedding_exception",
+                parsed_document_id=str(parsed_document_id),
+                error=str(exc),
+                action=(
+                    "Unexpected exception during embedding — NOT fatal. "
+                    "Keyword retrieval will continue. "
+                    "Fix the embedding issue and re-parse with force=True "
+                    "or run: python main.py embed --report-id <id>"
+                ),
+            )
+            return 0
