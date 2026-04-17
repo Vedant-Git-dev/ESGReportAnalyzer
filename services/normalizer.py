@@ -75,6 +75,7 @@ _GHG_TO_TCO2E: dict[str, float] = {
     "metric tonnes co2e": 1.0,
     "metric ton co2e":  1.0,
     "metric tons co2e": 1.0,
+    "tons of co equivalent": 1.0,
     "metric tonnes of co2 equivalent":  1.0,
     "metric tonnes of co2equivalent":   1.0,
     "metric tonnes co2 equivalent":     1.0,

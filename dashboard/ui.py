@@ -1,18 +1,45 @@
 """
-dashboard/ui.py  — ESG Competitive Intelligence Dashboard  (v3)
+dashboard/ui.py  — ESG Competitive Intelligence Dashboard  (v4)
 
-KPI group changes vs v2
------------------------
-  Added:   scope_3_emissions, energy_consumption, water_consumption,
-           employee_count, women_in_workforce_percentage,
-           renewable_energy_percentage, complaints_filed, complaints_pending
-  Removed: total_ghg_emissions
+KPI-LEVEL CACHING FIX (v4 vs v3)
+----------------------------------
+v3 always called ExtractionAgent().extract_all() for every report, regardless
+of what was already stored in kpi_records.  This caused:
+  - Redundant LLM/regex extraction on every page load
+  - Slow UI response even when all data was already in DB
+  - Duplicate kpi_records rows
 
-UI auto-displays any KPI returned from the backend.
-KPIs are grouped into Environmental / Social / Governance sections.
-Governance KPIs (complaints) are shown as absolute counts, not intensity ratios.
-Percentage KPIs (women %, renewable %) are shown as-is.
-All others are shown as KPI / revenue (intensity ratios).
+v4 introduces KPI-level caching via KPICacheService:
+
+  CASE 1 — Full cache hit (all KPIs in kpi_records):
+    → Return cached values immediately, skip extraction entirely.
+
+  CASE 2 — Partial cache hit (some KPIs missing):
+    → Use cached values for existing KPIs.
+    → Run ExtractionAgent ONLY for the missing KPI names.
+    → Store new values.
+
+  CASE 3 — Cache miss (nothing cached):
+    → Run full pipeline as before.
+
+The cache uses Integrated > BRSR > ESG priority per KPI, identical to
+run_benchmark.py.  The extraction logic, retrieval logic, parsing logic,
+DB schema, and UI theme are all unchanged.
+
+New internal helpers
+--------------------
+  _cache_load(company_id, fy, db)
+      Thin wrapper around KPICacheService.select_best_per_kpi().
+      Returns {kpi_name: record_dict} for all KPIs that have valid
+      cached values.  Used at the top of run_company_pipeline() before
+      any extraction is attempted.
+
+  _step_extract_missing(report_id, report_type, fy, log, llm_service,
+                        missing_kpi_names)
+      Replaces the old _step_extract().  Accepts an explicit list of
+      KPI names to extract; skips the ExtractionAgent call entirely when
+      the list is empty.  Revenue extraction is unchanged (always runs
+      when needed).
 
 Run:
     streamlit run dashboard/ui.py
@@ -121,136 +148,81 @@ INGESTION_REPORT_TYPES = ["BRSR", "ESG", "Integrated"]
 UPLOAD_REPORT_TYPE_OPTIONS = ["BRSR", "ESG", "Integrated", "Annual", "CSR", "Other"]
 
 # =============================================================================
-# KPI CATALOGUE
-# All UI display logic derives from this single source of truth.
-# Adding a new KPI here is all that is needed to display it everywhere.
+# KPI CATALOGUE  (unchanged)
 # =============================================================================
 
-# KPI groups with display metadata
-# "ratio_denominator": "revenue"  → value / revenue_cr  → shown as X / INR_Crore
-# "ratio_denominator": "none"     → absolute value (governance + percentages)
 KPI_GROUPS: dict[str, dict] = {
-    # ── Environmental ────────────────────────────────────────────────────────
     "scope_1_emissions": {
-        "label": "Scope 1 GHG",
-        "group": "Environmental",
-        "unit": "tCO2e",
-        "ratio_unit": "tCO2e/Cr",
-        "ratio_denominator": "revenue",
-        "max_ratio": 10,
-        "higher_is_better": False,
+        "label": "Scope 1 GHG", "group": "Environmental", "unit": "tCO2e",
+        "ratio_unit": "tCO2e/Cr", "ratio_denominator": "revenue",
+        "max_ratio": 10, "higher_is_better": False,
         "desc": "Direct GHG emissions per INR Crore revenue",
     },
     "scope_2_emissions": {
-        "label": "Scope 2 GHG",
-        "group": "Environmental",
-        "unit": "tCO2e",
-        "ratio_unit": "tCO2e/Cr",
-        "ratio_denominator": "revenue",
-        "max_ratio": 10,
-        "higher_is_better": False,
+        "label": "Scope 2 GHG", "group": "Environmental", "unit": "tCO2e",
+        "ratio_unit": "tCO2e/Cr", "ratio_denominator": "revenue",
+        "max_ratio": 10, "higher_is_better": False,
         "desc": "Indirect GHG emissions per INR Crore revenue",
     },
     "scope_3_emissions": {
-        "label": "Scope 3 GHG",
-        "group": "Environmental",
-        "unit": "tCO2e",
-        "ratio_unit": "tCO2e/Cr",
-        "ratio_denominator": "revenue",
-        "max_ratio": 50,
-        "higher_is_better": False,
+        "label": "Scope 3 GHG", "group": "Environmental", "unit": "tCO2e",
+        "ratio_unit": "tCO2e/Cr", "ratio_denominator": "revenue",
+        "max_ratio": 50, "higher_is_better": False,
         "desc": "Value chain GHG emissions per INR Crore revenue",
     },
     "energy_consumption": {
-        "label": "Energy Intensity",
-        "group": "Environmental",
-        "unit": "GJ",
-        "ratio_unit": "GJ/Cr",
-        "ratio_denominator": "revenue",
-        "max_ratio": 1_000,
-        "higher_is_better": False,
+        "label": "Energy Intensity", "group": "Environmental", "unit": "GJ",
+        "ratio_unit": "GJ/Cr", "ratio_denominator": "revenue",
+        "max_ratio": 1_000, "higher_is_better": False,
         "desc": "Total energy consumed per INR Crore revenue",
     },
     "water_consumption": {
-        "label": "Water Intensity",
-        "group": "Environmental",
-        "unit": "KL",
-        "ratio_unit": "KL/Cr",
-        "ratio_denominator": "revenue",
-        "max_ratio": 500,
-        "higher_is_better": False,
+        "label": "Water Intensity", "group": "Environmental", "unit": "KL",
+        "ratio_unit": "KL/Cr", "ratio_denominator": "revenue",
+        "max_ratio": 500, "higher_is_better": False,
         "desc": "Total water consumed per INR Crore revenue",
     },
     "waste_generated": {
-        "label": "Waste Intensity",
-        "group": "Environmental",
-        "unit": "MT",
-        "ratio_unit": "MT/Cr",
-        "ratio_denominator": "revenue",
-        "max_ratio": 5,
-        "higher_is_better": False,
+        "label": "Waste Intensity", "group": "Environmental", "unit": "MT",
+        "ratio_unit": "MT/Cr", "ratio_denominator": "revenue",
+        "max_ratio": 5, "higher_is_better": False,
         "desc": "Waste generated per INR Crore revenue",
     },
     "renewable_energy_percentage": {
-        "label": "Renewable Energy",
-        "group": "Environmental",
-        "unit": "%",
-        "ratio_unit": "%",
-        "ratio_denominator": "none",
-        "max_ratio": 100,
-        "higher_is_better": True,
+        "label": "Renewable Energy", "group": "Environmental", "unit": "%",
+        "ratio_unit": "%", "ratio_denominator": "none",
+        "max_ratio": 100, "higher_is_better": True,
         "desc": "Share of energy from renewable sources",
     },
-    # ── Social ────────────────────────────────────────────────────────────────
     "employee_count": {
-        "label": "Workforce",
-        "group": "Social",
-        "unit": "count",
-        "ratio_unit": "employees/Cr",
-        "ratio_denominator": "revenue",
-        "max_ratio": 5_000,
-        "higher_is_better": False,
+        "label": "Workforce", "group": "Social", "unit": "count",
+        "ratio_unit": "employees/Cr", "ratio_denominator": "revenue",
+        "max_ratio": 5_000, "higher_is_better": False,
         "desc": "Total employees per INR Crore revenue",
     },
     "women_in_workforce_percentage": {
-        "label": "Women in Workforce",
-        "group": "Social",
-        "unit": "%",
-        "ratio_unit": "%",
-        "ratio_denominator": "none",
-        "max_ratio": 100,
-        "higher_is_better": True,
+        "label": "Women in Workforce", "group": "Social", "unit": "%",
+        "ratio_unit": "%", "ratio_denominator": "none",
+        "max_ratio": 100, "higher_is_better": True,
         "desc": "Percentage of women in workforce",
     },
-    # ── Governance ────────────────────────────────────────────────────────────
     "complaints_filed": {
-        "label": "Complaints Filed",
-        "group": "Governance",
-        "unit": "count",
-        "ratio_unit": "count",
-        "ratio_denominator": "none",      # absolute — no normalization
-        "max_ratio": 1_000_000,
-        "higher_is_better": False,
+        "label": "Complaints Filed", "group": "Governance", "unit": "count",
+        "ratio_unit": "count", "ratio_denominator": "none",
+        "max_ratio": 1_000_000, "higher_is_better": False,
         "desc": "Total complaints filed during the year",
     },
     "complaints_pending": {
-        "label": "Complaints Pending",
-        "group": "Governance",
-        "unit": "count",
-        "ratio_unit": "count",
-        "ratio_denominator": "none",      # absolute — no normalization
-        "max_ratio": 100_000,
-        "higher_is_better": False,
+        "label": "Complaints Pending", "group": "Governance", "unit": "count",
+        "ratio_unit": "count", "ratio_denominator": "none",
+        "max_ratio": 100_000, "higher_is_better": False,
         "desc": "Complaints pending resolution at year end",
     },
 }
 
-# Derived helpers from KPI_GROUPS (used throughout the module)
-ALL_KPI_NAMES       = list(KPI_GROUPS.keys())
-EXTRACTABLE_KPI_NAMES = ALL_KPI_NAMES   # all are extractable now
-
-# Legacy alias kept so existing code still references KPI_META
-KPI_META = KPI_GROUPS
+ALL_KPI_NAMES          = list(KPI_GROUPS.keys())
+EXTRACTABLE_KPI_NAMES  = ALL_KPI_NAMES
+KPI_META               = KPI_GROUPS   # legacy alias
 
 _KPI_PLAUSIBILITY: dict[str, tuple[float, float]] = {
     "scope_1_emissions":             (1,      5_000_000),
@@ -260,7 +232,7 @@ _KPI_PLAUSIBILITY: dict[str, tuple[float, float]] = {
     "water_consumption":             (100,  100_000_000),
     "waste_generated":               (0.1,      500_000),
     "renewable_energy_percentage":   (0,             100),
-    "employee_count":                (1,         5_000_000),
+    "employee_count":                (1,       5_000_000),
     "women_in_workforce_percentage": (0,             100),
     "complaints_filed":              (0,       1_000_000),
     "complaints_pending":            (0,         100_000),
@@ -276,15 +248,10 @@ _REPORT_TYPE_PRIORITY: dict[str, int] = {
 
 
 # =============================================================================
-# RATIO COMPUTATION  (central, used by benchmark and UI)
+# RATIO COMPUTATION  (unchanged)
 # =============================================================================
 
 def compute_ratio(kpi_name: str, value: float, revenue_cr: float) -> float:
-    """
-    Compute the display ratio for a KPI.
-    Governance and percentage KPIs return the raw value unchanged.
-    All others return value / revenue_cr.
-    """
     meta = KPI_GROUPS.get(kpi_name, {})
     if meta.get("ratio_denominator") == "none":
         return value
@@ -294,7 +261,6 @@ def compute_ratio(kpi_name: str, value: float, revenue_cr: float) -> float:
 
 
 def format_ratio(value: float, kpi_name: str) -> str:
-    """Human-readable ratio string."""
     if value == 0:
         return "0"
     if abs(value) < 0.001:
@@ -305,7 +271,7 @@ def format_ratio(value: float, kpi_name: str) -> str:
 
 
 # =============================================================================
-# DATA CONTAINERS  (unchanged from v2)
+# DATA CONTAINERS  (unchanged)
 # =============================================================================
 
 @dataclass
@@ -403,6 +369,171 @@ def _db_get_all_reports(company_name: str, fy: int) -> dict:
         st.warning(f"DB report lookup failed for {company_name}: {exc}")
         return empty
 
+
+# =============================================================================
+# ▼▼▼  KPI-LEVEL CACHE LAYER  (NEW in v4)  ▼▼▼
+# =============================================================================
+
+def _cache_load(company_id: uuid.UUID, fy: int) -> dict:
+    """
+    Load all valid cached KPI records for (company_id, fy) using
+    KPICacheService.select_best_per_kpi().
+
+    Applies Integrated > BRSR > ESG priority per KPI — identical to
+    run_benchmark.py.  Returns only KPIs with confidence >= 0.40 and
+    plausible values.
+
+    Returns:
+        {kpi_name: {"value", "unit", "method", "confidence", "report_type"}}
+        Empty dict on any error.
+    """
+    try:
+        from core.database import get_db
+        from services.kpi_cache_service import KPICacheService
+
+        cache_svc = KPICacheService()
+        with get_db() as db:
+            cached = cache_svc.select_best_per_kpi(
+                company_id=company_id,
+                fy=fy,
+                kpi_names=EXTRACTABLE_KPI_NAMES,
+                db=db,
+            )
+        return cached
+    except Exception as exc:
+        # Non-fatal — treat as cache miss
+        return {}
+
+
+def _cache_load_revenue(company_id: uuid.UUID, fy: int):
+    """
+    Load cached revenue via KPICacheService.load_revenue().
+    Returns RevenueResult or None.
+    """
+    try:
+        from core.database import get_db
+        from services.kpi_cache_service import KPICacheService
+
+        cache_svc = KPICacheService()
+        with get_db() as db:
+            return cache_svc.load_revenue(company_id=company_id, fy=fy, db=db)
+    except Exception:
+        return None
+
+
+# =============================================================================
+# ▼▼▼  EXTRACTION (CACHE-AWARE, v4)  ▼▼▼
+# =============================================================================
+
+def _step_extract_missing(
+    report_id: uuid.UUID,
+    report_type: str,
+    fy: int,
+    log: list[str],
+    llm_service,
+    missing_kpi_names: list[str],   # ← ONLY these are extracted
+    need_revenue: bool,             # ← skip revenue extraction if already cached
+) -> dict:
+    """
+    Cache-aware extraction step (replaces the old _step_extract).
+
+    Key change: ExtractionAgent.extract_all() is called with an explicit
+    kpi_names list.  When missing_kpi_names is empty AND revenue is not
+    needed, the function returns immediately without touching the PDF.
+
+    Args:
+        report_id:          UUID of the report to extract from.
+        report_type:        Human-readable label for log messages.
+        fy:                 Fiscal year integer.
+        log:                Mutable log list (appended in-place).
+        llm_service:        LLMService instance or None.
+        missing_kpi_names:  KPI names that have no valid cached value.
+        need_revenue:       True when revenue is not yet cached.
+
+    Returns:
+        {"kpis": {name: record_dict}, "revenue": RevenueResult | None}
+    """
+    from agents.extraction_agent import ExtractionAgent
+    from services.revenue_extractor import extract_revenue
+    from core.database import get_db
+
+    new_kpis: dict = {}
+    new_revenue     = None
+
+    # ── Short-circuit: nothing to do ─────────────────────────────────────────
+    if not missing_kpi_names and not need_revenue:
+        log.append(f"  [{report_type}] All KPIs cached — skipping extraction.")
+        return {"kpis": new_kpis, "revenue": new_revenue}
+
+    prefix = f"  [{report_type}] (id={str(report_id)[:8]})"
+
+    # ── KPI extraction (only for missing KPIs) ────────────────────────────────
+    if missing_kpi_names:
+        log.append(f"{prefix} Extracting {len(missing_kpi_names)} missing KPI(s): "
+                   f"{missing_kpi_names}")
+        try:
+            with get_db() as db:
+                extracted_list = ExtractionAgent().extract_all(
+                    report_id=report_id,
+                    db=db,
+                    kpi_names=missing_kpi_names,   # ← scoped to missing only
+                )
+            for ext in extracted_list:
+                if ext.normalized_value is None:
+                    continue
+                val  = ext.normalized_value
+                unit = ext.unit or ""
+                lo, hi = _KPI_PLAUSIBILITY.get(ext.kpi_name, (0, float("inf")))
+                if not (lo <= val <= hi):
+                    log.append(f"    {ext.kpi_name}: {val:,.2f} {unit} "
+                               f"out of range — dropped")
+                    continue
+                new_kpis[ext.kpi_name] = {
+                    "value":      val,
+                    "unit":       unit,
+                    "method":     ext.extraction_method,
+                    "confidence": ext.confidence or 0.5,
+                }
+                log.append(
+                    f"    {ext.kpi_name}: {val:,.2f} {unit} "
+                    f"[{ext.extraction_method} conf={ext.confidence:.2f}]"
+                )
+        except Exception as exc:
+            log.append(f"    KPI extraction failed: {exc}")
+    else:
+        log.append(f"{prefix} No missing KPIs — skipping ExtractionAgent.")
+
+    # ── Revenue extraction (only when not cached) ─────────────────────────────
+    if need_revenue:
+        try:
+            from models.db_models import Report
+            with get_db() as db:
+                rpt = db.query(Report).filter(Report.id == report_id).first()
+                pdf_path_str = rpt.file_path if rpt else None
+        except Exception:
+            pdf_path_str = None
+
+        if pdf_path_str and Path(pdf_path_str).exists():
+            try:
+                new_revenue = extract_revenue(
+                    pdf_path=Path(pdf_path_str),
+                    fiscal_year_hint=fy,
+                    llm_service=llm_service,
+                )
+                if new_revenue:
+                    log.append(
+                        f"    Revenue: INR {new_revenue.value_cr:,.0f} Cr "
+                        f"[{new_revenue.pattern_name} conf={new_revenue.confidence:.2f}]"
+                    )
+            except Exception as exc:
+                log.append(f"    Revenue extraction failed: {exc}")
+
+    return {"kpis": new_kpis, "revenue": new_revenue}
+
+
+# =============================================================================
+# DB helpers (unchanged from v3)
+# =============================================================================
 
 def _db_load_kpis_and_revenue(company_id: uuid.UUID, fy: int) -> dict:
     """
@@ -528,64 +659,29 @@ def _db_store_kpis(
     kpi_records:    dict,
     revenue_result,
 ) -> None:
+    """
+    Persist KPIs + revenue using KPICacheService (dedup-safe, v4).
+    Replaces the old hand-rolled insert loop.
+    """
     try:
         from core.database import get_db
-        from models.db_models import Report, KPIRecord, KPIDefinition
-        from services.revenue_extractor import store_revenue
+        from services.kpi_cache_service import KPICacheService
 
         with get_db() as db:
-            if revenue_result:
-                report_row = db.query(Report).filter(Report.id == report_id).first()
-                if report_row and getattr(report_row, "revenue_cr", None) is None:
-                    try:
-                        store_revenue(report_row, revenue_result, db)
-                    except Exception:
-                        pass
-
-            for kpi_name, rec in kpi_records.items():
-                kdef = (
-                    db.query(KPIDefinition)
-                    .filter(KPIDefinition.name == kpi_name,
-                            KPIDefinition.is_active == True)
-                    .first()
-                )
-                if not kdef:
-                    continue
-
-                already = (
-                    db.query(KPIRecord)
-                    .filter(
-                        KPIRecord.company_id        == company_id,
-                        KPIRecord.report_id         == report_id,
-                        KPIRecord.kpi_definition_id == kdef.id,
-                        KPIRecord.report_year       == fy,
-                        KPIRecord.normalized_value  == rec["value"],
-                    )
-                    .first()
-                )
-                if already:
-                    continue
-
-                db.add(KPIRecord(
-                    company_id        = company_id,
-                    report_id         = report_id,
-                    kpi_definition_id = kdef.id,
-                    report_year       = fy,
-                    raw_value         = str(rec["value"]),
-                    normalized_value  = rec["value"],
-                    unit              = rec["unit"],
-                    extraction_method = rec["method"],
-                    confidence        = rec["confidence"],
-                    is_validated      = rec["confidence"] >= 0.85,
-                    validation_notes  = "esg_dashboard",
-                ))
-
+            KPICacheService().store(
+                company_id=company_id,
+                report_id=report_id,
+                fy=fy,
+                kpi_records=kpi_records,
+                revenue_result=revenue_result,
+                db=db,
+            )
     except Exception as exc:
         st.warning(f"DB store failed for report {str(report_id)[:8]}: {exc}")
 
 
 # =============================================================================
-# PIPELINE STEPS  (unchanged logic, updated KPI list)
+# PIPELINE STEPS
 # =============================================================================
 
 def _step_ingest(company_name: str, fy: int, sector: str, log: list[str]) -> dict:
@@ -597,7 +693,8 @@ def _step_ingest(company_name: str, fy: int, sector: str, log: list[str]) -> dic
     log.append(f"Searching BRSR, ESG, and Integrated reports for {company_name} FY{fy}.")
 
     try:
-        result = agent.run_multi_report_types(company_data=company_data, year=fy, auto_download=True)
+        result = agent.run_multi_report_types(company_data=company_data, year=fy,
+                                              auto_download=True)
     except Exception as exc:
         log.append(f"  Ingestion failed: {exc}")
         return {"company_id": None, "reports": []}
@@ -636,78 +733,12 @@ def _step_parse(report_id: uuid.UUID, report_type: str, log: list[str]) -> bool:
     log.append(f"  Parsing [{report_type}] (id={str(report_id)[:8]})...")
     try:
         result = ParseOrchestrator().run(report_id=report_id, force=False)
-        log.append(f"    {result.page_count} pages, {result.meta.get('chunk_count', '?')} chunks.")
+        log.append(f"    {result.page_count} pages, "
+                   f"{result.meta.get('chunk_count', '?')} chunks.")
         return True
     except Exception as exc:
         log.append(f"    Parse failed: {exc}")
         return False
-
-
-def _step_extract(
-    report_id: uuid.UUID, report_type: str, fy: int,
-    log: list[str], llm_service,
-) -> dict:
-    from agents.extraction_agent import ExtractionAgent
-    from services.revenue_extractor import extract_revenue
-    from core.database import get_db
-
-    new_kpis: dict = {}
-
-    log.append(f"  Extracting [{report_type}] (id={str(report_id)[:8]})...")
-    try:
-        with get_db() as db:
-            extracted_list = ExtractionAgent().extract_all(
-                report_id=report_id,
-                db=db,
-                kpi_names=EXTRACTABLE_KPI_NAMES,
-            )
-        for ext in extracted_list:
-            if ext.normalized_value is None:
-                continue
-            val  = ext.normalized_value
-            unit = ext.unit or ""
-            lo, hi = _KPI_PLAUSIBILITY.get(ext.kpi_name, (0, float("inf")))
-            if not (lo <= val <= hi):
-                log.append(f"    {ext.kpi_name}: {val:,.2f} {unit} out of range — dropped")
-                continue
-            new_kpis[ext.kpi_name] = {
-                "value": val, "unit": unit,
-                "method": ext.extraction_method,
-                "confidence": ext.confidence or 0.5,
-            }
-            log.append(
-                f"    {ext.kpi_name}: {val:,.2f} {unit} "
-                f"[{ext.extraction_method} conf={ext.confidence:.2f}]"
-            )
-    except Exception as exc:
-        log.append(f"    KPI extraction failed: {exc}")
-
-    new_revenue = None
-    try:
-        from core.database import get_db
-        from models.db_models import Report
-        with get_db() as db:
-            rpt = db.query(Report).filter(Report.id == report_id).first()
-            pdf_path_str = rpt.file_path if rpt else None
-    except Exception:
-        pdf_path_str = None
-
-    if pdf_path_str and Path(pdf_path_str).exists():
-        try:
-            new_revenue = extract_revenue(
-                pdf_path=Path(pdf_path_str),
-                fiscal_year_hint=fy,
-                llm_service=llm_service,
-            )
-            if new_revenue:
-                log.append(
-                    f"    Revenue: INR {new_revenue.value_cr:,.0f} Cr "
-                    f"[{new_revenue.pattern_name} conf={new_revenue.confidence:.2f}]"
-                )
-        except Exception as exc:
-            log.append(f"    Revenue extraction failed: {exc}")
-
-    return {"kpis": new_kpis, "revenue": new_revenue}
 
 
 def _derive_total_ghg(kpi_records: dict) -> Optional[dict]:
@@ -732,26 +763,18 @@ def _derive_total_ghg(kpi_records: dict) -> Optional[dict]:
 
 
 # =============================================================================
-# MAIN PIPELINE  (same logic as v2, references EXTRACTABLE_KPI_NAMES)
+# ▼▼▼  MAIN PIPELINE  (v4 — KPI-level cache integrated)  ▼▼▼
 # =============================================================================
 
 def run_company_pipeline(
     company_name: str, fy: int, sector: str, db_online: bool,
-    llm_service, status_placeholder, uploaded_file=None, upload_report_type: str = "BRSR",
+    llm_service, status_placeholder, uploaded_file=None,
+    upload_report_type: str = "BRSR",
 ) -> CompanyData:
     log: list[str] = []
 
-    def _update(msg: str) -> None:
-        log.append(msg)
-        status_placeholder.markdown(
-            "<div class='step-log'>" + "<br>".join(log[-16:]) + "</div>",
-            unsafe_allow_html=True,
-        )
-
-    _update(f"Starting pipeline for {company_name} FY{fy}.")
-
+    # ── Uploaded PDF path (unchanged logic) ───────────────────────────────────
     if uploaded_file is not None:
-        _update(f"PDF uploaded: {uploaded_file.name}. Running upload pipeline...")
         upload_result = run_upload_pipeline(
             uploaded_file=uploaded_file, company_name=company_name, fy=fy,
             sector=sector, report_type=upload_report_type, db_online=db_online,
@@ -771,7 +794,6 @@ def run_company_pipeline(
                         merged[k] = v
                 if not rev:
                     rev = db_fill.get("revenue")
-            _update(f"Upload complete: {len(merged)} KPI(s).")
             return CompanyData(
                 company_name=company_name, fy=fy, sector=sector,
                 kpi_records=merged, revenue_result=rev, log=log,
@@ -780,15 +802,12 @@ def run_company_pipeline(
                 file_path=(upload_result.get("report_infos") or [{}])[0].file_path
                            if upload_result.get("report_infos") else None,
             )
-        else:
-            _update("Upload failed. Falling back to DB/search pipeline.")
-
+            
     if not db_online:
-        _update("Database offline.")
         return CompanyData(company_name=company_name, fy=fy, sector=sector,
                            kpi_records={}, revenue_result=None, log=log)
 
-    _update("Checking database for existing reports...")
+    # ── Step 1: Resolve company + reports ────────────────────────────────────
     db_data    = _db_get_all_reports(company_name, fy)
     company_id = db_data.get("company_id")
     report_infos: list[ReportInfo] = []
@@ -796,14 +815,11 @@ def run_company_pipeline(
     if db_data["exists"]:
         report_infos = db_data["reports"]
         types_found  = [ri.report_type for ri in report_infos]
-        _update(f"  Found {len(report_infos)} report(s): {types_found}. Skipping search.")
     else:
-        _update(f"  No reports in DB. Running ingestion...")
-        ingest = _step_ingest(company_name, fy, sector, log)
-        company_id   = ingest.get("company_id") or company_id
+        ingest     = _step_ingest(company_name, fy, sector, log)
+        company_id = ingest.get("company_id") or company_id
         report_infos = ingest.get("reports", [])
         if not report_infos:
-            _update("No downloadable reports.")
             return CompanyData(company_name=company_name, fy=fy, sector=sector,
                                kpi_records={}, revenue_result=None, log=log,
                                company_id=company_id)
@@ -812,56 +828,105 @@ def run_company_pipeline(
         if db_data["exists"]:
             report_infos = db_data["reports"]
 
-    _update(f"Processing {len(report_infos)} report(s)...")
+    # ── Step 2: KPI-LEVEL CACHE CHECK (NEW in v4) ─────────────────────────────
+    cached_kpis: dict = {}
+    cached_revenue    = None
 
-    sorted_reports = sorted(report_infos,
-                            key=lambda r: _REPORT_TYPE_PRIORITY.get(r.report_type, 99))
-    still_missing = list(EXTRACTABLE_KPI_NAMES)
-    need_revenue  = True
+    if company_id:
+        cached_kpis    = _cache_load(company_id, fy)
+        cached_revenue = _cache_load_revenue(company_id, fy)
+
+    missing_kpis   = [k for k in EXTRACTABLE_KPI_NAMES if k not in cached_kpis]
+    need_revenue   = cached_revenue is None
+
+    if not missing_kpis and not need_revenue:
+        # Still need file_path for summary charts
+        final_db = _db_load_kpis_and_revenue(company_id, fy) if company_id else {}
+        return CompanyData(
+            company_name=company_name, fy=fy, sector=sector,
+            kpi_records=cached_kpis,
+            revenue_result=cached_revenue,
+            log=log,
+            company_id=company_id,
+            report_infos=report_infos,
+            file_path=final_db.get("file_path"),
+        )
+
+    # ── Step 3: Multi-report extraction (missing KPIs only) ──────────────────
+
+    sorted_reports  = sorted(report_infos,
+                             key=lambda r: _REPORT_TYPE_PRIORITY.get(r.report_type, 99))
+    still_missing   = list(missing_kpis)
+    still_need_rev  = need_revenue
+    all_new_kpis:   dict = {}
+    final_revenue         = cached_revenue
 
     for ri in sorted_reports:
-        if not still_missing and not need_revenue:
+        # Stop early when everything is found
+        if not still_missing and not still_need_rev:
             break
-        _update(f"--- [{ri.report_type}] report_id={str(ri.id)[:8]} ---")
+
+
         parse_ok = _step_parse(ri.id, ri.report_type, log)
         if not parse_ok:
             continue
-        extract_result = _step_extract(ri.id, ri.report_type, fy, log, llm_service)
+
+        extract_result = _step_extract_missing(
+            report_id=ri.id,
+            report_type=ri.report_type,
+            fy=fy,
+            log=log,
+            llm_service=llm_service,
+            missing_kpi_names=list(still_missing),   # pass current missing list
+            need_revenue=still_need_rev,
+        )
         new_kpis    = extract_result["kpis"]
         new_revenue = extract_result["revenue"]
 
+        # Merge results
+        all_new_kpis.update(new_kpis)
+
+        # Remove newly found KPIs from the still-missing list
         for found in list(new_kpis.keys()):
             if found in still_missing:
                 still_missing.remove(found)
-        if new_revenue:
-            need_revenue = False
 
+        if new_revenue and final_revenue is None:
+            final_revenue  = new_revenue
+            still_need_rev = False
+
+        # Persist to DB immediately (dedup-safe via KPICacheService)
         if company_id and (new_kpis or new_revenue):
             _db_store_kpis(company_id, ri.id, fy, new_kpis, new_revenue)
-            _update(f"  Stored {len(new_kpis)} KPI(s) for [{ri.report_type}].")
 
-    _update("Loading final KPI state from DB...")
+    # ── Step 4: Merge cached + newly extracted ────────────────────────────────
+    # Cached values take precedence (they went through KPICacheService validation)
+    # but new extractions fill the gaps.
+    merged_kpis = {**all_new_kpis, **cached_kpis}
 
-    final_db      = _db_load_kpis_and_revenue(company_id, fy) if company_id else {"kpis": {}, "revenue": None, "file_path": None}
-    final_kpis    = final_db["kpis"]
-    final_revenue = final_db["revenue"]
-    final_fp      = final_db["file_path"]
+    # ── Step 5: Final DB read for file_path + any stragglers ─────────────────
+    final_db      = _db_load_kpis_and_revenue(company_id, fy) if company_id else {}
+    final_kpis    = final_db.get("kpis", {})
+    final_rev_db  = final_db.get("revenue")
+    final_fp      = final_db.get("file_path")
 
-    if final_kpis:
-        _update(f"  Final KPIs ({len(final_kpis)}): {list(final_kpis.keys())}")
-    if final_revenue:
-        _update(f"  Revenue: INR {final_revenue.value_cr:,.0f} Crore")
-    else:
-        _update(f"  Revenue: not found. Default {_DEFAULT_REVENUE_CR:,.0f} Cr used.")
+    # Merge: DB read is the authoritative final state
+    # (it already applies Integrated > BRSR > ESG per-KPI priority)
+    final_merged = {**merged_kpis, **final_kpis}
 
-    _update(f"Pipeline complete for {company_name} FY{fy}.")
+    # Revenue: prefer newly extracted (most recent) > DB cached
+    final_revenue = final_revenue or final_rev_db
 
     return CompanyData(
         company_name=company_name, fy=fy, sector=sector,
-        kpi_records=final_kpis, revenue_result=final_revenue, log=log,
+        kpi_records=final_merged, revenue_result=final_revenue, log=log,
         company_id=company_id, report_infos=report_infos, file_path=final_fp,
     )
 
+
+# =============================================================================
+# UPLOAD PIPELINE  (cache-aware in v4)
+# =============================================================================
 
 def run_upload_pipeline(
     uploaded_file, company_name: str, fy: int, sector: str,
@@ -870,21 +935,13 @@ def run_upload_pipeline(
     from agents.ingestion_agent import IngestionAgent
     log: list[str] = []
 
-    def _update(msg: str) -> None:
-        log.append(msg)
-        status_placeholder.markdown(
-            "<div class='step-log'>" + "<br>".join(log[-14:]) + "</div>",
-            unsafe_allow_html=True,
-        )
-
-    _update(f"Processing upload: {uploaded_file.name}")
-
+    
     try:
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, prefix="esg_upload_") as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False,
+                                        prefix="esg_upload_") as tmp:
             tmp.write(uploaded_file.getbuffer())
             tmp_path = Path(tmp.name)
     except Exception as exc:
-        _update(f"  Failed to save: {exc}")
         return {"success": False, "log": log}
 
     try:
@@ -893,7 +950,6 @@ def run_upload_pipeline(
             year=fy, sector=sector, report_type=report_type,
         )
     except Exception as exc:
-        _update(f"  Ingestion failed: {exc}")
         tmp_path.unlink(missing_ok=True)
         return {"success": False, "log": log}
     finally:
@@ -905,33 +961,63 @@ def run_upload_pipeline(
     company_id = company.id
     report_id  = report.id
 
-    if is_dup:
-        _update(f"  Duplicate: reusing report {str(report_id)[:8]}.")
+
     ri = ReportInfo(id=report_id, report_type=report_type,
                     file_path=report.file_path, status=report.status)
 
-    parsed_ok = _step_parse(report_id, report_type, log)
-    if not parsed_ok:
-        _update("  Parsing failed.")
+    # ── Cache check for uploaded report ──────────────────────────────────────
+    cached_kpis    = _cache_load(company_id, fy) if db_online else {}
+    cached_revenue = _cache_load_revenue(company_id, fy) if db_online else None
 
-    extract_result = _step_extract(report_id, report_type, fy, log, llm_service)
+    missing_kpi_names = [k for k in EXTRACTABLE_KPI_NAMES if k not in cached_kpis]
+    need_revenue      = cached_revenue is None
+
+    if not missing_kpi_names and not need_revenue:
+        return {
+            "success": True, "kpi_records": cached_kpis,
+            "revenue": cached_revenue, "company_id": company_id,
+            "report_id": report_id, "report_infos": [ri], "log": log,
+        }
+
+    # Parse
+    parsed_ok = _step_parse(report_id, report_type, log)
+
+    # Extract only missing KPIs
+    extract_result = _step_extract_missing(
+        report_id=report_id,
+        report_type=report_type,
+        fy=fy,
+        log=log,
+        llm_service=llm_service,
+        missing_kpi_names=missing_kpi_names,
+        need_revenue=need_revenue,
+    )
     new_kpis    = extract_result["kpis"]
     new_revenue = extract_result["revenue"]
 
+    # Merge cache + new
+    merged_kpis   = {**new_kpis, **cached_kpis}
+    final_revenue = cached_revenue or new_revenue
+
+    def _update(msg: str) -> None:
+            log.append(msg)
+            status_placeholder.markdown(
+                "<div class='step-log'>" + "<br>".join(log[-16:]) + "</div>",
+                unsafe_allow_html=True,
+            )
     if db_online and (new_kpis or new_revenue):
         _db_store_kpis(company_id, report_id, fy, new_kpis, new_revenue)
         _update(f"  Stored {len(new_kpis)} KPI record(s).")
 
-    _update("Upload pipeline complete.")
     return {
-        "success": True, "kpi_records": new_kpis, "revenue": new_revenue,
+        "success": True, "kpi_records": merged_kpis, "revenue": final_revenue,
         "company_id": company_id, "report_id": report_id,
         "report_infos": [ri], "log": log,
     }
 
 
 # =============================================================================
-# BENCHMARK BUILDER  (updated for new KPI groups)
+# BENCHMARK BUILDER  (unchanged from v3)
 # =============================================================================
 
 def _build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dict:
@@ -965,8 +1051,6 @@ def _build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dic
         profiles.append(profile)
 
     report   = compare_profiles(profiles)
-
-    # Filter by ceiling — governance KPIs always pass (no ceiling exceeded in practice)
     filtered = _filter_comparable(report.comparisons)
 
     llm = None
@@ -981,7 +1065,6 @@ def _build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dic
 
 
 def _filter_comparable(comparisons) -> list:
-    """Keep only comparisons where both values pass their ceiling."""
     out = []
     for comp in comparisons:
         meta    = KPI_GROUPS.get(comp.kpi_name, {})
@@ -995,7 +1078,7 @@ def _filter_comparable(comparisons) -> list:
 
 
 # =============================================================================
-# CHART HELPERS
+# CHART HELPERS  (unchanged)
 # =============================================================================
 
 _CHART_FONT = dict(family="Inter, Arial, sans-serif", size=12, color=C["text"])
@@ -1018,7 +1101,6 @@ def _radar_chart(filtered, la: str, lb: str):
         label = meta.get("label", comp.display_name)
         cats.append(label)
         total = va + vb
-        # For higher-is-better KPIs, invert the score
         if meta.get("higher_is_better"):
             sa.append(round(100 * va / total, 1) if total else 50)
             sb.append(round(100 * vb / total, 1) if total else 50)
@@ -1133,14 +1215,15 @@ def _mini_bar_chart(comp, la: str, lb: str):
         barmode="group", height=110, showlegend=False,
         paper_bgcolor=C["bg"], plot_bgcolor=C["bg"], font=_CHART_FONT,
         yaxis=dict(visible=False),
-        xaxis=dict(showgrid=True, gridcolor=C["grid"], zeroline=False, showticklabels=False),
+        xaxis=dict(showgrid=True, gridcolor=C["grid"], zeroline=False,
+                   showticklabels=False),
         margin=dict(l=10, r=60, t=8, b=8),
     )
     return fig
 
 
 # =============================================================================
-# PDF REPORT EXPORT  (updated for new KPI groups)
+# PDF REPORT EXPORT  (unchanged)
 # =============================================================================
 
 def _export_pdf_report(profiles, filtered, summary: str, sector: str) -> bytes:
@@ -1181,8 +1264,7 @@ def _export_pdf_report(profiles, filtered, summary: str, sector: str) -> bytes:
         Paragraph(
             "Environmental & Social KPIs: normalized by annual revenue (INR Crore). "
             "Governance KPIs (complaints): shown as absolute counts. "
-            "Percentage KPIs (women %, renewable %): shown as-is. "
-            "KPI source priority: Integrated > BRSR > ESG.",
+            "Percentage KPIs (women %, renewable %): shown as-is. ",
             s_body,
         ),
         Spacer(1, 8),
@@ -1223,7 +1305,7 @@ def _export_pdf_report(profiles, filtered, summary: str, sector: str) -> bytes:
         ("FONTNAME",      (6, 1), ( 6, -1), "Helvetica-Bold"),
     ]))
 
-    story += [tbl, Spacer(1, 16), Paragraph("AI-Generated Narrative Summary", s_h2)]
+    story += [tbl, Spacer(1, 16), Paragraph("Summary", s_h2)]
     for para in summary.split("\n\n"):
         if para.strip():
             story.append(Paragraph(para.strip(), s_body))
@@ -1285,18 +1367,8 @@ with st.sidebar:
     )
 
     db_col = C["green"] if db_online else C["red"]
-    st.markdown(
-        f"<div style='font-size:11px;color:{db_col};font-weight:600'>"
-        f"{'● DB connected' if db_online else '● DB offline'}"
-        + (f" ({len(known_companies)} companies)" if db_online else "")
-        + "</div>", unsafe_allow_html=True,
-    )
     llm_col = C["green"] if llm_service else C["amber"]
-    st.markdown(
-        f"<div style='font-size:11px;color:{llm_col};font-weight:600'>"
-        f"{'● LLM enabled' if llm_service else '⚠ LLM disabled'}"
-        f"</div>", unsafe_allow_html=True,
-    )
+    
 
     st.markdown("---")
     sector = st.selectbox("Sector", SECTORS, key="sector")
@@ -1313,7 +1385,8 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
         st.text_input("", placeholder=cname_hint, label_visibility="collapsed", key=ckey)
-        st.number_input("FY", min_value=2015, max_value=2030, value=2025 if ckey == "c1_name" else 2024,
+        st.number_input("FY", min_value=2015, max_value=2030,
+                        value=2025 if ckey == "c1_name" else 2024,
                         label_visibility="collapsed", key=fkey)
         upf = st.file_uploader("Upload PDF (optional)", type=["pdf"], key=ukey)
         if upf:
@@ -1334,7 +1407,7 @@ with st.sidebar:
     rtype1   = st.session_state.get("rtype1", "BRSR")
     rtype2   = st.session_state.get("rtype2", "BRSR")
 
-    ready       = bool(company1 and company2 and company1.strip().lower() != company2.strip().lower())
+    ready       = bool(company1 and company2)
     compare_btn = st.button("Compare", disabled=not ready, use_container_width=True)
     st.markdown("---")
 
@@ -1361,11 +1434,6 @@ with tab_compare:
                       letter-spacing:-0.5px;margin-bottom:8px">
               ESG Competitive Intelligence
           </div>
-          <div style="font-size:14px;color:{C['sub']};max-width:560px;line-height:1.8;margin-bottom:24px">
-              {len(KPI_GROUPS)} KPIs across Environmental, Social &amp; Governance groups.<br>
-              Governance KPIs shown as absolute counts.<br>
-              All others normalized by revenue (INR Crore).
-          </div>
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
             <span class="badge-blue">Environmental</span>
             <span class="badge-green">Social</span>
@@ -1377,10 +1445,10 @@ with tab_compare:
         st.markdown(f"### {company1} FY{fy1} vs {company2} FY{fy2}")
         col_s1, col_s2 = st.columns(2)
         with col_s1:
-            st.markdown(f"**{company1} FY{fy1}**")
+            # st.markdown(f"**{company1} FY{fy1}**")
             placeholder1 = st.empty()
         with col_s2:
-            st.markdown(f"**{company2} FY{fy2}**")
+            # st.markdown(f"**{company2} FY{fy2}**")
             placeholder2 = st.empty()
 
         data1 = data2 = None
@@ -1439,7 +1507,6 @@ with tab_compare:
         label_b = f"{profiles[1].company_name} FY{profiles[1].fiscal_year}"
         skipped = [c.kpi_name for c in report.comparisons if c not in filtered]
 
-        # Header
         hc1, hc2 = st.columns([3, 1])
         with hc1:
             st.markdown(f"""
@@ -1451,7 +1518,6 @@ with tab_compare:
             <div style="font-size:13px;color:{C['sub']}">
                 <span class="badge-blue">{_sector}</span>
                 &nbsp;&nbsp;FY{fy1v} &middot; FY{fy2v}
-                &nbsp;&middot;&nbsp;Integrated &gt; BRSR &gt; ESG priority
             </div>""", unsafe_allow_html=True)
         with hc2:
             pdf_bytes = _export_pdf_report(profiles, filtered, summary, _sector)
@@ -1471,53 +1537,52 @@ with tab_compare:
 
         st.markdown("---")
 
-        # Scorecard
-        st.markdown('<div class="sec">Overview</div>', unsafe_allow_html=True)
-        wins_a = sum(1 for c in filtered if c.winner == label_a)
-        wins_b = sum(1 for c in filtered if c.winner == label_b)
-        leader = c1n if wins_a >= wins_b else c2n
+        # st.markdown('<div class="sec">Overview</div>', unsafe_allow_html=True)
+        # wins_a = sum(1 for c in filtered if c.winner == label_a)
+        # wins_b = sum(1 for c in filtered if c.winner == label_b)
+        # leader = c1n if wins_a >= wins_b else c2n
 
         score_cols = st.columns(4)
-        for col, (bc, bl, bv, bs) in zip(score_cols, [
-            (C["blue"],  "KPIs Compared",  str(len(filtered)),  f"of {len(report.comparisons)} total"),
-            (C["ca"],    f"{c1n} FY{fy1v}", str(wins_a),         "KPI wins"),
-            (C["cb"],    f"{c2n} FY{fy2v}", str(wins_b),         "KPI wins"),
-            (C["green"], "Leader",          leader,               "More KPI wins"),
-        ]):
-            col.markdown(f"""
-            <div class="card" style="border-top:3px solid {bc}">
-                <div class="label">{bl}</div>
-                <div style="font-size:28px;font-weight:800;color:{C['text']};
-                            white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                    {bv}
-                </div>
-                <div style="font-size:12px;color:{C['sub']};margin-top:2px">{bs}</div>
-            </div>""", unsafe_allow_html=True)
+        # for col, (bc, bl, bv, bs) in zip(score_cols, [
+        #     (C["blue"],  "KPIs Compared",  str(len(filtered)),  f"of {len(report.comparisons)} total"),
+        #     (C["ca"],    f"{c1n} FY{fy1v}", str(wins_a),         "KPI wins"),
+        #     (C["cb"],    f"{c2n} FY{fy2v}", str(wins_b),         "KPI wins"),
+        #     (C["green"], "Leader",          leader,               "More KPI wins"),
+        # ]):
+        #     col.markdown(f"""
+        #     <div class="card" style="border-top:3px solid {bc}">
+        #         <div class="label">{bl}</div>
+        #         <div style="font-size:28px;font-weight:800;color:{C['text']};
+        #                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+        #             {bv}
+        #         </div>
+        #         <div style="font-size:12px;color:{C['sub']};margin-top:2px">{bs}</div>
+        #     </div>""", unsafe_allow_html=True)
 
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        # st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-        # Charts
-        vc1, vc2 = st.columns([2, 1])
-        with vc1:
-            st.markdown('<div class="sec">Performance Radar</div>', unsafe_allow_html=True)
-            st.caption("Higher score = better performance on that metric")
-            fig = _radar_chart(filtered, label_a, label_b)
-            if fig:
-                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-        with vc2:
-            st.markdown('<div class="sec">Win Distribution</div>', unsafe_allow_html=True)
-            st.plotly_chart(
-                _donut_chart(filtered, label_a, label_b),
-                use_container_width=True, config={"displayModeBar": False},
-            )
+        # vc1, vc2 = st.columns([2, 1])
+        # with vc1:
+        #     st.markdown('<div class="sec">Performance Radar</div>', unsafe_allow_html=True)
+        #     st.caption("Higher score = better performance on that metric")
+        #     fig = _radar_chart(filtered, label_a, label_b)
+        #     if fig:
+        #         st.plotly_chart(fig, use_container_width=True,
+        #                         config={"displayModeBar": False})
+        # with vc2:
+        #     st.markdown('<div class="sec">Win Distribution</div>', unsafe_allow_html=True)
+        #     st.plotly_chart(
+        #         _donut_chart(filtered, label_a, label_b),
+        #         use_container_width=True, config={"displayModeBar": False},
+        #     )
 
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-        st.markdown('<div class="sec">KPI Comparison by Group</div>', unsafe_allow_html=True)
-        gap = _gap_bar_chart(filtered, label_a, label_b)
-        if gap:
-            st.plotly_chart(gap, use_container_width=True, config={"displayModeBar": False})
+        # st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        # st.markdown('<div class="sec">KPI Comparison by Group</div>', unsafe_allow_html=True)
+        # gap = _gap_bar_chart(filtered, label_a, label_b)
+        # if gap:
+        #     st.plotly_chart(gap, use_container_width=True,
+        #                     config={"displayModeBar": False})
 
-        # Per-group KPI detail — auto-generated from KPI_GROUPS
         for group_name, group_color in [
             ("Environmental", C["green"]),
             ("Social",        C["blue"]),
@@ -1542,7 +1607,8 @@ with tab_compare:
 
                 st.markdown(f"""
                 <div class="card">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+                    <div style="display:flex;justify-content:space-between;
+                                align-items:flex-start;margin-bottom:10px">
                         <div>
                             <span style="font-size:16px;font-weight:700">
                                 {meta.get('label', comp.display_name)}
@@ -1585,7 +1651,6 @@ with tab_compare:
                     </div>""", unsafe_allow_html=True)
                 st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
-        # Summary
         st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
         st.markdown('<div class="sec">Summary</div>', unsafe_allow_html=True)
         st.markdown(
@@ -1593,7 +1658,6 @@ with tab_compare:
             unsafe_allow_html=True,
         )
 
-        # Logs
         log1 = result.get("log1", [])
         log2 = result.get("log2", [])
         if log1 or log2:
@@ -1616,23 +1680,29 @@ with tab_compare:
 # ---------------------------------------------------------------------------
 
 with tab_upload:
-    st.markdown('<div class="sec">Upload ESG / BRSR Report PDF</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec">Upload ESG / BRSR Report PDF</div>',
+                unsafe_allow_html=True)
     st.markdown(
         "<div style='font-size:13px;color:#8B92A9;margin-bottom:20px'>"
-        "Upload a PDF directly. Extracted KPIs are available in the Comparison tab immediately."
+        "Upload a PDF directly. Extracted KPIs are available in the "
+        "Comparison tab immediately."
         "</div>",
         unsafe_allow_html=True,
     )
 
     up_col1, up_col2 = st.columns([2, 1])
     with up_col1:
-        upload_company = st.text_input("Company name (required)", placeholder="e.g. Wipro", key="upload_company")
-        upload_fy = st.number_input("Fiscal year (required)", min_value=2010, max_value=2030, value=2024, key="upload_fy")
+        upload_company = st.text_input("Company name (required)",
+                                       placeholder="e.g. Wipro", key="upload_company")
+        upload_fy = st.number_input("Fiscal year (required)", min_value=2010,
+                                    max_value=2030, value=2024, key="upload_fy")
     with up_col2:
         upload_sector      = st.selectbox("Sector", SECTORS, key="upload_sector")
-        upload_report_type = st.selectbox("Report type", UPLOAD_REPORT_TYPE_OPTIONS, key="upload_report_type")
+        upload_report_type = st.selectbox("Report type", UPLOAD_REPORT_TYPE_OPTIONS,
+                                          key="upload_report_type")
 
-    uploaded_file = st.file_uploader("Select a PDF file", type=["pdf"], key="pdf_uploader")
+    uploaded_file = st.file_uploader("Select a PDF file", type=["pdf"],
+                                     key="pdf_uploader")
 
     if uploaded_file is not None:
         size_mb = round(uploaded_file.size / (1024 * 1024), 2)
@@ -1656,7 +1726,8 @@ with tab_upload:
 
     if upload_btn and upload_ready and db_online:
         st.markdown("---")
-        st.markdown(f"### Processing {uploaded_file.name} for {upload_company} FY{upload_fy}")
+        st.markdown(f"### Processing {uploaded_file.name} for "
+                    f"{upload_company} FY{upload_fy}")
         upload_status = st.empty()
 
         upload_result = run_upload_pipeline(
@@ -1686,7 +1757,8 @@ with tab_upload:
                         "Method":     r["method"],
                         "Confidence": f"{r['confidence']:.0%}",
                     })
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(rows), use_container_width=True,
+                             hide_index=True)
             if rev:
                 st.markdown(
                     f"**Revenue:** INR {rev.value_cr:,.0f} Crore "

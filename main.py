@@ -21,6 +21,11 @@ python main.py extract --report-id <UUID>
 
 # Retrieve top retrieval chunks for a KPI
 python main.py kpi-retrieve --company "TCS" --year 2024 --kpi scope_1_emissions
+
+# Deep-debug the retrieval pipeline for one KPI
+python main.py kpi-debug --company "TCS" --year 2024 --kpi scope_2_emissions
+python main.py kpi-debug --company "Infosys" --year 2025 --kpi scope_1_emissions --verbose
+python main.py kpi-debug --company "Wipro" --year 2024 --kpi energy_consumption --full-text
 """
 from __future__ import annotations
 
@@ -109,15 +114,11 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Energy",
             "expected_unit": "GJ",
             "regex_patterns": [
-                # Parenthetical total (BRSR A+B+C+D+E+F notation)
                 r"total\s+energy\s+consumed\s*\([A-Za-z+\s]+\)[\s\S]{0,10}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
                 r"total\s+energy\s+consumed[^\n]{0,50}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # Inline patterns
                 r"total\s+energy\s+(?:consumption|consumed)[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj|kwh|mj)",
                 r"energy\s+consumption\s+(?:was|of|:)\s*([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj|kwh|mj)",
-                # "total energy used" variant
                 r"total\s+energy\s+used[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(gj|gwh|mwh|tj|kwh|mj)",
-                # "electricity consumed" standalone
                 r"electricity\s+consumed[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(mwh|gwh|kwh|gj)",
             ],
             "retrieval_keywords": [
@@ -128,56 +129,37 @@ def cmd_seed_kpis(_args) -> None:
             ],
             "valid_min": 100, "valid_max": 1e13,
         },
-                    {
-                "name": "renewable_energy_percentage",
-                "display_name": "Renewable Energy Percentage",
-                "category": "Environmental",
-                "subcategory": "Energy",
-                "expected_unit": "%",
-                "regex_patterns": [
-                    # ── Original patterns (unchanged) ───────────────────────────────────
-                    r"renewable\s+energy[\s\S]{0,80}?([\d]+(?:\.\d+)?)\s*%",
-                    r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,40}?(?:from\s+)?renewable",
-                    r"renewable[\s\S]{0,40}?([\d]+(?:\.\d+)?)\s*percent",
-            
-                    # ── New patterns — Integrated-report language ────────────────────────
-                    # "67.52% of our electricity in India operations was met through renewables."
-                    r"([\d]+(?:\.\d+)?)\s*%\s+of\s+(?:our\s+)?(?:\w+\s+){0,5}electricity[^\n]{0,150}renew\w*",
-            
-                    # "67.52% electricity from renewable sources"
-                    r"([\d]+(?:\.\d+)?)\s*%[^\n]{0,150}?(?:electricity|power)[^\n]{0,150}?from\s+renewable\s+sources?",
-            
-                    # "Share of renewables in our India operations 67.52%"
-                    r"share\s+of\s+renew\w*[^\n]{0,80}?([\d]+(?:\.\d+)?)\s*%",
-            
-                    # "67.52% ... met through renewables"
-                    r"([\d]+(?:\.\d+)?)\s*%[^\n]{0,120}met\s+through\s+renew\w*",
-            
-                    # Multiline: "67.52%\n...\nOf electricity ... from renewable sources"
-                    r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,250}?from\s+renewable\s+sources?",
-            
-                    # Multiline: "X% ... comes from renewable"
-                    r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,200}comes?\s+from\s+renew\w*",
-            
-                    # Reverse order: "renewables ... X%"  (2+ digit guard avoids footnote "2")
-                    r"renew(?:able\s+sources?|ables?|able\s+energy)\b[^\n]{0,120}([\d]{2,}(?:\.\d+)?)\s*%",
-            
-                    # Solar / wind / hydro sub-type: "Solar energy accounts for 45% ..."
-                    r"(?:solar|wind|hydro|geotherm\w+)\s+energy[^\n]{0,80}?([\d]+(?:\.\d+)?)\s*%",
-                ],
-                "retrieval_keywords": [
-                    "renewable energy", "solar energy", "wind energy", "clean energy",
-                    "green energy", "renewable electricity", "non-fossil", "re share",
-                    "percent renewable", "% renewable",
-                    # NEW keywords covering Integrated-report phrasing
-                    "share of renewables", "renewables", "met through renewables",
-                    "from renewable sources", "electricity from renewable",
-                    "renewable sources electricity", "solar pv", "green power",
-                    "electricity from renewables", "renewables in our operations",
-                ],
-                "valid_min": 50,
-                "valid_max": 100,
-            },
+        {
+            "name": "renewable_energy_percentage",
+            "display_name": "Renewable Energy Percentage",
+            "category": "Environmental",
+            "subcategory": "Energy",
+            "expected_unit": "%",
+            "regex_patterns": [
+                r"renewable\s+energy[\s\S]{0,80}?([\d]+(?:\.\d+)?)\s*%",
+                r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,40}?(?:from\s+)?renewable",
+                r"renewable[\s\S]{0,40}?([\d]+(?:\.\d+)?)\s*percent",
+                r"([\d]+(?:\.\d+)?)\s*%\s+of\s+(?:our\s+)?(?:\w+\s+){0,5}electricity[^\n]{0,150}renew\w*",
+                r"([\d]+(?:\.\d+)?)\s*%[^\n]{0,150}?(?:electricity|power)[^\n]{0,150}?from\s+renewable\s+sources?",
+                r"share\s+of\s+renew\w*[^\n]{0,80}?([\d]+(?:\.\d+)?)\s*%",
+                r"([\d]+(?:\.\d+)?)\s*%[^\n]{0,120}met\s+through\s+renew\w*",
+                r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,250}?from\s+renewable\s+sources?",
+                r"([\d]+(?:\.\d+)?)\s*%[\s\S]{0,200}comes?\s+from\s+renew\w*",
+                r"renew(?:able\s+sources?|ables?|able\s+energy)\b[^\n]{0,120}([\d]{2,}(?:\.\d+)?)\s*%",
+                r"(?:solar|wind|hydro|geotherm\w+)\s+energy[^\n]{0,80}?([\d]+(?:\.\d+)?)\s*%",
+            ],
+            "retrieval_keywords": [
+                "renewable energy", "solar energy", "wind energy", "clean energy",
+                "green energy", "renewable electricity", "non-fossil", "re share",
+                "percent renewable", "% renewable",
+                "share of renewables", "renewables", "met through renewables",
+                "from renewable sources", "electricity from renewable",
+                "renewable sources electricity", "solar pv", "green power",
+                "electricity from renewables", "renewables in our operations",
+            ],
+            "valid_min": 50,
+            "valid_max": 100,
+        },
         {
             "name": "water_consumption",
             "display_name": "Total Water Consumption",
@@ -185,16 +167,12 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Water",
             "expected_unit": "KL",
             "regex_patterns": [
-                # BRSR block patterns
                 r"total\s+volume\s+of\s+water\s+consumption[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
                 r"total\s+water\s+consumption[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # Withdrawn / intake variants
                 r"total\s+water\s+withdrawn[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
                 r"total\s+water\s+(?:intake|sourced|used)[^\n]{0,60}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-                # Inline
                 r"water\s+consumption[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(kl|kilolitr\w*|m3)",
                 r"([\d,]+(?:\.\d+)?)\s*(kl|kilolitr\w*)\s*[\s\S]{0,30}?water\s+consumption",
-                # Net water / footprint
                 r"net\s+water\s+consumption[^\n]{0,60}?([\d,]+(?:\.\d+)?)\s*(kl|kilolitr\w*|m3)",
             ],
             "retrieval_keywords": [
@@ -260,16 +238,13 @@ def cmd_seed_kpis(_args) -> None:
             ],
             "valid_min": 0, "valid_max": 100,
         },
-        
-        # ── NEW KPI: scope_3_emissions ────────────────────────────────────────
-                {
+        {
             "name": "scope_3_emissions",
             "display_name": "Scope 3 GHG Emissions",
             "category": "Environmental",
             "subcategory": "Emissions",
             "expected_unit": "tCO2e",
             "regex_patterns": [
-                # ── Original patterns (unchanged) ───────────────────────────────────
                 r"total\s+scope\s*3\s+emissions.{0,200}?metric\s+tonnes\s+of\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
                 r"total\s+scope\s*3\s+emissions[\s\S]{0,300}?equivalent\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
                 r"scope\s*3\s+(?:ghg\s+)?emissions[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
@@ -277,20 +252,8 @@ def cmd_seed_kpis(_args) -> None:
                 r"other\s+indirect\s+\(scope\s*3\)[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
                 r"scope[\s\-]*3[\s\S]{0,100}?([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2e?|metric\s*tonnes?\s*(?:of\s*)?co2)",
                 r"scope\s*3\s+emissions?\s+(?:were|was|of|:|amount\w*\s+to)\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?\s*(tco2e?|t\s*co2)",
-        
-                # ── NEW Pattern A — pdfplumber/spatial (two-line skip via equivalent) ─
-                # "Total Scope 3 emissions (Break-up of the GHG into CO2,\n
-                #  CH4, N2O, HFCs, PFCs, SF6, NF3, if available)(1) equivalent\n
-                #  1,80,737  1,83,976 (2)"
                 r"total\s+scope\s*3\s+emissions[^\n]*\n[^\n]*equivalent[^\n]*\n\s*([\d,]+(?:\.\d+)?)(?:\s*\(\d+\))?",
-        
-                # ── NEW Pattern B — pdftotext/layout-mode (value embedded in long line) ─
-                # "Total Scope 3 emissions (Break-up...CO2, [110 spaces] 1,80,737 ..."
-                # Indian-format number (comma-grouped) distinguishes from footnote digits
                 r"total\s+scope\s*3\s+emissions[^\n]{0,400}?\b([\d]{1,3}(?:,\d{2,3})+(?:\.\d+)?)\b",
-        
-                # ── NEW Pattern C — inline with GHG unit (generic fallback) ─────────
-                # "Scope 3 emissions 1,80,737 tCO2e" or "Total Scope 3 GHG: 1,80,737 MT CO2e"
                 r"scope\s*3\s+(?:ghg\s+)?emissions[^\n]{0,100}?([\d]{1,3}(?:,\d{2,3})+(?:\.\d+)?)\s*(?:tco2e?|metric\s*tonn\w*)",
             ],
             "retrieval_keywords": [
@@ -314,35 +277,15 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Governance",
             "expected_unit": "count",
             "regex_patterns": [
-                # ── BRSR Section 25 — "filed during the year" column header + value ──
                 r"filed\s+during\s+(?:the\s+)?year[^\n]{0,60}?[:\s]+(\d[\d,]*)",
-        
-                # ── "Number of complaints filed ... NUMBER" ───────────────────────────
                 r"number\s+of\s+complaints?\s+filed[^\n]{0,100}?(\d[\d,]+)",
-        
-                # ── "X complaints were filed" / "NUMBER complaints filed" ────────────
                 r"(\d[\d,]+)\s+complaints?\s+(?:were\s+)?filed",
-        
-                # ── "complaints received: NUMBER" ─────────────────────────────────────
                 r"complaints?\s+received[^\n]{0,60}?[:\s]+(\d[\d,]+)",
-        
-                # ── BRSR table stakeholder row: "Employees and workers ... 180 19" ───
-                # First number in a two-number pair after a stakeholder label
                 r"(?:employees?\s+and\s+workers?|customers?|shareholders?)[^\n]{0,150}?(\d[\d,]+)\s+\d+",
-        
-                # ── Sexual harassment / conflict-of-interest inline ──────────────────
                 r"complaints?\s+filed[^\n]{0,80}?[:\s]+(\d[\d,]+)",
-        
-                # ── Total complaints filed aggregate ─────────────────────────────────
                 r"total\s+complaints?\s+(?:filed|received)[^\n]{0,80}?(\d[\d,]+)",
-        
-                # ── Narrative: "N complaints lodged / raised / reported" ─────────────
                 r"(\d[\d,]+)\s+complaints?\s+(?:lodged|raised|reported|submitted)",
-        
-                # ── H&S table rows: "Working conditions 16 0" ────────────────────────
                 r"(?:working\s+conditions?|health\s+and\s+safety)[^\n]{0,60}?(\d+)\s+\d+",
-        
-                # ── "grievances filed / received ... NUMBER" ──────────────────────────
                 r"grievances?\s+(?:filed|received)[^\n]{0,80}?[:\s]+(\d[\d,]+)",
             ],
             "retrieval_keywords": [
@@ -365,34 +308,15 @@ def cmd_seed_kpis(_args) -> None:
             "subcategory": "Governance",
             "expected_unit": "count",
             "regex_patterns": [
-                # ── BRSR table — "pending resolution at close/end of year" ───────────
                 r"pending\s+resolution\s+at\s+(?:close|end)[^\n]{0,100}?(\d[\d,]*)",
-        
-                # ── "complaints pending: NUMBER" / "pending resolution: X" ───────────
                 r"complaints?\s+pending\s+(?:resolution\s+)?[^\n]{0,60}?[:\s]+(\d[\d,]*)",
-        
-                # ── "NUMBER pending" / "NUMBER complaints pending" ───────────────────
                 r"(\d[\d,]*)\s+(?:complaints?\s+)?(?:are\s+)?pending\b",
-        
-                # ── BRSR table row: second number (pending) in "180 19" pair ─────────
                 r"(?:employees?\s+and\s+workers?|customers?|shareholders?)[^\n]{0,150}?\d[\d,]+\s+(\d+)",
-        
-                # ── Narrative: "X were pending at year/end/close" ────────────────────
                 r"(\d[\d,]*)\s+(?:complaints?\s+)?(?:were\s+)?pending\s+at\s+(?:year|the\s+(?:end|close))",
-        
-                # ── "pending: NUMBER" / "outstanding: NUMBER" ─────────────────────────
                 r"(?:pending|outstanding)[^\n]{0,40}?[:\s]+(\d+)",
-        
-                # ── Sexual harassment / governance inline ─────────────────────────────
                 r"complaints?\s+pending[^\n]{0,80}?[:\s]+(\d+)",
-        
-                # ── Total pending aggregate ────────────────────────────────────────────
                 r"total\s+(?:complaints?\s+)?pending[^\n]{0,80}?(\d+)",
-        
-                # ── "close of the year\nNUMBER" — end-of-table-cell format ───────────
                 r"close\s+of\s+the\s+year[^\n]{0,20}\n\s*(\d+)",
-        
-                # ── "grievances pending ... NUMBER" ───────────────────────────────────
                 r"grievances?\s+pending[^\n]{0,80}?[:\s]+(\d+)",
             ],
             "retrieval_keywords": [
@@ -822,6 +746,271 @@ def cmd_kpi_retrieve(args) -> None:
         print()
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# NEW COMMAND: kpi-debug
+# Deep-debug the retrieval pipeline for one KPI — zero changes to existing paths
+# ─────────────────────────────────────────────────────────────────────────────
+
+def cmd_kpi_debug(args) -> None:
+    """
+    Deep-debug KPI retrieval pipeline for a specific KPI + company + year.
+
+    Prints four labelled stages:
+      [A] Raw keyword candidates (keyword index hit before any scoring)
+      [B] Strict filter pass/drop (must_match / must_exclude gates)
+      [C] Scoring summary across all passing chunks
+      [D] Final ranked chunks sent to regex / LLM — full text shown
+
+    Uses the SAME services as ExtractionAgent — zero logic duplication.
+    No changes to normal pipeline output.
+    """
+    from core.database import get_db
+    from models.db_models import KPIDefinition, ParsedDocument, DocumentChunk
+    from services.retrieval_service import (
+        is_relevant_chunk,
+        _score_chunk_precise,
+        KPI_STRICT_FILTERS,
+    )
+    from sqlalchemy import or_
+
+    # ── Resolve report ───────────────────────────────────────────────────────
+    report_id = _resolve_report_id_from_company(args.company, args.year)
+    if report_id is None:
+        sys.exit(1)
+
+    W   = 72
+    SEP = "─" * W
+
+    with get_db() as db:
+
+        # ── KPI definition ───────────────────────────────────────────────────
+        kpi = db.query(KPIDefinition).filter(KPIDefinition.name == args.kpi).first()
+        if not kpi:
+            print(f"\n✗  KPI '{args.kpi}' not found in DB.")
+            print("   Run: python main.py list-kpis  to see available KPI names.")
+            sys.exit(1)
+
+        # ── Parse cache ──────────────────────────────────────────────────────
+        parsed_doc = (
+            db.query(ParsedDocument)
+            .filter(ParsedDocument.report_id == report_id)
+            .order_by(ParsedDocument.parsed_at.desc())
+            .first()
+        )
+        if not parsed_doc:
+            print(f"\n✗  No parse cache for report {report_id}.")
+            print(f"   Run: python main.py parse --report-id {report_id}")
+            sys.exit(1)
+
+        print()
+        print("=" * W)
+        print(f"  KPI DEBUG: {args.kpi}")
+        print(f"  Company  : {args.company}  FY{args.year}")
+        print(f"  KPI      : {kpi.display_name}  [{kpi.expected_unit}]")
+        print(f"  Doc      : {parsed_doc.id}  (v{parsed_doc.parser_version}, "
+              f"{parsed_doc.page_count} pages)")
+        kw_list = list(kpi.retrieval_keywords or [])
+        print(f"  Keywords : {', '.join(kw_list[:6])}"
+              + (" ..." if len(kw_list) > 6 else ""))
+        print("=" * W)
+
+        # ════════════════════════════════════════════════════════════════════
+        # STAGE A — Raw keyword candidate pull
+        # Exactly mirrors the first DB query in RetrievalService.retrieve()
+        # ════════════════════════════════════════════════════════════════════
+        query_keywords: list = list(kpi.retrieval_keywords or [])
+        keyword_filters = [
+            DocumentChunk.keywords.ilike(f"%{kw.lower().split()[0]}%")
+            for kw in query_keywords
+        ]
+        keyword_filters.append(DocumentChunk.keywords.ilike("%has_numbers%"))
+
+        candidate_chunks = (
+            db.query(DocumentChunk)
+            .filter(
+                DocumentChunk.parsed_document_id == parsed_doc.id,
+                or_(*keyword_filters),
+            )
+            .all()
+        )
+
+        print(f"\n[A] KEYWORD CANDIDATES: {len(candidate_chunks)} chunks")
+        if args.verbose and candidate_chunks:
+            print()
+            limit = args.show_candidates
+            for c in candidate_chunks[:limit]:
+                preview = c.content[:100].replace("\n", " ")
+                pg = c.page_number or "?"
+                print(f"    #{c.chunk_index:<4} p{pg!s:<4} [{c.chunk_type:<8}] {preview}")
+            if len(candidate_chunks) > limit:
+                print(f"    ... ({len(candidate_chunks) - limit} more; "
+                      f"use --show-candidates N to increase)")
+
+        # ════════════════════════════════════════════════════════════════════
+        # STAGE B — Strict relevance filter
+        # Exactly mirrors the is_relevant_chunk() loop in RetrievalService
+        # ════════════════════════════════════════════════════════════════════
+        relevant:     list = []   # [(chunk, pass_reason)]
+        filtered_out: list = []   # [(chunk, drop_reason)]
+
+        for chunk in candidate_chunks:
+            ok, reason = is_relevant_chunk(chunk.content, args.kpi)
+            if ok:
+                relevant.append((chunk, reason))
+            else:
+                filtered_out.append((chunk, reason))
+
+        print(f"\n[B] STRICT FILTER: {len(relevant)} passed / "
+              f"{len(filtered_out)} dropped")
+
+        flt          = KPI_STRICT_FILTERS.get(args.kpi, {})
+        must_match   = flt.get("must_match",   [])
+        must_exclude = flt.get("must_exclude", [])
+        if must_match:
+            shown = must_match[:5]
+            print(f"    must_match   : {shown}"
+                  + (" ..." if len(must_match) > 5 else ""))
+        if must_exclude:
+            print(f"    must_exclude : {must_exclude}")
+
+        if args.verbose and filtered_out:
+            print(f"\n    Dropped (first 8):")
+            for chunk, reason in filtered_out[:8]:
+                preview = chunk.content[:80].replace("\n", " ")
+                pg = chunk.page_number or "?"
+                print(f"      #{chunk.chunk_index:<4} p{pg!s:<4} reason={reason!r}")
+                print(f"             {preview!r}")
+            if len(filtered_out) > 8:
+                print(f"      ... ({len(filtered_out) - 8} more dropped)")
+
+        # ════════════════════════════════════════════════════════════════════
+        # STAGE C — Scoring
+        # Exactly mirrors _score_chunk_precise() calls in RetrievalService
+        # ════════════════════════════════════════════════════════════════════
+        scored: list = []   # (score, breakdown, chunk)
+        for chunk, _ in relevant:
+            score, breakdown = _score_chunk_precise(chunk, query_keywords, args.kpi)
+            if score > 0:
+                scored.append((score, breakdown, chunk))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top_k = scored[: args.top_k]
+
+        print(f"\n[C] SCORING: {len(scored)} chunks scored > 0 "
+              f"(showing top {len(top_k)})")
+        if scored:
+            best_s  = scored[0][0]
+            worst_s = scored[-1][0]
+            print(f"    Score range      : {worst_s:.3f} – {best_s:.3f}")
+            answerable_n = sum(1 for _, bd, _ in scored if bd.get("answerable"))
+            print(f"    Answerable chunks: {answerable_n}/{len(scored)} "
+                  f"(have KPI keyword + number + ESG unit)")
+
+        # ════════════════════════════════════════════════════════════════════
+        # STAGE D — Final ranked chunks (what ExtractionAgent actually reads)
+        # ════════════════════════════════════════════════════════════════════
+        print(f"\n[D] FINAL RANKED CHUNKS  (sent to regex → LLM fallback)")
+        print(SEP)
+
+        if not top_k:
+            print("  ⚠  No chunks scored above zero.")
+            print()
+            print("  Diagnosis:")
+            if not candidate_chunks:
+                print("    • Zero keyword candidates — retrieval keywords don't")
+                print("      match any term in the chunk keyword index.")
+                print(f"      Try: python main.py search-chunks "
+                      f"--report-id {report_id} --keywords scope,2")
+            elif not relevant:
+                print("    • Candidates found but ALL dropped by must_match gate.")
+                if must_match:
+                    print(f"      must_match requires one of: {must_match[:3]} ...")
+                print("      The PDF may use different terminology for this KPI.")
+            else:
+                print("    • Passed strict filter but score was 0 after penalties.")
+                print("      Likely: no numbers or ESG units near the KPI keyword.")
+            print(SEP)
+            return
+
+        for rank, (score, breakdown, chunk) in enumerate(top_k, 1):
+            answerable = breakdown.get("answerable", False)
+            real_table = breakdown.get("is_real_table", False)
+            type_mult  = breakdown.get("type_mult", 1.0)
+            pg         = chunk.page_number or "?"
+
+            if chunk.chunk_type == "table":
+                type_label = f"table/{'real' if real_table else 'prose-table'}"
+            else:
+                type_label = chunk.chunk_type
+
+            ans_icon = "✓" if answerable else "✗"
+            print(f"\n  Rank {rank:<3}| Score: {score:>8.3f} | "
+                  f"Page: {pg!s:<5}| Type: {type_label}")
+            print(f"  {ans_icon} Answerable  "
+                  f"(chunk has KPI keyword + number + ESG unit: {answerable})")
+
+            # Score breakdown
+            bd    = breakdown
+            parts = [
+                f"kw={bd.get('kw_score', 0):.2f}",
+                f"exact={bd.get('exact_bonus', 0):.1f}",
+                f"unit={bd.get('unit_bonus', 0):.1f}",
+                f"data={bd.get('data_bonus', 0):.1f}",
+                f"ans_boost={bd.get('ans_boost', 0):.1f}",
+                f"×type_mult({type_mult:.1f})",
+                f"no_num_pen=-{bd.get('no_numeric_pen', 0):.1f}",
+                f"no_unit_pen=-{bd.get('no_unit_pen', 0):.1f}",
+                f"penalty=-{bd.get('penalty', 0):.2f}",
+            ]
+            print(f"  Breakdown: {' | '.join(parts)}")
+
+            if bd.get("penalty_hits"):
+                print(f"  Penalty terms matched : {bd['penalty_hits']}")
+            if bd.get("matched_kws"):
+                print(f"  Keyword hits          : {bd['matched_kws'][:6]}")
+
+            print(f"  {SEP[:50]}")
+
+            # Chunk text — full or truncated
+            text      = chunk.content
+            max_chars = 9_999_999 if args.full_text else args.text_limit
+            if len(text) > max_chars:
+                text = (text[:max_chars]
+                        + f"\n  ... [{len(chunk.content)} chars total, "
+                        f"use --full-text to see all]")
+            for line in text.splitlines():
+                print(f"  {line}")
+            print(SEP)
+
+        # ── Pipeline summary ─────────────────────────────────────────────────
+        print()
+        print(f"  Pipeline summary")
+        print(f"  ┌─ [A] keyword candidates   : {len(candidate_chunks)}")
+        print(f"  ├─ [B] passed strict filter  : {len(relevant)}")
+        print(f"  │       dropped              : {len(filtered_out)}")
+        print(f"  ├─ [C] scored > 0            : {len(scored)}")
+        print(f"  └─ [D] top-k to extraction   : {len(top_k)}")
+
+        if top_k:
+            best_score, best_bd, best_chunk = top_k[0]
+            bp = best_chunk.page_number or "?"
+            print()
+            print(f"  Best chunk : page {bp}, "
+                  f"type={best_chunk.chunk_type}, score={best_score:.3f}")
+            print(f"  Answerable : {best_bd.get('answerable', False)}")
+            if not best_bd.get("answerable"):
+                missing = []
+                if not best_bd.get("numeric_bonus"):
+                    missing.append("no 3-digit+ number found in chunk")
+                if not best_bd.get("unit_bonus"):
+                    missing.append("no recognised ESG unit found in chunk")
+                if missing:
+                    print(f"  Why not answerable: {'; '.join(missing)}")
+                    print("  → Consider adding synonyms to retrieval_keywords "
+                          "in seed-kpis, or check PDF for unusual unit labels.")
+        print()
+
+
 def cmd_list_kpis(_args) -> None:
     """List all KPI definitions in the database."""
     from core.database import get_db
@@ -1178,6 +1367,29 @@ def main():
     kr_p.add_argument("--kpi",     required=True)
     kr_p.add_argument("--top-k",   type=int, default=7)
 
+    # ── NEW: kpi-debug subparser ──────────────────────────────────────────────
+    kd_p = sub.add_parser(
+        "kpi-debug",
+        help="Deep-debug KPI retrieval pipeline — shows all 4 stages with scores",
+    )
+    kd_p.add_argument("--company",         required=True,
+                       help="Company name (partial match ok, e.g. 'TCS')")
+    kd_p.add_argument("--year",            required=True, type=int,
+                       help="Fiscal year end integer, e.g. 2024")
+    kd_p.add_argument("--kpi",             required=True,
+                       help="KPI name, e.g. scope_2_emissions")
+    kd_p.add_argument("--top-k",           type=int, default=7,
+                       help="Number of top-scored chunks to display (default 7)")
+    kd_p.add_argument("--text-limit",      type=int, default=600,
+                       help="Max chars of chunk text shown per chunk (default 600)")
+    kd_p.add_argument("--full-text",       action="store_true",
+                       help="Show full chunk text with no truncation")
+    kd_p.add_argument("--verbose",         action="store_true",
+                       help="Show raw keyword candidates and dropped chunks")
+    kd_p.add_argument("--show-candidates", type=int, default=10,
+                       help="Max raw candidates to show in verbose mode (default 10)")
+    # ─────────────────────────────────────────────────────────────────────────
+
     sub.add_parser("list-kpis", help="List all KPI definitions")
 
     emb_p = sub.add_parser("embed", help="Compute semantic embeddings for a parsed report")
@@ -1214,6 +1426,7 @@ def main():
         "parse-status":     cmd_parse_status,
         "search-chunks":    cmd_search_chunks,
         "kpi-retrieve":     cmd_kpi_retrieve,
+        "kpi-debug":        cmd_kpi_debug,       # ← NEW
         "list-kpis":        cmd_list_kpis,
         "embed":            cmd_embed,
         "embed-status":     cmd_embed_status,
