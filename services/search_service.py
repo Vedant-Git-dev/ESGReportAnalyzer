@@ -1,70 +1,92 @@
 """
 services/search_service.py
 
-SerpApi-powered ESG report discovery with URL-keyword classification.
+SerpApi-powered ESG report discovery with STRICT three-way validation.
 
-v2 improvements over v1
-------------------------
-1. Query diversity
-   _QUERY_TEMPLATES expanded from 4 queries (1+2+1) to 16 queries (5+6+5).
-   New forms: bare year (2025), FY-prefix (FY2025, FY25), sustainability
-   synonyms, "integrated annual report" variant.  All templates use .format()
-   with company/year/past_year kwargs — the extra kwarg past_year is silently
-   ignored by templates that don't need it, so .format() never raises.
+Validation contract (ALL three must pass — no fallbacks, no partial matches):
+  1. Company match  — company token must appear in TITLE or URL domain/path
+                      (snippet alone is not sufficient — it can contain any
+                      company name in passing context)
+  2. Year match     — target fiscal year present, no adjacent-year contamination
+  3. Report type    — detected type matches the query type bucket
 
-2. Domain boosting
-   score_entity_relevance now adds +0.30 when the company slug appears
-   directly in the domain string (e.g. "infosys" in "infosys.com").
-   This is additive to the existing alias-in-domain credit and capped at 1.0.
-   Effect: official company IR domains score 0.95–1.0; neutral domains 0.4–0.7.
+If ANY of the three checks fails, the result is discarded.
+An empty discovered list is returned (and no PDF is downloaded) when no
+high-confidence match is found.  The caller must handle the empty case.
 
-3. Aggregator / low-quality domain penalty
-   New constant AGGREGATOR_DOMAIN_KEYWORDS (frozenset).
-   New helper _aggregator_penalty(domain) → float (returns −0.25 or 0.0).
-   Applied inside _filter_and_rerank to the combined score AFTER normal
-   scoring.  Results are penalised, not dropped — so a genuinely authoritative
-   link from a news site (e.g. direct PDF via reuters.com) can still pass if
-   its entity + year scores are strong enough.
+Bug fixes in this version
+--------------------------
+Fix 1 — ETF/fund documents passed via snippet-only company match:
+    Symptom (seen in log): "dokumenty.analizy.pl/.../2025-10-31" was accepted
+    as a Kennametal Integrated report.  The document is an iShares ETF fund
+    report — Kennametal appeared only in its "Top Holdings" snippet line.
 
-4. Confidence threshold
-   New constant _MIN_COMBINED_SCORE = 0.20.
-   Applied inside collect_and_classify after reranking, per report type.
-   Results below the threshold are filtered out.  If ALL results for a type
-   fall below the threshold the filter is skipped (fallback preserved —
-   never return empty when results exist).  Threshold is intentionally low
-   so that strong results on trusted domains (entity=1.0) always pass.
+    Root cause: has_company_match() case 4 allowed snippet-only matches on
+    any domain that was not in _AGGREGATOR_DOMAINS.  The ETF site was not in
+    that list, so it passed.
 
-5. Top-K preserved
-   No structural change needed.  collect_and_classify already returns all
-   classified URLs per type, sorted by combined score.  IngestionAgent uses
-   the full list and tries candidates in order.  Top-3 are now explicitly
-   logged after reranking (improvement 6).
+    Fix: case 4 now checks a whitelist (_TRUSTED_FILING_DOMAINS) instead of
+    a blacklist (_AGGREGATOR_DOMAINS).  Snippet-only matching is permitted ONLY
+    on known exchange/regulatory filing domains (BSE, NSE, SEBI, MCA).  Every
+    other domain requires the company name in the title or URL.
 
-6. Enhanced logging
-   _filter_and_rerank logs the top-3 results after reranking with:
-     entity_score, year_score, aggregator_penalty, combined_score, domain_tier.
-   collect_and_classify logs per-type confidence filtering stats.
+Fix 2 — ISO calendar dates matched as valid fiscal year signal:
+    Symptom: URL path "...RR/2025-10-31" contains "2025" as a substring.
+    is_correct_year() treated "2025" as a valid bare-year hit for FY2025.
 
-7. Backward compatibility
-   All public function signatures are unchanged.
-   SearchResult structure is unchanged.
-   Fallback logic (soft fallback → absolute fallback) is unchanged.
+    Root cause: The bare-year pattern ("2025") matched any substring occurrence
+    including calendar dates like 2025-10-31 (Oct 31 2025).
+
+    Fix: is_correct_year() strips all ISO date occurrences (YYYY-MM-DD) before
+    testing the bare year.  If "2025" only appears inside ISO dates and no
+    proper fiscal-year pattern (2024-25, fy2025, fy25) is present, the function
+    returns False.  Documents with a proper FY pattern always have at least one
+    of the strong patterns in title or snippet.
 
 Search backend
 --------------
 Uses the SerpApi Google Search endpoint (https://serpapi.com/search) via
 direct httpx calls.  Required env var: SERPAPI_API_KEY.
 
+SerpApi request parameters used
+---------------------------------
+  engine  = "google"
+  q       = <query string>
+  num     = 7              (results per query)
+  api_key = <key>
+  output  = "json"
+
 Score synthesis
 ---------------
-SerpApi does not return a relevance float.  We synthesise: score = 1.0 / position.
+score = 1.0 / position  (ordering only — not used for filtering)
 
-Combined scoring formula (unchanged):
-  combined = ENTITY_WEIGHT * entity_score
-           + YEAR_WEIGHT   * year_score
-           + ORIGINAL_WEIGHT * search_score
-           + aggregator_penalty           (new, ≤ 0)
-  weights: 0.35 / 0.30 / 0.35
+STRICT validation pipeline (all three required)
+-----------------------------------------------
+text_full   = (title + url + snippet).lower()
+text_anchor = (title + url).lower()         ← stricter surface for company
+
+Step 1 — company_match (STRICT):
+  At least one company token must appear in the ANCHOR text (title + url).
+  Snippet matching is allowed ONLY on trusted exchange/regulatory filing
+  domains (BSE, NSE, SEBI, MCA) where the snippet IS the official filing
+  announcement, not a passing mention in a portfolio or news article.
+
+Step 2 — year_match:
+  Valid   : "2024-25", "2024–25", "fy2025", "fy25", "2025"
+  Wrong   : "2025-26", "2025-2026", "fy2026", "fy26", "2026"
+  ISO date guard: bare "2025" inside "2025-10-31" does NOT count.
+  Wrong-year check takes priority.
+
+Step 3 — type_match:
+  BRSR        : brsr, business responsibility
+  ESG         : "esg report", "sustainability report", "csr report",
+                "environmental report" (must have "report" qualifier)
+  Integrated  : "annual report", "integrated report", "integrated annual",
+                "annual-report"
+
+  The detected type must exactly equal the query's target type bucket.
+
+No fallback. No partial matches. No score-based override.
 """
 from __future__ import annotations
 
@@ -87,147 +109,81 @@ _SERPAPI_ENDPOINT = "https://serpapi.com/search"
 # Report type priorities and query templates
 # ---------------------------------------------------------------------------
 
-PRIORITY_ORDER: list[str] = ["BRSR", "ESG", "Integrated"]
+PRIORITY_ORDER: list[str] = [ "Integrated", "ESG", "BRSR"]
 ALL_REPORT_TYPES: list[str] = PRIORITY_ORDER
 DEFAULT_REPORT_TYPE = "BRSR"
 
-# ── CHANGE 1: Expanded query templates ──────────────────────────────────────
-# Old: 4 total (1 BRSR + 2 ESG + 1 Integrated)
-# New: 16 total (5 BRSR + 6 ESG + 5 Integrated)
-#
-# All templates use {company}, {year}, and optionally {past_year}.
-# str.format() silently ignores unused kwargs so templates without
-# {past_year} are safe to format with past_year=year-1.
-#
-# Design choices:
-#   - Hyphenated year range (2024-25) remains for BRSR (NSE/BSE prefer it)
-#   - FY-prefix forms (FY2025, FY25) added for all types
-#   - Bare year (2025) added as fallback broad form
-#   - "sustainability" synonym added for ESG
-#   - "integrated annual report" added as Integrated variant
-#   - nseindia filetype:pdf kept for BRSR (good for exchange filings)
-#   - Duplicate removal: templates differ in at least one keyword
 _QUERY_TEMPLATES: dict[str, list[str]] = {
     "BRSR": [
-        # Original (hyphenated, NSE-targeted)
-        "{company} BRSR {past_year}-{year} nseindia filetype:pdf",
-        # FY prefix forms
-        "{company} BRSR FY{year} filetype:pdf",
-        "{company} BRSR FY{past_year}-{year} filetype:pdf",
-        # Bare year (broader recall)
-        "{company} BRSR {year} filetype:pdf",
-        # Long-form synonym
-        "{company} business responsibility sustainability report {year} filetype:pdf",
+        "{company} BRSR {past_year}-{year_short} filetype:pdf",
     ],
     "ESG": [
-        # Original two
-        "{company} ESG report {past_year}-{year} filetype:pdf",
-        "{company} sustainability report {past_year}-{year} filetype:pdf",
-        # FY-prefix additions
-        "{company} ESG report FY{year} filetype:pdf",
-        "{company} sustainability report FY{year} filetype:pdf",
-        # Bare year
-        "{company} ESG report {year} filetype:pdf",
-        # Synonym: "environment social governance"
-        "{company} environment social governance report {year} filetype:pdf",
+        "{company} sustainability report {past_year}-{year_short} filetype:pdf",
     ],
     "Integrated": [
-        # Original
-        "{company} annual report {past_year}-{year} filetype:pdf",
-        # FY-prefix additions
-        "{company} annual report FY{year} filetype:pdf",
-        "{company} integrated annual report FY{year} filetype:pdf",
-        # Bare year
-        "{company} annual report {year} filetype:pdf",
-        # Explicit "integrated report" form
-        "{company} integrated report {year} filetype:pdf",
+        "{company} annual report {past_year}-{year_short} filetype:pdf",
     ],
 }
 
-_URL_KEYWORD_RULES: dict[str, list[tuple[str, ...]]] = {
-    "BRSR": [
-        ("business", "sustainability"),
-        ("business", "responsibility"),
-        ("brsr",),
-    ],
-    "ESG": [
-        ("esg",),
-        ("sustainability",),
-        ("environmental",),
-    ],
-    "Integrated": [
-        ("integrated", "report"),
-        ("integrated", "annual"),
-        ("integrated",),
-        ("annual",),
-    ],
-}
 
-# =============================================================================
-# ── CHANGE 3: Aggregator / low-quality domain penalty ───────────────────────
-# =============================================================================
-# Keywords whose presence in a domain signals a low-quality source.
-# Penalty: −0.25 on the final combined score.
-# NOT a drop — strong entity+year scores can still overcome the penalty.
-#
-# Why these keywords:
-#   - Financial data aggregators (moneycontrol, screener, trendlyne, tickertape,
-#     indiainfoline, equitymaster, marketscreener): host scraped summaries, not PDFs
-#   - News sites (economictimes, businessstandard, livemint, thehindu, reuters,
-#     bloomberg): occasionally link to PDFs but rarely host the canonical source
-#   - Generic qualifiers (blog, analysis, research, news): almost never host
-#     the authoritative annual report PDF
-#   - annualreports.com: re-hosts PDFs but with stale/incorrect metadata
-#
-# Domains explicitly NOT in this list (safe):
-#   - nseindia.com, bseindia.com: handled by TRUSTED tier
-#   - *.gov.in: handled by TRUSTED tier
-#   - Company own-domains (infosys.com, tcs.com): entity boost outweighs any penalty
-AGGREGATOR_DOMAIN_KEYWORDS: frozenset[str] = frozenset({
-    "moneycontrol",
-    "screener",
-    "trendlyne",
-    "tickertape",
-    "indiainfoline",
-    "equitymaster",
-    "marketscreener",
-    "economictimes",
-    "businessstandard",
-    "livemint",
-    "thehindu",
-    "reuters",
-    "bloomberg",
-    "annualreports",
-    "blog",
-    "analysis",
-    "research",
-    "news",
+# ---------------------------------------------------------------------------
+# COMPANY TOKEN BUILDER
+# ---------------------------------------------------------------------------
+
+_SLUG_RE = re.compile(r"[^a-z0-9]")
+
+_STOP_WORDS: frozenset[str] = frozenset({
+    "the", "and", "of", "for", "from", "limited", "ltd", "inc",
+    "corp", "corporation", "private", "pvt", "services", "solutions",
+    "technologies", "technology", "india", "group", "holdings",
+    "international", "global", "company", "enterprises", "industries",
 })
 
-# Amount to subtract from combined score for aggregator domains
-_AGGREGATOR_PENALTY: float = -0.25
+# Known short ticker → URL/title anchor strings
+_TICKER_ALIASES: dict[str, list[str]] = {
+    "tcs":         ["tata consultancy", "tcs.com"],
+    "infosys":     ["infosys"],
+    "wipro":       ["wipro"],
+    "hcl":         ["hcltech", "hcl technologies"],
+    "bpcl":        ["bharat petroleum"],
+    "hpcl":        ["hindustan petroleum"],
+    "iocl":        ["indianoil", "indian oil"],
+    "ongc":        ["ongcindia"],
+    "ntpc":        ["ntpclimited"],
+    "sail":        ["steelauthority"],
+    "gail":        ["gailonline"],
+    "sbi":         ["statebankofin"],
+    "itc":         ["itcportal"],
+    "ltim":        ["ltimindtree"],
+    "kennametal":  ["kennametal"],
+}
 
-# ── CHANGE 4: Confidence threshold ───────────────────────────────────────────
-# Results below this combined score are filtered out per type.
-# Calibration: a correct result on a weak UNKNOWN domain scores ~0.45+;
-# pure noise or wrong-company noise with aggregator penalty scores ~0.10–0.18.
-# Threshold 0.20 catches the latter while keeping all legitimate results.
-# The filter is skipped if ALL results for a type fall below it (fallback safe).
-_MIN_COMBINED_SCORE: float = 0.20
+# Domains that aggregate many companies — snippet matches on these are rejected
+_AGGREGATOR_DOMAINS: frozenset[str] = frozenset({
+    "ishares.com", "vanguard.com", "blackrock.com", "morningstar.com",
+    "bloomberg.com", "reuters.com", "wsj.com", "ft.com", "economist.com",
+    "nordstrom.com", "cision.com", "prnewswire.com", "businesswire.com",
+    "globenewswire.com", "sec.gov", "edgar.gov", "cityof",
+    "moneycontrol.com", "economictimes.indiatimes.com", "livemint.com",
+    "thehindu.com", "ndtv.com", "screener.in", "tickertape.in",
+    "q4cdn.com", "annualreport.co", "annualreports.com",
+    "globalreporting.org", "sustainalytics.com", "msci.com",
+    "s&p.com", "spglobal.com", "refinitiv.com",
+})
 
-# =============================================================================
-# DOMAIN TIER DEFINITIONS  (unchanged from v1)
-# =============================================================================
-
-_TRUSTED_DOMAIN_SUFFIXES: frozenset[str] = frozenset({
+# Domains that are trusted regulatory/exchange filing hosts.
+# On these domains, a company name appearing ONLY in the snippet is still
+# a reliable signal — the snippet is the filing announcement text, not a
+# passing mention in a fund portfolio or news article.
+# All other (unknown) domains require the company to appear in title or URL.
+_TRUSTED_FILING_DOMAINS: frozenset[str] = frozenset({
+    "bseindia.com",
+    "bsmedia.business-standard.com",  # BSE regulatory filings mirror
     "nseindia.com",
     "nsearchive.nseindia.com",
-    "bseindia.com",
-    "msei.in",
+    "connect2nse.com",
     "sebi.gov.in",
     "mca.gov.in",
-    "connect2nse.com",
-    "listing.bseindia.com",
     "nsdl.co.in",
     "cdsl.co.in",
     "india.gov.in",
@@ -235,608 +191,364 @@ _TRUSTED_DOMAIN_SUFFIXES: frozenset[str] = frozenset({
 })
 
 
-def _domain_tier_trusted(domain: str) -> bool:
-    domain = domain.lower().lstrip("www.")
-    for suffix in _TRUSTED_DOMAIN_SUFFIXES:
-        if domain == suffix or domain.endswith("." + suffix):
+def _get_company_tokens(company_name: str) -> dict[str, list[str]]:
+    """
+    Build company token sets for two validation surfaces:
+      "anchor" — tokens checked in title or URL domain+path (primary check)
+      "slug"   — alphanumeric slug forms for URL matching
+
+    Returns:
+        {
+            "anchor": [str, ...],
+            "slug":   [str, ...],
+        }
+    """
+    name_lower = company_name.lower().strip()
+    slug = _SLUG_RE.sub("", name_lower)
+
+    anchor_tokens: str = [name_lower]
+    slug_tokens:   list[str] = [slug]
+
+    # Alias table
+    if slug in _TICKER_ALIASES:
+        anchor_tokens.extend(_TICKER_ALIASES[slug])
+
+    # Meaningful words (>= 5 chars, not stop words)
+    words = [
+        w.strip(".,()&-")
+        for w in re.split(r"[\s&.,/\(\)\-]+", name_lower)
+        if w.strip(".,()&-") and w.strip(".,()&-") not in _STOP_WORDS
+    ]
+
+    for word in words:
+        if len(word) >= 5:
+            anchor_tokens.append(word)
+            slug_tokens.append(_SLUG_RE.sub("", word))
+
+    # Two-word phrases
+    for i in range(len(words) - 1):
+        phrase = f"{words[i]} {words[i + 1]}"
+        if len(phrase) >= 6:
+            anchor_tokens.append(phrase)
+
+    # Deduplicate preserving order
+    def _dedup(lst: list[str], min_len: int) -> list[str]:
+        seen: set[str] = set()
+        out: list[str] = []
+        for t in lst:
+            t = t.strip()
+            if t and len(t) >= min_len and t not in seen:
+                seen.add(t)
+                out.append(t)
+        return out
+
+    return {
+        "anchor": _dedup(anchor_tokens, 3),
+        "slug":   _dedup(slug_tokens,   3),
+    }
+
+
+def has_company_match(
+    title:      str,
+    url:        str,
+    snippet:    str,
+    token_sets: dict[str, list[str]],
+) -> bool:
+    """
+    Return True when at least one company token is found in TITLE or URL.
+
+    Priority order:
+      1. Anchor token in title (case-insensitive substring)
+      2. Slug token in URL domain+path (no query string)
+      3. Anchor token (>= 5 chars) in URL domain+path after stripping punctuation
+      4. Full company name (anchor[0], >= 6 chars) verbatim in snippet,
+         BUT only when URL is not an aggregator domain
+
+    Snippet-only matches are rejected unless condition 4 applies.
+
+    Args:
+        title:      Page title string.
+        url:        Full URL string.
+        snippet:    Search snippet string.
+        token_sets: Output of _get_company_tokens().
+
+    Returns:
+        True if match found; False otherwise.
+    """
+    anchor_tokens = token_sets["anchor"]
+    slug_tokens   = token_sets["slug"]
+
+    title_l   = title.lower()
+    snippet_l = snippet.lower()
+
+    # Parse URL — use netloc+path only (drop query/fragment)
+    try:
+        parsed   = urlparse(url.lower())
+        url_core = (parsed.netloc + parsed.path).replace("www.", "")
+    except Exception:
+        url_core = url.lower()
+
+    # 1. Anchor token in title
+    for token in anchor_tokens:
+        if token in title_l:
+            logger.debug("search.company_match.title", token=token)
             return True
+
+    # 2. Slug token in URL domain+path
+    for token in slug_tokens:
+        if token in url_core:
+            logger.debug("search.company_match.url_slug", token=token)
+            return True
+
+    # 3. Anchor token (>= 5 chars) in URL after stripping punctuation
+    url_stripped = _SLUG_RE.sub("", url_core)
+    for token in anchor_tokens:
+        if len(token) >= 5:
+            token_slug = _SLUG_RE.sub("", token)
+            if token_slug and token_slug in url_stripped:
+                logger.debug("search.company_match.url_nopunct", token=token)
+                return True
+
+    # 4. Snippet match — ONLY on trusted regulatory/exchange filing domains.
+    #
+    #    Why this restriction:
+    #      An ETF, fund, or portfolio document may mention any company name in
+    #      its "Top Holdings" section.  A news article or sector report may
+    #      mention a company in passing.  Accepting a snippet-only match on
+    #      unknown domains lets these through Gates 2 and 3.
+    #
+    #    Example of a WRONG pass (before this fix):
+    #      URL:     dokumenty.analizy.pl/etf/E_ISHII045_A_USD/RR/2025-10-31
+    #      Snippet: "... Kennametal Inc. (KMT) 0.42% ..."  ← holding line
+    #      The snippet mentioned "kennametal" but the document is an ETF report.
+    #
+    #    On trusted exchange filing domains (BSE, NSE, SEBI, MCA), the snippet
+    #    is the official filing announcement text — reliable evidence of the
+    #    company's own document, not a passing mention.
+    # if anchor_tokens and len(anchor_tokens[0]) >= 6:
+    #     domain = parsed.netloc.lower().replace("www.", "") if parsed else ""
+    #     is_trusted_filer = any(d in domain for d in _TRUSTED_FILING_DOMAINS)
+    #     if is_trusted_filer and anchor_tokens[0] in snippet_l:
+    #         logger.debug("search.company_match.snippet_trusted", token=anchor_tokens[0])
+    #         return True
+
     return False
 
 
 # ---------------------------------------------------------------------------
-# ENTITY ALIAS TABLE  (unchanged from v1)
+# YEAR VALIDATION
 # ---------------------------------------------------------------------------
-_ENTITY_ALIAS_TABLE: dict[str, list[str]] = {
-    # IT
-    "tcs":            ["tata consultancy services"],
-    "infosys":        ["infosys limited", "infy"],
-    "wipro":          ["wipro limited"],
-    "hcl":            ["hcl technologies", "hcltech"],
-    "ltim":           ["ltimindtree", "larsen toubro infotech", "mindtree"],
-    "ltimindtree":    ["ltimindtree", "larsen toubro infotech"],
-    "techm":          ["tech mahindra"],
-    "techmahindra":   ["tech mahindra"],
-    "mphasis":        ["mphasis"],
-    "hexaware":       ["hexaware"],
-    "persistent":     ["persistent systems"],
-    "coforge":        ["coforge", "niit technologies"],
-    "cyient":         ["cyient"],
-    # Oil & Gas
-    "bpcl":           ["bharat petroleum", "bharat petroleum corporation"],
-    "hpcl":           ["hindustan petroleum", "hindustan petroleum corporation"],
-    "iocl":           ["indian oil", "indian oil corporation"],
-    "indianoil":      ["indian oil", "indian oil corporation"],
-    "ongc":           ["oil and natural gas", "oil and natural gas corporation"],
-    "oilindia":       ["oil india", "oil india limited"],
-    "gail":           ["gas authority of india", "gail india"],
-    "mrpl":           ["mangalore refinery"],
-    "cpcl":           ["chennai petroleum"],
-    "nrl":            ["numaligarh refinery"],
-    # Power & Utilities
-    "ntpc":           ["national thermal power", "ntpc limited"],
-    "powergrid":      ["power grid corporation", "pgcil"],
-    "nhpc":           ["nhpc limited", "national hydroelectric"],
-    "torrentpower":   ["torrent power"],
-    "adanigreen":     ["adani green energy"],
-    "adanipower":     ["adani power"],
-    # Metals & Mining
-    "tatasteel":      ["tata steel"],
-    "jsw":            ["jsw steel", "jsw energy"],
-    "jswsteel":       ["jsw steel"],
-    "sail":           ["steel authority of india"],
-    "hindalco":       ["hindalco industries", "aditya birla"],
-    "vedanta":        ["vedanta limited", "vedanta resources"],
-    "nalco":          ["national aluminium", "nalco"],
-    "moil":           ["manganese ore india"],
-    # Pharma
-    "sunpharma":      ["sun pharmaceutical", "sun pharma"],
-    "drreddy":        ["dr reddy", "dr reddys laboratories"],
-    "cipla":          ["cipla limited"],
-    "lupin":          ["lupin limited"],
-    "aurobindo":      ["aurobindo pharma"],
-    # Auto
-    "tatamotors":     ["tata motors"],
-    "maruti":         ["maruti suzuki", "msil"],
-    "marutisuzuki":   ["maruti suzuki"],
-    "mahindra":       ["mahindra and mahindra", "m&m"],
-    "bajaj":          ["bajaj auto"],
-    "heromoto":       ["hero motocorp"],
-    # Finance
-    "hdfc":           ["hdfc bank", "hdfc limited"],
-    "hdfcbank":       ["hdfc bank"],
-    "icici":          ["icici bank"],
-    "icicbank":       ["icici bank"],
-    "sbi":            ["state bank of india"],
-    "kotak":          ["kotak mahindra bank"],
-    "axisbank":       ["axis bank"],
-    # FMCG / Consumer
-    "itc":            ["itc limited"],
-    "hindustan":      ["hindustan unilever", "hul"],
-    "hul":            ["hindustan unilever"],
-    "nestle":         ["nestle india"],
-    "dabur":          ["dabur india"],
-    "britannia":      ["britannia industries"],
-    "godrej":         ["godrej consumer", "godrej industries"],
-    # Conglomerates / Others
-    "reliance":       ["reliance industries", "ril"],
-    "ril":            ["reliance industries"],
-    "adani":          ["adani group", "adani enterprises"],
-    "lt":             ["larsen toubro", "l&t"],
-    "larsentoubro":   ["larsen toubro", "l&t"],
-    "bajajfinance":   ["bajaj finance"],
-    "ultracemco":     ["ultratech cement"],
-    "acc":            ["acc limited", "acc cement"],
-    "ambujacement":   ["ambuja cement"],
-    "asianpaint":     ["asian paints"],
-    "pidilite":       ["pidilite industries"],
-    "divi":           ["divis laboratories"],
-    "torrent":        ["torrent pharma", "torrent pharmaceuticals"],
-}
 
-_DOMAIN_OWNERS: dict[str, str] = {
-    "tcs.com":                  "tcs",
-    "infosys.com":              "infosys",
-    "wipro.com":                "wipro",
-    "hcltech.com":              "hcl",
-    "ltimindtree.com":          "ltimindtree",
-    "techmahindra.com":         "techmahindra",
-    "mphasis.com":              "mphasis",
-    "hexaware.com":             "hexaware",
-    "persistent.com":           "persistent",
-    "coforge.com":              "coforge",
-    "bpcl.in":                  "bpcl",
-    "bharatpetroleum.com":      "bpcl",
-    "hindpetro.com":            "hpcl",
-    "iocl.com":                 "iocl",
-    "indianoil.in":             "iocl",
-    "ongcindia.com":            "ongc",
-    "ongc.co.in":               "ongc",
-    "oilindia.in":              "oilindia",
-    "oil-india.com":            "oilindia",
-    "gailonline.com":           "gail",
-    "gail.co.in":               "gail",
-    "ntpc.co.in":               "ntpc",
-    "ntpclimited.com":          "ntpc",
-    "powergridindia.com":       "powergrid",
-    "nhpcindia.com":            "nhpc",
-    "adanigreen.com":           "adanigreen",
-    "adanipower.com":           "adanipower",
-    "tatasteel.com":            "tatasteel",
-    "jswsteel.com":             "jswsteel",
-    "sail.co.in":               "sail",
-    "hindalco.com":             "hindalco",
-    "vedanta.com":              "vedanta",
-    "nalcoindia.com":           "nalco",
-    "tata.com":                 "tata",
-    "tatamotors.com":           "tatamotors",
-    "tatapower.com":            "tatapower",
-    "tatacommunications.com":   "tatacommunications",
-    "tataconsumer.com":         "tataconsumer",
-    "tatachemicals.com":        "tatachemicals",
-    "sunpharma.com":            "sunpharma",
-    "drreddys.com":             "drreddy",
-    "cipla.com":                "cipla",
-    "lupin.com":                "lupin",
-    "hdfcbank.com":             "hdfcbank",
-    "icicibank.com":            "icicibank",
-    "sbi.co.in":                "sbi",
-    "kotak.com":                "kotak",
-    "axisbank.com":             "axisbank",
-    "itcportal.com":            "itc",
-    "hul.co.in":                "hul",
-    "ril.com":                  "ril",
-    "adanienterprises.com":     "adani",
-    "adanigroup.com":           "adani",
-}
+def is_correct_year(text: str, target_year: int) -> bool:
+    """
+    Return True ONLY when a valid fiscal-year pattern is found AND no
+    wrong-year pattern is present.
 
-_SLUG_RE = re.compile(r"[^a-z0-9]")
+    Valid patterns for target_year=2025 (FY2024-25):
+      "2024-25", "2024–25", "fy2025", "fy25", "2025"
+
+    Wrong patterns (adjacent next year):
+      "2025-26", "2025-2026", "fy2026", "fy26", "2026"
+
+    Wrong-year check takes strict priority.
+
+    ISO date guard (added to fix ETF/fund document false positives):
+      A URL like ".../RR/2025-10-31" contains "2025" as a substring but
+      this is a calendar date (Oct 31 2025), not a fiscal year reference.
+      If the bare year appears ONLY as part of an ISO date (YYYY-MM-DD)
+      and no proper fiscal-year pattern is also present, the function
+      returns False.  A document that genuinely covers FY2025 will always
+      have at least one of: "2024-25", "fy2025", or "fy25" somewhere in
+      its title or snippet — the bare year alone is not accepted when it
+      is embedded in an ISO date string.
+
+    Args:
+        text:        Combined validation text, lowercased.
+        target_year: Fiscal year end integer.
+
+    Returns:
+        True only if correct-year fiscal signal present and no wrong-year signal.
+    """
+    text = text.lower()
+    prev   = target_year - 1
+    next_y = target_year + 1
+
+    wrong_patterns: list[str] = [
+        f"{target_year}-{str(next_y)[-2:]}",      # "2025-26"
+        f"{target_year}-{next_y}",                # "2025-2026"
+        f"fy{next_y}",                            # "fy2026"
+        f"fy{str(next_y)[-2:]}",   
+        f"AR_{prev}",               # "fy26"
+        str(next_y),                              # "2026"
+    ]
+    if any(w in text for w in wrong_patterns):
+        return False
+
+    # Strong fiscal-year patterns (unambiguous — never part of a date string)
+    strong_patterns: list[str] = [
+        f"{prev}-{str(target_year)[-2:]}", 
+        f"{str(prev)}_{target_year}",       # "2024-25"
+        f"{prev}\u2013{str(target_year)[-2:]}",   # "2024–25" (en-dash)
+        f"fy{target_year}",                        # "fy2025"
+        f"fy{str(target_year)[-2:]}",             # "fy25"
+    ]
+    if any(v in text for v in strong_patterns):
+        return True
+
+    # Bare year ("2025") — accepted ONLY when NOT embedded in an ISO calendar date.
+    #
+    # ISO date pattern: YYYY-MM-DD where MM is 01-12 and DD is 01-31.
+    # Example: "2025-10-31" in a URL path is a fund document date, not FY2025.
+    # If every occurrence of the bare year is inside an ISO date, reject.
+    bare_year = str(target_year)
+    if bare_year not in text:
+        return False
+
+    # Check whether the bare year occurs outside of any ISO date context.
+    # We remove all ISO-date occurrences from the text and see if the year remains.
+    iso_date_re = re.compile(
+        rf"{target_year}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])"
+    )
+    text_without_iso_dates = iso_date_re.sub("", text)
+    return bare_year in text_without_iso_dates
 
 
-def _company_slug(name: str) -> str:
-    return _SLUG_RE.sub("", name.lower().strip())
+# ---------------------------------------------------------------------------
+# REPORT TYPE DETECTION
+# ---------------------------------------------------------------------------
 
+def matches_type(text: str) -> Optional[str]:
+    """
+    Detect the report type from combined validation text.
 
-def expand_company_aliases(company_name: str) -> frozenset[str]:
-    name_lower = company_name.lower().strip()
-    slug       = _company_slug(name_lower)
-    aliases: set[str] = set()
+    Returns one of "BRSR", "ESG", "Integrated", or None.
+    Evaluated in priority order — first match wins.
 
-    aliases.add(name_lower)
-    aliases.add(slug)
+    Note: bare "sustainability" or "esg" without "report" qualifier is
+    intentionally excluded to avoid matching index fund documents, news
+    articles, and sector analysis that mention sustainability in passing.
 
-    if slug in _ENTITY_ALIAS_TABLE:
-        aliases.update(_ENTITY_ALIAS_TABLE[slug])
-    else:
-        for key, expansions in _ENTITY_ALIAS_TABLE.items():
-            if slug.startswith(key) or key.startswith(slug):
-                aliases.update(expansions)
-                break
+    Args:
+        text: Combined validation text (title + snippet + url), lowercased.
 
-    parts = re.split(r"[\s&.,/\(\)\-]+", name_lower)
-    for part in parts:
-        part = part.strip()
-        if len(part) >= 2:
-            aliases.add(part)
-            aliases.add(_company_slug(part))
+    Returns:
+        Detected type string or None.
+    """
+    text = text.lower()
 
-    for word in name_lower.split():
-        w = word.strip(".,()&-")
-        if len(w) >= 3:
-            aliases.add(w)
+    # BRSR — highest priority; very specific keyword
+    if any(k in text for k in ["brsr", "business responsibility"]):
+        return "BRSR"
 
-    aliases.discard("")
-    aliases.discard(" ")
-    return frozenset(aliases)
+    # ESG — requires "report" qualifier
+    esg_keywords = [
+        "esg report", "esg-report",
+        "sustainability report", "sustainability-report",
+        "csr report", "csr-report",
+        "environmental report", "environmental-report",
+        "responsible business report",
+        "corporate responsibility report",
+        "corporate sustainability report",
+    ]
+    if any(k in text for k in esg_keywords):
+        return "ESG"
 
+    # Integrated / Annual
+    integrated_keywords = [
+        "annual report", "annual-report", "annualreport",
+        "integrated report", "integrated-report",
+        "integrated annual",
+    ]
+    if any(k in text for k in integrated_keywords):
+        return "Integrated"
 
-# =============================================================================
-# DOMAIN TIER RESOLUTION  (unchanged from v1)
-# =============================================================================
-
-_TIER_TRUSTED  = "trusted"
-_TIER_NEGATIVE = "negative"
-_TIER_UNKNOWN  = "unknown"
-
-
-def _extract_domain(url: str) -> str:
-    try:
-        return urlparse(url).netloc.lower().replace("www.", "")
-    except Exception:
-        return ""
-
-
-def _domain_owner_slug(domain: str) -> Optional[str]:
-    for known_domain, owner_slug in _DOMAIN_OWNERS.items():
-        if known_domain in domain:
-            return owner_slug
     return None
 
 
-def _resolve_domain_tier(domain: str, company_aliases: frozenset[str]) -> str:
-    if _domain_tier_trusted(domain):
-        return _TIER_TRUSTED
+# ---------------------------------------------------------------------------
+# STRICT THREE-WAY VALIDATOR
+# ---------------------------------------------------------------------------
 
-    owner = _domain_owner_slug(domain)
-    if owner is not None:
-        owner_matches_target = any(
-            owner in alias or alias in owner
-            for alias in company_aliases
-            if len(alias) >= 2
-        )
-        if not owner_matches_target:
-            return _TIER_NEGATIVE
-
-    return _TIER_UNKNOWN
-
-
-# =============================================================================
-# ── CHANGE 3 (helper): Aggregator penalty ───────────────────────────────────
-# =============================================================================
-
-def _aggregator_penalty(domain: str) -> float:
+def _strict_validate(
+    url:         str,
+    title:       str,
+    snippet:     str,
+    token_sets:  dict[str, list[str]],
+    target_year: int,
+    target_type: str,
+) -> bool:
     """
-    Return the score penalty for a low-quality / aggregator domain.
+    Apply all three strict validation checks to one search result.
 
-    Returns _AGGREGATOR_PENALTY (negative float) if the domain matches any
-    keyword in AGGREGATOR_DOMAIN_KEYWORDS, otherwise 0.0.
+    All three must pass; first failure returns False immediately.
 
-    The penalty is applied to the final combined score after entity, year,
-    and search weights are summed.  It is never applied to TRUSTED domains
-    (those are handled upstream and always get entity_score = 1.0).
+    Check 1 — company_match:
+      Token in title or URL domain+path (snippet-only rejected).
+
+    Check 2 — year_match:
+      Correct year present, no adjacent-year contamination.
+
+    Check 3 — type_match:
+      Detected type equals target_type.
 
     Args:
-        domain: Cleaned netloc string (no www., lowercase).
+        url:         Result URL string.
+        title:       Page title (may be empty).
+        snippet:     Search snippet (may be empty).
+        token_sets:  Output of _get_company_tokens().
+        target_year: Fiscal year end integer.
+        target_type: One of "BRSR", "ESG", "Integrated".
 
     Returns:
-        0.0 or _AGGREGATOR_PENALTY (−0.25).
+        True if and only if all three checks pass.
     """
-    d = domain.lower()
-    if any(kw in d for kw in AGGREGATOR_DOMAIN_KEYWORDS):
-        return _AGGREGATOR_PENALTY
-    return 0.0
-
-
-# =============================================================================
-# ENTITY RELEVANCE SCORING  (CHANGE 2: domain boost added)
-# =============================================================================
-
-def score_entity_relevance(
-    url: str,
-    title: str,
-    snippet: str,
-    company_aliases: frozenset[str],
-) -> float:
-    """
-    Return a [0, 1] score representing how strongly this search result
-    belongs to the target company.
-
-    Signal weights (additive, pre-boost cap at 1.0):
-      Title match:    0.50  per alias hit  (strong)
-      Domain match:   0.30  per alias hit  (medium)
-      URL path match: 0.20  per alias hit  (medium)
-      Snippet match:  0.10  per alias hit  (weak)
-
-    CHANGE 2 — Domain boost:
-      If the company slug (alphanumeric-only form of the name) appears
-      directly in the domain string, add an additional +0.30.
-      Rationale: the slug is tighter than any alias (no spaces, no
-      punctuation) so a slug hit in the domain is a very strong signal
-      that this is the company's own IR site.
-      Example: company="Infosys", slug="infosys", domain="infosys.com"
-               → +0.30 on top of any alias-loop credit.
-      Cap: min(score + 0.30, 1.0)
-
-    Args:
-        url:              Full result URL.
-        title:            Page title string.
-        snippet:          Short description / snippet.
-        company_aliases:  Expanded alias set from expand_company_aliases().
-
-    Returns:
-        float in [0.0, 1.0].
-    """
-    url_l   = url.lower()
-    title_l = (title   or "").lower()
-    snip_l  = (snippet or "").lower()
-    domain  = _extract_domain(url)
-
-    score = 0.0
-    for alias in company_aliases:
-        if len(alias) < 2:
-            continue
-
-        if alias in title_l:
-            score += 0.50
-
-        alias_slug = _company_slug(alias)
-        if alias_slug and (alias_slug in domain.replace(".", "") or alias in domain):
-            score += 0.30
-        elif alias in url_l:
-            score += 0.20
-
-        if alias in snip_l:
-            score += 0.10
-
-    score = min(score, 1.0)
-
-    # ── CHANGE 2: Additional boost when company slug is in the domain ─────────
-    # The slug is the strictest identifier (no spaces, alphanumeric only).
-    # A slug hit in the domain is strong evidence this is the official IR site.
-    # We apply this AFTER the alias loop cap so the boost is always meaningful.
-    company_slug_str = _company_slug(" ".join(company_aliases))
-    if not company_slug_str:
-        # Derive slug from the longest alias as fallback
-        longest = max(company_aliases, key=len, default="")
-        company_slug_str = _company_slug(longest)
-
-    if company_slug_str and len(company_slug_str) >= 3 and company_slug_str in domain:
-        score = min(score + 0.30, 1.0)
+    # Check 1: company — must appear in title or URL
+    if not has_company_match(title, url, snippet, token_sets):
         logger.debug(
-            "search.domain_slug_boost",
-            domain=domain,
-            slug=company_slug_str,
-            score_after_boost=round(score, 3),
+            "search.strict_filter.company_fail",
+            url=url[:90],
+            target_type=target_type,
         )
+        return False
 
-    return score
+    # Build combined text for year + type checks
+    text_full = f"{title} {snippet} {url}".lower()
 
-
-# =============================================================================
-# YEAR RELEVANCE SCORING  (unchanged from v1)
-# =============================================================================
-
-def _year_patterns(year: int) -> tuple[list[str], list[str]]:
-    py = year - 1
-
-    target: list[str] = [
-        f"{py}-{str(year)[-2:]}",
-        f"{py}-{year}",
-        f"fy{year}",
-        f"fy{str(year)[-2:]}",
-        f"fy {year}",
-        str(year),
-    ]
-
-    py1, y1 = year - 2, year - 1
-    py2, y2 = year,     year + 1
-
-    adjacent: list[str] = [
-        f"{py1}-{str(y1)[-2:]}", f"{py1}-{y1}", f"fy{y1}", f"fy{str(y1)[-2:]}",
-        f"{py2}-{str(y2)[-2:]}", f"{py2}-{y2}", f"fy{y2}", f"fy{str(y2)[-2:]}",
-    ]
-
-    return target, adjacent
-
-
-def score_year_relevance(
-    url: str,
-    title: str,
-    snippet: str,
-    year: int,
-) -> tuple[float, bool]:
-    """
-    Return (year_score, is_wrong_year).  Unchanged from v1.
-    """
-    haystack = " ".join([url, title or "", snippet or ""]).lower()
-
-    target_pats, adjacent_pats = _year_patterns(year)
-
-    strong_targets = target_pats[:-1]
-    weak_target    = target_pats[-1]
-
-    has_strong   = any(p in haystack for p in strong_targets)
-    has_adjacent = any(p in haystack for p in adjacent_pats)
-
-    haystack_stripped = haystack
-    for adj in adjacent_pats:
-        haystack_stripped = haystack_stripped.replace(adj, " ")
-    has_weak = weak_target in haystack_stripped
-
-    if has_strong:
-        return (1.0, False)
-    if has_weak and not has_adjacent:
-        return (0.7, False)
-    if has_adjacent and not has_strong and not has_weak:
-        return (0.0, True)
-    if has_adjacent and has_weak:
-        return (0.2, False)
-    return (0.5, False)
-
-
-# =============================================================================
-# DOMAIN-AWARE FILTER + RERANK  (CHANGES 2, 3, 6)
-# =============================================================================
-
-_ENTITY_WEIGHT   = 0.35
-_YEAR_WEIGHT     = 0.30
-_ORIGINAL_WEIGHT = 0.35
-
-
-def _filter_and_rerank(
-    items: list[dict],
-    company_name: str,
-    year: int = 0,
-) -> list[dict]:
-    """
-    Apply domain-aware, company-aware, and year-aware scoring.
-
-    Changes vs v1:
-      CHANGE 2: score_entity_relevance now includes slug-in-domain boost.
-      CHANGE 3: aggregator penalty applied to combined score after weighting.
-      CHANGE 6: top-3 results logged with full score breakdown after reranking.
-
-    Algorithm (unchanged structure):
-      1. Expand aliases.
-      2. Resolve domain tier (TRUSTED / NEGATIVE / UNKNOWN).
-      3. Apply filtering rules (same as v1).
-      4. Compute combined score = entity*0.35 + year*0.30 + search*0.35
-         + aggregator_penalty.         ← NEW
-      5. Sort by combined score.
-      6. Log top-3 results.            ← NEW
-      7. Return filtered + sorted list.
-    """
-    if not items:
-        return items
-
-    aliases = expand_company_aliases(company_name)
-
-    # Tuples: (item, entity_score, year_score, agg_penalty, combined, tier, keep)
-    evaluated: list[tuple[dict, float, float, float, float, str, bool]] = []
-
-    for item in items:
-        url     = item.get("url", "")
-        title   = item.get("title", "") or ""
-        snippet = item.get("content", "") or ""
-        domain  = _extract_domain(url)
-
-        tier = _resolve_domain_tier(domain, aliases)
-
-        yr_score, is_wrong_year = (
-            score_year_relevance(url, title, snippet, year) if year
-            else (0.5, False)
-        )
-
-        # ── Domain tier filtering (unchanged logic) ───────────────────────────
-        if tier == _TIER_TRUSTED:
-            entity_score = 1.0
-            keep         = True
-            decision     = "KEEP (trusted portal)"
-
-        elif tier == _TIER_NEGATIVE:
-            entity_score = 0.0
-            keep         = False
-            decision     = "DROP (rival domain)"
-
-        else:
-            entity_score = score_entity_relevance(url, title, snippet, aliases)
-            if entity_score == 0.0:
-                keep     = False
-                decision = "DROP (zero entity evidence)"
-            elif is_wrong_year:
-                keep     = False
-                decision = "DROP (explicit wrong-year signal)"
-            else:
-                keep     = True
-                decision = "KEEP"
-
+    # Check 2: year
+    if not is_correct_year(text_full, target_year):
         logger.debug(
-            "search.domain_filter",
-            url=url[:80],
-            tier=tier,
-            entity_score=round(entity_score, 3),
-            year_score=round(yr_score, 2),
-            is_wrong_year=is_wrong_year if tier == _TIER_UNKNOWN else False,
-            decision=decision,
+            "search.strict_filter.year_fail",
+            url=url[:90],
+            target_year=target_year,
         )
+        return False
 
-        # ── CHANGE 3: Compute aggregator penalty ─────────────────────────────
-        # Only penalise UNKNOWN tier (TRUSTED domains are exempt by design;
-        # NEGATIVE domains are already dropped so penalty is irrelevant).
-        agg_pen = _aggregator_penalty(domain) if tier == _TIER_UNKNOWN else 0.0
-
-        # ── Combined score (includes aggregator penalty) ──────────────────────
-        combined = (
-            _ENTITY_WEIGHT   * entity_score
-            + _YEAR_WEIGHT   * yr_score
-            + _ORIGINAL_WEIGHT * item.get("score", 0.0)
-            + agg_pen
+    # Check 3: type
+    detected = matches_type(text_full)
+    if detected != target_type:
+        logger.debug(
+            "search.strict_filter.type_fail",
+            url=url[:90],
+            detected=detected,
+            expected=target_type,
         )
-        combined = max(combined, 0.0)   # floor at 0 (penalty can't go negative)
-
-        evaluated.append((item, entity_score, yr_score, agg_pen, combined, tier, keep))
-
-    # Apply keep/drop decisions
-    kept = [
-        (item, es, ys, ap, combined, tier)
-        for item, es, ys, ap, combined, tier, keep in evaluated
-        if keep
-    ]
+        return False
 
     logger.info(
-        "search.domain_filter_summary",
-        company=company_name,
-        year=year,
-        total=len(items),
-        kept=len(kept),
-        dropped=len(items) - len(kept),
-        trusted=sum(1 for _, _, _, _, _, t, k in evaluated if t == _TIER_TRUSTED and k),
-        negative=sum(1 for _, _, _, _, _, t, _ in evaluated if t == _TIER_NEGATIVE),
-        wrong_year_dropped=sum(
-            1 for _, es, ys, _, _, t, k in evaluated
-            if not k and t == _TIER_UNKNOWN and ys == 0.0
-        ),
-        unknown_kept=sum(1 for _, _, _, _, _, t, k in evaluated if t == _TIER_UNKNOWN and k),
-        unknown_dropped=sum(1 for _, _, _, _, _, t, k in evaluated if t == _TIER_UNKNOWN and not k),
+        "search.strict_filter.pass",
+        url=url[:90],
+        target_type=target_type,
+        target_year=target_year,
     )
-
-    if not kept:
-        # Soft fallback: restore non-NEGATIVE results (unchanged from v1)
-        logger.warning(
-            "search.domain_filter_fallback",
-            company=company_name,
-            message=(
-                "All results dropped by domain/year filter. "
-                "Reverting to non-NEGATIVE results in original order."
-            ),
-        )
-        kept = []
-        for item, es, ys, ap, combined, tier, _ in evaluated:
-            if tier != _TIER_NEGATIVE:
-                recomputed_combined = max(
-                    _ENTITY_WEIGHT   * score_entity_relevance(
-                        item.get("url", ""), item.get("title", ""),
-                        item.get("content", ""), aliases)
-                    + _YEAR_WEIGHT   * (score_year_relevance(
-                        item.get("url", ""), item.get("title", ""),
-                        item.get("content", ""), year)[0] if year else 0.5)
-                    + _ORIGINAL_WEIGHT * item.get("score", 0.0)
-                    + (_aggregator_penalty(_extract_domain(item.get("url", "")))
-                       if tier == _TIER_UNKNOWN else 0.0),
-                    0.0,
-                )
-                kept.append((item, es, ys, ap, recomputed_combined, tier))
-
-    if not kept:
-        # Absolute fallback: return original list (unchanged from v1)
-        logger.warning(
-            "search.domain_filter_absolute_fallback",
-            company=company_name,
-            message=(
-                "All results from rival domains. "
-                "Returning original list to avoid empty result."
-            ),
-        )
-        return items
-
-    # Re-rank by combined score (includes aggregator penalty)
-    kept.sort(key=lambda x: x[4], reverse=True)
-
-    # ── CHANGE 6: Log top-3 results with full score breakdown ─────────────────
-    top3 = kept[:3]
-    for rank, (item, es, ys, ap, combined, tier) in enumerate(top3, start=1):
-        url    = item.get("url", "")
-        domain = _extract_domain(url)
-        logger.info(
-            "search.top_result",
-            rank=rank,
-            url=url[:100],
-            domain=domain,
-            domain_tier=tier,
-            entity_score=round(es, 3),
-            year_score=round(ys, 3),
-            aggregator_penalty=round(ap, 3),
-            search_score=round(item.get("score", 0.0), 3),
-            combined_score=round(combined, 3),
-        )
-
-    return [item for item, _, _, _, _, _ in kept]
+    return True
 
 
-# =============================================================================
-# SERPAPI CLIENT  (unchanged from v1)
-# =============================================================================
+# ---------------------------------------------------------------------------
+# SERPAPI CLIENT
+# ---------------------------------------------------------------------------
 
 def _serpapi_score(position: int) -> float:
+    """Return 1/position score for ordering among valid results only."""
     return round(1.0 / max(position, 1), 4)
 
 
@@ -846,7 +558,19 @@ def _serpapi_score(position: int) -> float:
 )
 def _call_serpapi(query: str, api_key: str, num_results: int) -> list[dict]:
     """
-    Execute one Google search via SerpApi.  Unchanged from v1.
+    Execute one Google search via SerpApi and return normalised result dicts.
+
+    Each returned dict has:
+        url          str   — the page URL (SerpApi "link" field)
+        title        str   — the page title
+        content      str   — snippet, truncated to 400 chars
+        score        float — synthesised from position (1/position)
+        query_source str   — set by caller
+
+    Raises:
+        RuntimeError           on SerpApi-level errors.
+        httpx.HTTPStatusError  on non-2xx responses after retries.
+        httpx.TimeoutException on network timeout.
     """
     params = {
         "engine":  "google",
@@ -871,155 +595,99 @@ def _call_serpapi(query: str, api_key: str, num_results: int) -> list[dict]:
         url = item.get("link", "").strip()
         if not url:
             continue
+
         results.append({
             "url":     url,
             "title":   item.get("title", "") or "",
-            "content": (item.get("snippet", "") or "")[:300],
+            "content": (item.get("snippet", "") or "")[:400],
             "score":   _serpapi_score(item.get("position", 99)),
         })
 
     return results
 
 
-# =============================================================================
-# QUERY BUILDER + URL CLASSIFIER  (unchanged logic, new templates used above)
-# =============================================================================
+# ---------------------------------------------------------------------------
+# QUERY BUILDER
+# ---------------------------------------------------------------------------
 
 def _build_all_queries(company: str, year: int) -> list[tuple[str, str]]:
     """Expand every template for every type into (query_string, type_hint) pairs."""
     pairs: list[tuple[str, str]] = []
+    year_short = str(year)[-2:]
     for report_type, templates in _QUERY_TEMPLATES.items():
         for template in templates:
             query = template.format(
                 company=company,
                 year=year,
+                year_short=year_short,
                 past_year=year - 1,
             )
             pairs.append((query, report_type))
     return pairs
 
 
-def _classify_url(url: str, title: str = "", snippet: str = "") -> Optional[str]:
-    """
-    Classify a URL into exactly one report type.
-
-    v3 — uses combined text (URL + title + snippet) and adds fallback heuristics
-    for URLs that carry no ESG/annual-report keywords themselves but are clearly
-    valid investor-relations or PDF links (e.g. investors.kennametal.com/static-files/xxxx.pdf,
-    /node/xxxxx/pdf).
-
-    Priority order (checked in sequence; first match wins):
-      1. ESG   — "sustainability" | "esg" | "environmental"
-      2. Integrated — "integrated report" | "annual report" | "10-k"
-      3. BRSR  — "brsr" | "business responsibility"
-
-    Fallback heuristics (only reached when no keyword rule fires):
-      a. "investors." in domain  → Integrated
-      b. URL path ends with ".pdf" → Integrated
-
-    Preserves _URL_KEYWORD_RULES for backward compatibility; the keyword
-    rules defined there are still used as the primary classification layer.
-
-    Args:
-        url:     Full result URL.
-        title:   Page/document title from the search result.
-        snippet: Short description/snippet from the search result.
-
-    Returns:
-        "BRSR" | "ESG" | "Integrated" | None
-    """
-    text   = f"{url} {title} {snippet}".lower()
-    domain = _extract_domain(url)
-
-    # ── Priority 1: ESG keywords ──────────────────────────────────────────────
-    if any(kw in text for kw in ("sustainability", "esg", "environmental")):
-        return "ESG"
-
-    # ── Priority 2: Integrated / Annual Report keywords ───────────────────────
-    if any(kw in text for kw in ("integrated report", "annual report", "10-k")):
-        return "Integrated"
-
-    # ── Priority 3: BRSR keywords ─────────────────────────────────────────────
-    if any(kw in text for kw in ("brsr", "business responsibility")):
-        return "BRSR"
-
-    # ── Fallback: keyword rules from _URL_KEYWORD_RULES (backward compat) ─────
-    # These are broader tuple-based rules; checked only when the priority
-    # keywords above did not fire.
-    for report_type in PRIORITY_ORDER:
-        for keyword_tuple in _URL_KEYWORD_RULES[report_type]:
-            if all(kw in text for kw in keyword_tuple):
-                return report_type
-
-    # ── Fallback heuristics for opaque IR / PDF URLs ──────────────────────────
-    # Handles URLs like:
-    #   investors.kennametal.com/static-files/abc123.pdf
-    #   example.com/node/12345/pdf
-    # where neither the URL path nor title/snippet contains report-type keywords.
-    if "investors." in domain:
-        return "Integrated"
-
-    url_path = url.lower().split("?")[0]   # strip query string before checking extension
-    if url_path.endswith(".pdf"):
-        return "Integrated"
-
-    return None
-
-
-# =============================================================================
+# ---------------------------------------------------------------------------
 # PUBLIC API
-# =============================================================================
+# ---------------------------------------------------------------------------
 
 def collect_and_classify(
     company_name: str,
     year: int,
-    max_results_per_query: int = 5,
+    max_results_per_query: int = 7,
 ) -> dict[str, SearchResult]:
     """
-    Run all queries via SerpApi, pool + deduplicate results, apply domain-aware
-    company filtering and re-ranking, then classify into report-type buckets.
+    Run all queries via SerpApi, apply STRICT three-way validation per result,
+    and return only high-confidence matches grouped by report type.
 
-    Changes vs v1:
-      CHANGE 1: 16 query templates (was 4) → better recall.
-      CHANGE 4: per-type confidence threshold applied after reranking.
-      CHANGE 6: per-type confidence filtering stats logged.
+    Algorithm
+    ---------
+    1. Build company token sets once (anchor tokens for title/URL matching).
+    2. Run every query template against SerpApi (7 results each).
+    3. Pool all raw results; globally deduplicate by URL (keep highest score).
+    4. For each result, apply strict three-way filter:
+         a) company_match — token in title or URL (not snippet-only)
+         b) year_match    — correct year present, no adjacent-year signal
+         c) type_match    — detected type equals query's target type
+       ALL three must pass.  Any failure = result silently discarded.
+    5. Return one SearchResult per type.  Empty discovered list when no
+       high-confidence result found.
 
-    Steps (structure unchanged):
-      1. Run every query template against SerpApi.
-      2. Pool + globally deduplicate by URL (keep highest score per URL).
-      3. Domain-aware filter + re-rank (now includes aggregator penalty).
-      4. NEW: Confidence threshold filter per result.
-      5. Classify each URL into one report type.
-      6. Assign each URL to exactly one type (BRSR > ESG > Integrated).
-      7. Return one SearchResult per type.
+    No fallback logic. No partial matches. No guessing.
+    No PDF download unless all three checks pass.
 
     Args:
-        company_name:          Company name string.
-        year:                  Fiscal year end integer (e.g. 2025).
-        max_results_per_query: SerpApi num= per query (default 5).
+        company_name:          Company name, e.g. "Kennametal".
+        year:                  Fiscal year end integer, e.g. 2025.
+        max_results_per_query: SerpApi num= parameter (7 recommended).
 
     Returns:
-        {"BRSR": SearchResult, "ESG": SearchResult, "Integrated": SearchResult}
-        All three keys always present.
+        {
+            "BRSR":       SearchResult(discovered=[...] or []),
+            "ESG":        SearchResult(discovered=[...] or []),
+            "Integrated": SearchResult(discovered=[...] or []),
+        }
     """
     settings = get_settings()
 
     if not settings.serpapi_api_key:
         logger.warning(
             "search_service.no_api_key",
-            message="SERPAPI_API_KEY not set — returning empty results.",
+            message="SERPAPI_API_KEY not set -- returning empty results.",
         )
         return _empty_results(company_name, year)
 
+    token_sets  = _get_company_tokens(company_name)
     all_queries = _build_all_queries(company_name, year)
+
     logger.info(
         "search_service.collect_start",
         company=company_name,
         year=year,
-        total_queries=len(all_queries),   # now 16 vs old 4
+        total_queries=len(all_queries),
+        anchor_tokens=token_sets["anchor"][:6],
     )
 
-    # ── Step 1: Run all queries ───────────────────────────────────────────────
+    # Step 1: Run all queries
     raw_pool: list[dict] = []
 
     for query, query_type_hint in all_queries:
@@ -1029,13 +697,16 @@ def collect_and_classify(
             logger.error(
                 "search_service.query_failed",
                 query=query,
-                query_type_hint=query_type_hint,
                 error=str(exc),
             )
             continue
 
         for item in items:
-            raw_pool.append({**item, "query_source": query})
+            raw_pool.append({
+                **item,
+                "query_source":    query,
+                "query_type_hint": query_type_hint,
+            })
 
     logger.info(
         "search_service.raw_pool_size",
@@ -1048,11 +719,10 @@ def collect_and_classify(
             "search_service.empty_pool",
             company=company_name,
             year=year,
-            message="All queries returned no results. Check API key and quota.",
         )
         return _empty_results(company_name, year)
 
-    # ── Step 2: Global URL deduplication ─────────────────────────────────────
+    # Step 2: Global URL deduplication — keep highest score per URL
     best_by_url: dict[str, dict] = {}
     for item in raw_pool:
         url = item["url"]
@@ -1060,167 +730,64 @@ def collect_and_classify(
             best_by_url[url] = item
 
     unique_items = list(best_by_url.values())
+
     logger.info(
         "search_service.after_dedup",
         company=company_name,
         unique_count=len(unique_items),
     )
 
-    # ── Step 3: Domain-aware filter + re-rank ────────────────────────────────
-    unique_items = _filter_and_rerank(unique_items, company_name, year=year)
+    # Step 3: Strict three-way validation
+    classified: dict[str, list[DiscoveredReport]] = {t: [] for t in PRIORITY_ORDER}
+    passed_count  = 0
+    dropped_count = 0
 
-    # ── Step 4: CHANGE 4 — Per-result confidence threshold ───────────────────
-    # Compute combined score for each surviving item and filter out weak results.
-    # We need the combined score computed in _filter_and_rerank but that
-    # function returns only items (not scores).  We recompute lightly here:
-    # entity and year scoring are cheap (regex over short strings).
-    #
-    # Fallback safety: if ALL items for a type fall below the threshold after
-    # classification, the threshold is waived for that type (same principle as
-    # the existing soft/absolute fallbacks).
-    aliases = expand_company_aliases(company_name)
+    for item in unique_items:
+        url        = item["url"]
+        title      = item["title"]
+        snippet    = item["content"]
+        query_type = item["query_type_hint"]
 
-    def _quick_combined(item: dict) -> float:
-        """Recompute combined score for threshold check."""
-        url     = item.get("url", "")
-        title   = item.get("title", "") or ""
-        snippet = item.get("content", "") or ""
-        domain  = _extract_domain(url)
-        tier    = _resolve_domain_tier(domain, aliases)
-
-        if tier == _TIER_TRUSTED:
-            es = 1.0
-        elif tier == _TIER_NEGATIVE:
-            es = 0.0
-        else:
-            es = score_entity_relevance(url, title, snippet, aliases)
-
-        ys, _ = score_year_relevance(url, title, snippet, year) if year else (0.5, False)
-        ap    = _aggregator_penalty(domain) if tier == _TIER_UNKNOWN else 0.0
-        return max(
-            _ENTITY_WEIGHT * es + _YEAR_WEIGHT * ys
-            + _ORIGINAL_WEIGHT * item.get("score", 0.0) + ap,
-            0.0,
+        passed = _strict_validate(
+            url=url,
+            title=title,
+            snippet=snippet,
+            token_sets=token_sets,
+            target_year=year,
+            target_type=query_type,
         )
 
-    # Tag each item with its combined score for logging
-    scored_unique = [(item, _quick_combined(item)) for item in unique_items]
+        if not passed:
+            dropped_count += 1
+            continue
 
-    # ── Step 5: Classify + assign ─────────────────────────────────────────────
-    classified: dict[str, list[tuple[DiscoveredReport, float]]] = {
-        t: [] for t in PRIORITY_ORDER
-    }
-    discarded_count = 0
-
-    for item, combined in scored_unique:
-        url      = item["url"]
-        title    = item.get("title", "")
-        snippet  = item.get("content", "")
-        assigned = _classify_url(url, title, snippet)
-        if assigned is None:
-            if combined >= 0.5:
-                assigned = "Integrated"
-                logger.debug(
-                    "search_service.fallback_classification",
-                    url=url[:80],
-                    assigned=assigned,
-                    combined_score=round(combined, 3),
-                )
-            else:
-                logger.debug("search_service.url_unclassified", url=url[:80])
-                discarded_count += 1
-                continue
-        classified[assigned].append((
-            DiscoveredReport(
-                url=url,
-                title=item["title"],
-                snippet=item["content"],
-                score=item["score"],
-                query_source=item["query_source"],
-            ),
-            combined,
+        passed_count += 1
+        classified[query_type].append(DiscoveredReport(
+            url=url,
+            title=title,
+            snippet=snippet,
+            score=item["score"],
+            query_source=item["query_source"],
         ))
 
     logger.info(
-        "search_service.classification_complete",
+        "search_service.strict_filter_summary",
         company=company_name,
-        discarded_unclassified=discarded_count,
+        year=year,
+        total_unique=len(unique_items),
+        passed=passed_count,
+        dropped=dropped_count,
         brsr_count=len(classified["BRSR"]),
         esg_count=len(classified["ESG"]),
         integrated_count=len(classified["Integrated"]),
     )
 
-    # ── Step 6: Build SearchResult per type with threshold filtering ──────────
+    # Step 4: Build SearchResult per type
     results: dict[str, SearchResult] = {}
 
     for report_type in PRIORITY_ORDER:
-        type_entries = classified[report_type]
-        # Primary sort: combined score descending (best first)
-        type_entries.sort(key=lambda x: x[1], reverse=True)
-
-        # ── CHANGE 4: Confidence threshold ────────────────────────────────────
-        above_threshold = [
-            (disc, score) for disc, score in type_entries
-            if score >= _MIN_COMBINED_SCORE
-        ]
-
-        if above_threshold:
-            # Normal case: at least one result meets the threshold
-            filtered_entries = above_threshold
-            dropped_by_threshold = len(type_entries) - len(above_threshold)
-            if dropped_by_threshold > 0:
-                logger.info(
-                    "search_service.threshold_filter",
-                    report_type=report_type,
-                    company=company_name,
-                    total=len(type_entries),
-                    kept=len(above_threshold),
-                    dropped=dropped_by_threshold,
-                    threshold=_MIN_COMBINED_SCORE,
-                    top_score=round(type_entries[0][1], 3) if type_entries else 0,
-                )
-        else:
-            # Fallback: waive threshold to prevent empty results
-            filtered_entries = type_entries
-            if type_entries:
-                logger.warning(
-                    "search_service.threshold_waived",
-                    report_type=report_type,
-                    company=company_name,
-                    reason="All results below threshold — waiving to preserve fallback",
-                    best_score=round(type_entries[0][1], 3) if type_entries else 0,
-                    threshold=_MIN_COMBINED_SCORE,
-                )
-
-        urls_for_type = [disc for disc, _ in filtered_entries]
-
-        if not urls_for_type:
-            logger.warning(
-                "search_service.type_not_found",
-                company=company_name,
-                year=year,
-                report_type=report_type,
-            )
-        else:
-            # ── CHANGE 6: Log per-type top-3 with combined scores ─────────────
-            for rank, (disc, score) in enumerate(filtered_entries[:3], start=1):
-                logger.info(
-                    "search_service.type_top_result",
-                    report_type=report_type,
-                    rank=rank,
-                    url=disc.url[:100],
-                    combined_score=round(score, 3),
-                    threshold=_MIN_COMBINED_SCORE,
-                )
-            logger.info(
-                "search_service.type_found",
-                company=company_name,
-                year=year,
-                report_type=report_type,
-                count=len(urls_for_type),
-                top_url=urls_for_type[0].url[:80],
-                top_combined_score=round(filtered_entries[0][1], 3),
-            )
+        urls_for_type = classified[report_type]
+        urls_for_type.sort(key=lambda r: r.score, reverse=True)
 
         results[report_type] = SearchResult(
             company_name=company_name,
@@ -1231,10 +798,32 @@ def collect_and_classify(
             queries_run=len(all_queries),
         )
 
+        if not urls_for_type:
+            logger.warning(
+                "search_service.type_not_found",
+                company=company_name,
+                year=year,
+                report_type=report_type,
+                message=(
+                    f"No high-confidence {report_type} result for "
+                    f"{company_name} FY{year}. All three checks must pass."
+                ),
+            )
+        else:
+            logger.info(
+                "search_service.type_found",
+                company=company_name,
+                year=year,
+                report_type=report_type,
+                count=len(urls_for_type),
+                top_url=urls_for_type[0].url[:90],
+            )
+
     return results
 
 
 def _empty_results(company_name: str, year: int) -> dict[str, SearchResult]:
+    """Return an empty SearchResult for every type."""
     return {
         rtype: SearchResult(
             company_name=company_name,
@@ -1252,9 +841,9 @@ def search_reports(
     company_name: str,
     year: int,
     report_type: str = DEFAULT_REPORT_TYPE,
-    max_results_per_query: int = 3,
+    max_results_per_query: int = 7,
 ) -> SearchResult:
-    """Single-type search. Backward-compatible wrapper."""
+    """Single-type search. Kept for backward compatibility."""
     canonical_type = next(
         (t for t in PRIORITY_ORDER if t.lower() == report_type.lower()),
         DEFAULT_REPORT_TYPE,
@@ -1270,9 +859,9 @@ def search_reports(
 def search_all_report_types(
     company_name: str,
     year: int,
-    max_results_per_query: int = 3,
+    max_results_per_query: int = 7,
 ) -> dict[str, SearchResult]:
-    """Alias for collect_and_classify(). Backward-compatible."""
+    """Alias for collect_and_classify(). Kept for backward compatibility."""
     return collect_and_classify(
         company_name=company_name,
         year=year,
