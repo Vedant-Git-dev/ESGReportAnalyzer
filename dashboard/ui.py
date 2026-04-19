@@ -70,7 +70,7 @@ st.set_page_config(
 )
 
 # =============================================================================
-# DESIGN TOKENS  (unchanged)
+# DESIGN TOKENS
 # =============================================================================
 
 C = {
@@ -92,43 +92,304 @@ C = {
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-html, body, [class*="css"] {{ font-family: {C['font']}; background-color: {C['bg']} !important; color: {C['text']} !important; }}
+
+/* ── Base ── */
+html, body, [class*="css"] {{
+    font-family: {C['font']};
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
 .stApp {{ background-color: {C['bg']} !important; }}
-[data-testid="stSidebar"] {{ background-color: {C['surface']} !important; border-right: 1px solid {C['border']}; }}
+
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {{
+    background-color: {C['surface']} !important;
+    border-right: 1px solid {C['border']};
+}}
 [data-testid="stSidebar"] * {{ color: {C['text']} !important; }}
-p, span, div, label, h1, h2, h3, h4, h5, h6, .stMarkdown, .stText, .stCaption {{ color: {C['text']} !important; }}
-[data-baseweb="input"], [data-baseweb="input-container"], [data-baseweb="base-input"] {{ background-color: {C['bg']} !important; color: {C['text']} !important; }}
-.stTextInput > div > div > input {{ background-color: {C['bg']} !important; color: {C['text']} !important; border: 1px solid {C['border']} !important; border-radius: 6px; }}
-.stNumberInput input {{ background-color: {C['bg']} !important; color: {C['text']} !important; border: 1px solid {C['border']} !important; }}
-[data-testid="stNumberInputContainer"] {{ background-color: {C['bg']} !important; }}
-.stSelectbox > div > div {{ background-color: {C['bg']} !important; color: {C['text']} !important; border: 1px solid {C['border']} !important; border-radius: 6px; }}
-[data-baseweb="popover"], [data-baseweb="menu"] {{ background-color: {C['bg']} !important; }}
-[data-baseweb="option"] {{ background-color: {C['bg']} !important; color: {C['text']} !important; }}
-.stButton > button {{ background-color: {C['blue']}; color: #ffffff !important; border: none; border-radius: 6px; padding: 0.5rem 1.2rem; font-weight: 600; font-size: 14px; width: 100%; transition: background 0.2s; }}
-.stButton > button:hover {{ background-color: #0b5ed7; color: #ffffff !important; }}
-.stButton > button:disabled {{ background-color: {C['border']} !important; color: {C['sub']} !important; }}
-[data-testid="stFileUploader"] {{ background-color: {C['surface']} !important; border-radius: 8px; }}
-[data-testid="stFileUploaderDropzone"] {{ background-color: {C['surface']} !important; border: 2px dashed {C['border']} !important; border-radius: 8px; }}
-[data-testid="stTabs"] button {{ color: {C['text']} !important; background: transparent !important; }}
-[data-testid="stTabs"] button[aria-selected="true"] {{ border-bottom: 2px solid {C['blue']} !important; color: {C['blue']} !important; }}
-[data-testid="stExpander"] {{ background-color: {C['surface']} !important; border: 1px solid {C['border']} !important; border-radius: 8px; }}
-.stAlert, .stInfo, .stWarning, .stError, .stSuccess {{ color: {C['text']} !important; }}
+
+/* ── Typography ── */
+p, span, div, label, h1, h2, h3, h4, h5, h6,
+.stMarkdown, .stText, .stCaption {{
+    color: {C['text']} !important;
+}}
+
+/* ── Text inputs ── */
+[data-baseweb="input"],
+[data-baseweb="input-container"],
+[data-baseweb="base-input"] {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+.stTextInput > div > div > input {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 6px;
+}}
+.stNumberInput input {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1px solid {C['border']} !important;
+}}
+[data-testid="stNumberInputContainer"] {{
+    background-color: {C['bg']} !important;
+}}
+
+/* ── Select / dropdown – FIXED VISIBILITY ── */
+.stSelectbox > div > div {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1.5px solid {C['border']} !important;
+    border-radius: 6px;
+}}
+div[data-baseweb="select"] > div {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+    border: 1.5px solid {C['border']} !important;
+    border-radius: 6px;
+}}
+div[data-baseweb="select"] span {{
+    color: {C['text']} !important;
+}}
+[data-baseweb="popover"],
+[data-baseweb="menu"] {{
+    background-color: {C['bg']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
+}}
+[data-baseweb="option"] {{
+    background-color: {C['bg']} !important;
+    color: {C['text']} !important;
+}}
+[data-baseweb="option"]:hover {{
+    background-color: {C['surface']} !important;
+    color: {C['text']} !important;
+}}
+/* Dropdown arrow icon */
+[data-baseweb="select"] svg {{
+    fill: {C['text']} !important;
+    color: {C['text']} !important;
+}}
+
+/* ── Buttons – FIXED VISIBILITY ── */
+.stButton > button {{
+    background-color: {C['blue']} !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 6px;
+    padding: 0.5rem 1.2rem;
+    font-weight: 600;
+    font-size: 14px;
+    width: 100%;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 6px rgba(13,110,253,0.25);
+}}
+.stButton > button:hover {{
+    background-color: #0b5ed7 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(13,110,253,0.35);
+}}
+.stButton > button:active {{
+    background-color: #0a4ebf !important;
+    color: #ffffff !important;
+}}
+.stButton > button:disabled {{
+    background-color: {C['border']} !important;
+    color: {C['sub']} !important;
+    box-shadow: none;
+    cursor: not-allowed;
+}}
+
+/* ── File uploader ── */
+[data-testid="stFileUploader"] {{
+    background-color: {C['surface']} !important;
+    border-radius: 8px;
+}}
+[data-testid="stFileUploaderDropzone"] {{
+    background-color: {C['surface']} !important;
+    border: 2px dashed {C['border']} !important;
+    border-radius: 8px;
+}}
+
+/* ── Tabs ── */
+[data-testid="stTabs"] button {{
+    color: {C['text']} !important;
+    background: transparent !important;
+}}
+[data-testid="stTabs"] button[aria-selected="true"] {{
+    border-bottom: 2px solid {C['blue']} !important;
+    color: {C['blue']} !important;
+}}
+
+/* ── Expander ── */
+[data-testid="stExpander"] {{
+    background-color: {C['surface']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 8px;
+}}
+
+/* ── Alerts ── */
+.stAlert, .stInfo, .stWarning, .stError, .stSuccess {{
+    color: {C['text']} !important;
+}}
 [data-testid="stAlertContainer"] * {{ color: {C['text']} !important; }}
-[data-testid="stDataFrame"] * {{ color: {C['text']} !important; background-color: {C['bg']} !important; }}
-.stCode, .stCodeBlock, code, pre {{ background-color: #F1F3F5 !important; color: #212529 !important; border: 1px solid {C['border']}; border-radius: 6px; }}
+
+/* ── DataFrame ── */
+[data-testid="stDataFrame"] * {{
+    color: {C['text']} !important;
+    background-color: {C['bg']} !important;
+}}
+
+/* ── Code blocks ── */
+.stCode, .stCodeBlock, code, pre {{
+    background-color: #F1F3F5 !important;
+    color: #212529 !important;
+    border: 1px solid {C['border']};
+    border-radius: 6px;
+}}
+
+/* ── Divider ── */
 hr {{ border-color: {C['border']}; margin: 1rem 0; }}
-.card {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 10px; padding: 16px 20px; margin-bottom: 10px; color: {C['text']} !important; }}
+
+/* ── Custom cards & layout ── */
+.card {{
+    background: {C['surface']};
+    border: 1px solid {C['border']};
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    color: {C['text']} !important;
+}}
 .card * {{ color: {C['text']} !important; }}
-.sec {{ font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: {C['sub']}; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 2px solid {C['border']}; }}
-.label {{ font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: {C['text']}; margin-bottom: 3px; }}
-.label-tag {{ font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: {C['text']}; margin-bottom: 3px; }}
-.badge-green {{ background: #D1E7DD; color: #0F5132 !important; border-radius: 20px; font-size: 11px; font-weight: 700; padding: 2px 10px; }}
-.badge-blue {{ background: #CFE2FF; color: #084298 !important; border-radius: 6px; font-size: 11px; font-weight: 600; padding: 2px 8px; }}
-.badge-amber {{ background: #FFF3CD; color: #664D03 !important; border-radius: 6px; font-size: 11px; font-weight: 600; padding: 2px 8px; }}
-.summary-box {{ background: {C['surface']}; border-left: 4px solid {C['blue']}; border-radius: 0 8px 8px 0; padding: 18px 22px; line-height: 1.75; font-size: 14px; color: {C['text']} !important; }}
-.step-log {{ background: #F1F3F5; border: 1px solid {C['border']}; border-radius: 6px; padding: 10px 14px; font-family: monospace; font-size: 12px; color: {C['text']} !important; line-height: 1.6; min-height: 60px; }}
-.upload-info {{ background: #E8F4FD; border: 1px solid #B8D9F5; border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #084298 !important; margin-top: 4px; }}
-.upload-zone {{ background: {C['surface']}; border: 2px dashed {C['border']}; border-radius: 12px; padding: 24px; text-align: center; }}
+.sec {{
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: {C['sub']};
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid {C['border']};
+}}
+.label {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: {C['text']};
+    margin-bottom: 3px;
+}}
+.label-tag {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: {C['text']};
+    margin-bottom: 3px;
+}}
+
+/* ── Badges ── */
+.badge-green {{
+    background: #D1E7DD;
+    color: #0F5132 !important;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 10px;
+}}
+.badge-blue {{
+    background: #CFE2FF;
+    color: #084298 !important;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+}}
+.badge-amber {{
+    background: #FFF3CD;
+    color: #664D03 !important;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+}}
+
+/* ── Content blocks ── */
+.summary-box {{
+    background: {C['surface']};
+    border-left: 4px solid {C['blue']};
+    border-radius: 0 8px 8px 0;
+    padding: 18px 22px;
+    line-height: 1.75;
+    font-size: 14px;
+    color: {C['text']} !important;
+}}
+.step-log {{
+    background: #F1F3F5;
+    border: 1px solid {C['border']};
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: monospace;
+    font-size: 12px;
+    color: {C['text']} !important;
+    line-height: 1.6;
+    min-height: 60px;
+}}
+.upload-info {{
+    background: #E8F4FD;
+    border: 1px solid #B8D9F5;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #084298 !important;
+    margin-top: 4px;
+}}
+.upload-zone {{
+    background: {C['surface']};
+    border: 2px dashed {C['border']};
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+}}
+
+/* ── Progress status box ── */
+.status-box {{
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #1E40AF !important;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}}
+.status-box-warn {{
+    background: #FFFBEB;
+    border: 1px solid #FDE68A;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #92400E !important;
+    margin-bottom: 8px;
+}}
+.status-box-ok {{
+    background: #F0FDF4;
+    border: 1px solid #BBF7D0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #14532D !important;
+    margin-bottom: 8px;
+}}
+
+/* ── Spinner override ── */
+[data-testid="stSpinner"] > div {{
+    border-top-color: {C['blue']} !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -371,22 +632,10 @@ def _db_get_all_reports(company_name: str, fy: int) -> dict:
 
 
 # =============================================================================
-# ▼▼▼  KPI-LEVEL CACHE LAYER  (NEW in v4)  ▼▼▼
+# KPI-LEVEL CACHE LAYER  (unchanged)
 # =============================================================================
 
 def _cache_load(company_id: uuid.UUID, fy: int) -> dict:
-    """
-    Load all valid cached KPI records for (company_id, fy) using
-    KPICacheService.select_best_per_kpi().
-
-    Applies Integrated > BRSR > ESG priority per KPI — identical to
-    run_benchmark.py.  Returns only KPIs with confidence >= 0.40 and
-    plausible values.
-
-    Returns:
-        {kpi_name: {"value", "unit", "method", "confidence", "report_type"}}
-        Empty dict on any error.
-    """
     try:
         from core.database import get_db
         from services.kpi_cache_service import KPICacheService
@@ -400,16 +649,11 @@ def _cache_load(company_id: uuid.UUID, fy: int) -> dict:
                 db=db,
             )
         return cached
-    except Exception as exc:
-        # Non-fatal — treat as cache miss
+    except Exception:
         return {}
 
 
 def _cache_load_revenue(company_id: uuid.UUID, fy: int):
-    """
-    Load cached revenue via KPICacheService.load_revenue().
-    Returns RevenueResult or None.
-    """
     try:
         from core.database import get_db
         from services.kpi_cache_service import KPICacheService
@@ -422,7 +666,7 @@ def _cache_load_revenue(company_id: uuid.UUID, fy: int):
 
 
 # =============================================================================
-# ▼▼▼  EXTRACTION (CACHE-AWARE, v4)  ▼▼▼
+# EXTRACTION (CACHE-AWARE, v4) — unchanged backend logic
 # =============================================================================
 
 def _step_extract_missing(
@@ -431,28 +675,9 @@ def _step_extract_missing(
     fy: int,
     log: list[str],
     llm_service,
-    missing_kpi_names: list[str],   # ← ONLY these are extracted
-    need_revenue: bool,             # ← skip revenue extraction if already cached
+    missing_kpi_names: list[str],
+    need_revenue: bool,
 ) -> dict:
-    """
-    Cache-aware extraction step (replaces the old _step_extract).
-
-    Key change: ExtractionAgent.extract_all() is called with an explicit
-    kpi_names list.  When missing_kpi_names is empty AND revenue is not
-    needed, the function returns immediately without touching the PDF.
-
-    Args:
-        report_id:          UUID of the report to extract from.
-        report_type:        Human-readable label for log messages.
-        fy:                 Fiscal year integer.
-        log:                Mutable log list (appended in-place).
-        llm_service:        LLMService instance or None.
-        missing_kpi_names:  KPI names that have no valid cached value.
-        need_revenue:       True when revenue is not yet cached.
-
-    Returns:
-        {"kpis": {name: record_dict}, "revenue": RevenueResult | None}
-    """
     from agents.extraction_agent import ExtractionAgent
     from services.revenue_extractor import extract_revenue
     from core.database import get_db
@@ -460,14 +685,12 @@ def _step_extract_missing(
     new_kpis: dict = {}
     new_revenue     = None
 
-    # ── Short-circuit: nothing to do ─────────────────────────────────────────
     if not missing_kpi_names and not need_revenue:
         log.append(f"  [{report_type}] All KPIs cached — skipping extraction.")
         return {"kpis": new_kpis, "revenue": new_revenue}
 
     prefix = f"  [{report_type}] (id={str(report_id)[:8]})"
 
-    # ── KPI extraction (only for missing KPIs) ────────────────────────────────
     if missing_kpi_names:
         log.append(f"{prefix} Extracting {len(missing_kpi_names)} missing KPI(s): "
                    f"{missing_kpi_names}")
@@ -476,7 +699,7 @@ def _step_extract_missing(
                 extracted_list = ExtractionAgent().extract_all(
                     report_id=report_id,
                     db=db,
-                    kpi_names=missing_kpi_names,   # ← scoped to missing only
+                    kpi_names=missing_kpi_names,
                 )
             for ext in extracted_list:
                 if ext.normalized_value is None:
@@ -503,7 +726,6 @@ def _step_extract_missing(
     else:
         log.append(f"{prefix} No missing KPIs — skipping ExtractionAgent.")
 
-    # ── Revenue extraction (only when not cached) ─────────────────────────────
     if need_revenue:
         try:
             from models.db_models import Report
@@ -532,14 +754,10 @@ def _step_extract_missing(
 
 
 # =============================================================================
-# DB helpers (unchanged from v3)
+# DB helpers (unchanged)
 # =============================================================================
 
 def _db_load_kpis_and_revenue(company_id: uuid.UUID, fy: int) -> dict:
-    """
-    Load best KPI record per KPI (Integrated > BRSR > ESG priority).
-    Returns all active KPIs — UI renders whatever comes back.
-    """
     empty = {"kpis": {}, "revenue": None, "file_path": None}
     try:
         from core.database import get_db
@@ -659,10 +877,6 @@ def _db_store_kpis(
     kpi_records:    dict,
     revenue_result,
 ) -> None:
-    """
-    Persist KPIs + revenue using KPICacheService (dedup-safe, v4).
-    Replaces the old hand-rolled insert loop.
-    """
     try:
         from core.database import get_db
         from services.kpi_cache_service import KPICacheService
@@ -681,22 +895,36 @@ def _db_store_kpis(
 
 
 # =============================================================================
-# PIPELINE STEPS
+# PIPELINE STEPS  (unchanged backend, added status updates)
 # =============================================================================
 
-def _step_ingest(company_name: str, fy: int, sector: str, log: list[str]) -> dict:
+def _step_ingest(
+    company_name: str,
+    fy: int,
+    sector: str,
+    log: list[str],
+    status_placeholder=None,
+) -> dict:
     from agents.ingestion_agent import IngestionAgent
     from models.schemas import CompanyCreate
 
+    def _update(msg: str) -> None:
+        log.append(msg)
+        if status_placeholder:
+            status_placeholder.markdown(
+                f'<div class="status-box">🔍 {msg}</div>',
+                unsafe_allow_html=True,
+            )
+
     agent = IngestionAgent()
     company_data = CompanyCreate(name=company_name, sector=sector, country="India")
-    log.append(f"Searching BRSR, ESG, and Integrated reports for {company_name} FY{fy}.")
+    _update(f"Searching for {company_name} FY{fy} reports...")
 
     try:
         result = agent.run_multi_report_types(company_data=company_data, year=fy,
                                               auto_download=True)
     except Exception as exc:
-        log.append(f"  Ingestion failed: {exc}")
+        log.append(f"  Search failed: {exc}")
         return {"company_id": None, "reports": []}
 
     company   = result["company"]
@@ -728,21 +956,32 @@ def _step_ingest(company_name: str, fy: int, sector: str, log: list[str]) -> dic
     return {"company_id": company.id, "reports": reports}
 
 
-def _step_parse(report_id: uuid.UUID, report_type: str, log: list[str]) -> bool:
+def _step_parse(
+    report_id: uuid.UUID,
+    report_type: str,
+    log: list[str],
+    status_placeholder=None,
+) -> bool:
     from services.parse_orchestrator import ParseOrchestrator
-    log.append(f"  Parsing [{report_type}] (id={str(report_id)[:8]})...")
+
+    if status_placeholder:
+        status_placeholder.markdown(
+            f'<div class="status-box">📄 Reading {report_type} report...</div>',
+            unsafe_allow_html=True,
+        )
+
+    log.append(f"  Reading [{report_type}] report (id={str(report_id)[:8]})...")
     try:
         result = ParseOrchestrator().run(report_id=report_id, force=False)
         log.append(f"    {result.page_count} pages, "
-                   f"{result.meta.get('chunk_count', '?')} chunks.")
+                   f"{result.meta.get('chunk_count', '?')} sections found.")
         return True
     except Exception as exc:
-        log.append(f"    Parse failed: {exc}")
+        log.append(f"    Could not read report: {exc}")
         return False
 
 
 def _derive_total_ghg(kpi_records: dict) -> Optional[dict]:
-    """Derive total_ghg from scope_1 + scope_2 — kept for backward compat."""
     if "total_ghg_emissions" in kpi_records:
         return None
     s1 = kpi_records.get("scope_1_emissions")
@@ -763,18 +1002,37 @@ def _derive_total_ghg(kpi_records: dict) -> Optional[dict]:
 
 
 # =============================================================================
-# ▼▼▼  MAIN PIPELINE  (v4 — KPI-level cache integrated)  ▼▼▼
+# MAIN PIPELINE  (v4 — with improved status feedback)
 # =============================================================================
 
 def run_company_pipeline(
-    company_name: str, fy: int, sector: str, db_online: bool,
-    llm_service, status_placeholder, uploaded_file=None,
+    company_name: str,
+    fy: int,
+    sector: str,
+    db_online: bool,
+    llm_service,
+    status_placeholder,
+    uploaded_file=None,
     upload_report_type: str = "BRSR",
 ) -> CompanyData:
     log: list[str] = []
 
-    # ── Uploaded PDF path (unchanged logic) ───────────────────────────────────
+    def _set_status(msg: str, kind: str = "info") -> None:
+        """Update the status box. kind: info | warn | ok"""
+        css_class = {
+            "info": "status-box",
+            "warn": "status-box-warn",
+            "ok":   "status-box-ok",
+        }.get(kind, "status-box")
+        icon = {"info": "🔍", "warn": "⚠️", "ok": "✅"}.get(kind, "🔍")
+        status_placeholder.markdown(
+            f'<div class="{css_class}">{icon} {msg}</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ── Uploaded PDF path ─────────────────────────────────────────────────────
     if uploaded_file is not None:
+        _set_status("Processing uploaded report...")
         upload_result = run_upload_pipeline(
             uploaded_file=uploaded_file, company_name=company_name, fy=fy,
             sector=sector, report_type=upload_report_type, db_online=db_online,
@@ -794,6 +1052,7 @@ def run_company_pipeline(
                         merged[k] = v
                 if not rev:
                     rev = db_fill.get("revenue")
+            _set_status("Report processed successfully.", "ok")
             return CompanyData(
                 company_name=company_name, fy=fy, sector=sector,
                 kpi_records=merged, revenue_result=rev, log=log,
@@ -802,24 +1061,30 @@ def run_company_pipeline(
                 file_path=(upload_result.get("report_infos") or [{}])[0].file_path
                            if upload_result.get("report_infos") else None,
             )
-            
+
     if not db_online:
+        _set_status("Database is offline. Please check your connection.", "warn")
         return CompanyData(company_name=company_name, fy=fy, sector=sector,
                            kpi_records={}, revenue_result=None, log=log)
 
     # ── Step 1: Resolve company + reports ────────────────────────────────────
+    _set_status(f"Searching for {company_name} FY{fy} reports...")
     db_data    = _db_get_all_reports(company_name, fy)
     company_id = db_data.get("company_id")
     report_infos: list[ReportInfo] = []
 
     if db_data["exists"]:
         report_infos = db_data["reports"]
-        types_found  = [ri.report_type for ri in report_infos]
     else:
-        ingest     = _step_ingest(company_name, fy, sector, log)
+        ingest     = _step_ingest(company_name, fy, sector, log, status_placeholder)
         company_id = ingest.get("company_id") or company_id
         report_infos = ingest.get("reports", [])
         if not report_infos:
+            _set_status(
+                f"No report found for {company_name} FY{fy}. "
+                "Try uploading the PDF directly using the Upload tab.",
+                "warn",
+            )
             return CompanyData(company_name=company_name, fy=fy, sector=sector,
                                kpi_records={}, revenue_result=None, log=log,
                                company_id=company_id)
@@ -828,7 +1093,8 @@ def run_company_pipeline(
         if db_data["exists"]:
             report_infos = db_data["reports"]
 
-    # ── Step 2: KPI-LEVEL CACHE CHECK (NEW in v4) ─────────────────────────────
+    # ── Step 2: KPI-LEVEL CACHE CHECK ─────────────────────────────────────────
+    _set_status("Checking for previously extracted data...")
     cached_kpis: dict = {}
     cached_revenue    = None
 
@@ -840,7 +1106,7 @@ def run_company_pipeline(
     need_revenue   = cached_revenue is None
 
     if not missing_kpis and not need_revenue:
-        # Still need file_path for summary charts
+        _set_status(f"Data loaded from cache for {company_name} FY{fy}.", "ok")
         final_db = _db_load_kpis_and_revenue(company_id, fy) if company_id else {}
         return CompanyData(
             company_name=company_name, fy=fy, sector=sector,
@@ -853,7 +1119,6 @@ def run_company_pipeline(
         )
 
     # ── Step 3: Multi-report extraction (missing KPIs only) ──────────────────
-
     sorted_reports  = sorted(report_infos,
                              key=lambda r: _REPORT_TYPE_PRIORITY.get(r.report_type, 99))
     still_missing   = list(missing_kpis)
@@ -862,31 +1127,29 @@ def run_company_pipeline(
     final_revenue         = cached_revenue
 
     for ri in sorted_reports:
-        # Stop early when everything is found
         if not still_missing and not still_need_rev:
             break
 
-
-        parse_ok = _step_parse(ri.id, ri.report_type, log)
+        _set_status(f"Reading {ri.report_type} report...")
+        parse_ok = _step_parse(ri.id, ri.report_type, log, status_placeholder=None)
         if not parse_ok:
             continue
 
+        _set_status(f"Extracting ESG metrics from {ri.report_type} report...")
         extract_result = _step_extract_missing(
             report_id=ri.id,
             report_type=ri.report_type,
             fy=fy,
             log=log,
             llm_service=llm_service,
-            missing_kpi_names=list(still_missing),   # pass current missing list
+            missing_kpi_names=list(still_missing),
             need_revenue=still_need_rev,
         )
         new_kpis    = extract_result["kpis"]
         new_revenue = extract_result["revenue"]
 
-        # Merge results
         all_new_kpis.update(new_kpis)
 
-        # Remove newly found KPIs from the still-missing list
         for found in list(new_kpis.keys()):
             if found in still_missing:
                 still_missing.remove(found)
@@ -895,27 +1158,30 @@ def run_company_pipeline(
             final_revenue  = new_revenue
             still_need_rev = False
 
-        # Persist to DB immediately (dedup-safe via KPICacheService)
         if company_id and (new_kpis or new_revenue):
             _db_store_kpis(company_id, ri.id, fy, new_kpis, new_revenue)
 
     # ── Step 4: Merge cached + newly extracted ────────────────────────────────
-    # Cached values take precedence (they went through KPICacheService validation)
-    # but new extractions fill the gaps.
     merged_kpis = {**all_new_kpis, **cached_kpis}
 
-    # ── Step 5: Final DB read for file_path + any stragglers ─────────────────
+    # ── Step 5: Final DB read ─────────────────────────────────────────────────
     final_db      = _db_load_kpis_and_revenue(company_id, fy) if company_id else {}
     final_kpis    = final_db.get("kpis", {})
     final_rev_db  = final_db.get("revenue")
     final_fp      = final_db.get("file_path")
 
-    # Merge: DB read is the authoritative final state
-    # (it already applies Integrated > BRSR > ESG per-KPI priority)
     final_merged = {**merged_kpis, **final_kpis}
-
-    # Revenue: prefer newly extracted (most recent) > DB cached
     final_revenue = final_revenue or final_rev_db
+
+    if final_merged:
+        found_count = len(final_merged)
+        _set_status(f"Found {found_count} ESG metric(s) for {company_name} FY{fy}.", "ok")
+    else:
+        _set_status(
+            f"No ESG data found for {company_name} FY{fy}. "
+            "Try uploading the report PDF directly.",
+            "warn",
+        )
 
     return CompanyData(
         company_name=company_name, fy=fy, sector=sector,
@@ -925,7 +1191,7 @@ def run_company_pipeline(
 
 
 # =============================================================================
-# UPLOAD PIPELINE  (cache-aware in v4)
+# UPLOAD PIPELINE  (cache-aware, with status feedback)
 # =============================================================================
 
 def run_upload_pipeline(
@@ -935,13 +1201,29 @@ def run_upload_pipeline(
     from agents.ingestion_agent import IngestionAgent
     log: list[str] = []
 
-    
+    def _update(msg: str, kind: str = "info") -> None:
+        log.append(msg)
+        if status_placeholder:
+            css_class = {
+                "info": "status-box",
+                "warn": "status-box-warn",
+                "ok":   "status-box-ok",
+            }.get(kind, "status-box")
+            icon = {"info": "📄", "warn": "⚠️", "ok": "✅"}.get(kind, "📄")
+            status_placeholder.markdown(
+                f'<div class="{css_class}">{icon} {msg}</div>',
+                unsafe_allow_html=True,
+            )
+
+    _update("Saving uploaded report...")
+
     try:
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False,
                                         prefix="esg_upload_") as tmp:
             tmp.write(uploaded_file.getbuffer())
             tmp_path = Path(tmp.name)
     except Exception as exc:
+        _update(f"Could not save uploaded file: {exc}", "warn")
         return {"success": False, "log": log}
 
     try:
@@ -951,6 +1233,7 @@ def run_upload_pipeline(
         )
     except Exception as exc:
         tmp_path.unlink(missing_ok=True)
+        _update(f"Upload failed: {exc}", "warn")
         return {"success": False, "log": log}
     finally:
         tmp_path.unlink(missing_ok=True)
@@ -961,11 +1244,11 @@ def run_upload_pipeline(
     company_id = company.id
     report_id  = report.id
 
-
     ri = ReportInfo(id=report_id, report_type=report_type,
                     file_path=report.file_path, status=report.status)
 
-    # ── Cache check for uploaded report ──────────────────────────────────────
+    # ── Cache check ───────────────────────────────────────────────────────────
+    _update("Checking for previously extracted data...")
     cached_kpis    = _cache_load(company_id, fy) if db_online else {}
     cached_revenue = _cache_load_revenue(company_id, fy) if db_online else None
 
@@ -973,6 +1256,7 @@ def run_upload_pipeline(
     need_revenue      = cached_revenue is None
 
     if not missing_kpi_names and not need_revenue:
+        _update(f"All data loaded from cache ({len(cached_kpis)} metrics).", "ok")
         return {
             "success": True, "kpi_records": cached_kpis,
             "revenue": cached_revenue, "company_id": company_id,
@@ -980,9 +1264,11 @@ def run_upload_pipeline(
         }
 
     # Parse
-    parsed_ok = _step_parse(report_id, report_type, log)
+    _update("Reading report pages...")
+    parsed_ok = _step_parse(report_id, report_type, log, status_placeholder=None)
 
     # Extract only missing KPIs
+    _update(f"Extracting ESG metrics ({len(missing_kpi_names)} to find)...")
     extract_result = _step_extract_missing(
         report_id=report_id,
         report_type=report_type,
@@ -995,19 +1281,21 @@ def run_upload_pipeline(
     new_kpis    = extract_result["kpis"]
     new_revenue = extract_result["revenue"]
 
-    # Merge cache + new
     merged_kpis   = {**new_kpis, **cached_kpis}
     final_revenue = cached_revenue or new_revenue
 
-    def _update(msg: str) -> None:
-            log.append(msg)
-            status_placeholder.markdown(
-                "<div class='step-log'>" + "<br>".join(log[-16:]) + "</div>",
-                unsafe_allow_html=True,
-            )
     if db_online and (new_kpis or new_revenue):
         _db_store_kpis(company_id, report_id, fy, new_kpis, new_revenue)
-        _update(f"  Stored {len(new_kpis)} KPI record(s).")
+        _update(f"Saved {len(new_kpis)} metric(s) to database.")
+
+    if merged_kpis:
+        _update(f"Done — {len(merged_kpis)} ESG metric(s) extracted.", "ok")
+    else:
+        _update(
+            "No metrics could be extracted from this report. "
+            "The PDF may be image-only or use a non-standard format.",
+            "warn",
+        )
 
     return {
         "success": True, "kpi_records": merged_kpis, "revenue": final_revenue,
@@ -1017,7 +1305,7 @@ def run_upload_pipeline(
 
 
 # =============================================================================
-# BENCHMARK BUILDER  (unchanged from v3)
+# BENCHMARK BUILDER  (unchanged)
 # =============================================================================
 
 def _build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dict:
@@ -1366,9 +1654,24 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    db_col = C["green"] if db_online else C["red"]
+    # DB / LLM status indicators
+    db_col  = C["green"] if db_online else C["red"]
     llm_col = C["green"] if llm_service else C["amber"]
-    
+    st.markdown(
+        f"""<div style="display:flex;gap:8px;margin-bottom:12px">
+          <span style="font-size:11px;padding:2px 8px;border-radius:12px;
+                       background:{'#D1E7DD' if db_online else '#F8D7DA'};
+                       color:{db_col};font-weight:600">
+            {'● DB Online' if db_online else '● DB Offline'}
+          </span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:12px;
+                       background:{'#D1E7DD' if llm_service else '#FFF3CD'};
+                       color:{llm_col};font-weight:600">
+            {'● AI Ready' if llm_service else '● No AI Key'}
+          </span>
+        </div>""",
+        unsafe_allow_html=True,
+    )
 
     st.markdown("---")
     sector = st.selectbox("Sector", SECTORS, key="sector")
@@ -1411,6 +1714,13 @@ with st.sidebar:
     compare_btn = st.button("Compare", disabled=not ready, use_container_width=True)
     st.markdown("---")
 
+    if not ready:
+        st.markdown(
+            f'<div style="font-size:11px;color:{C["sub"]};text-align:center">'
+            'Enter both company names to compare</div>',
+            unsafe_allow_html=True,
+        )
+
 
 # =============================================================================
 # MAIN CONTENT
@@ -1434,6 +1744,10 @@ with tab_compare:
                       letter-spacing:-0.5px;margin-bottom:8px">
               ESG Competitive Intelligence
           </div>
+          <div style="font-size:14px;color:{C['sub']};margin-bottom:16px;max-width:480px">
+              Enter two company names in the sidebar and click Compare to benchmark
+              their ESG performance across Environmental, Social, and Governance metrics.
+          </div>
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
             <span class="badge-blue">Environmental</span>
             <span class="badge-green">Social</span>
@@ -1442,17 +1756,36 @@ with tab_compare:
         </div>""", unsafe_allow_html=True)
 
     if compare_btn and ready:
-        st.markdown(f"### {company1} FY{fy1} vs {company2} FY{fy2}")
+        st.markdown(f"### Comparing {company1} FY{fy1} vs {company2} FY{fy2}")
+
         col_s1, col_s2 = st.columns(2)
         with col_s1:
-            # st.markdown(f"**{company1} FY{fy1}**")
+            st.markdown(
+                f'<div style="font-size:13px;font-weight:600;color:{C["ca"]};'
+                f'margin-bottom:6px">{company1} FY{fy1}</div>',
+                unsafe_allow_html=True,
+            )
             placeholder1 = st.empty()
         with col_s2:
-            # st.markdown(f"**{company2} FY{fy2}**")
+            st.markdown(
+                f'<div style="font-size:13px;font-weight:600;color:{C["cb"]};'
+                f'margin-bottom:6px">{company2} FY{fy2}</div>',
+                unsafe_allow_html=True,
+            )
             placeholder2 = st.empty()
 
         data1 = data2 = None
         pipeline_error = None
+
+        # Show initial "searching" state in both columns
+        placeholder1.markdown(
+            '<div class="status-box">🔍 Starting search...</div>',
+            unsafe_allow_html=True,
+        )
+        placeholder2.markdown(
+            '<div class="status-box">⏳ Waiting...</div>',
+            unsafe_allow_html=True,
+        )
 
         try:
             data1 = run_company_pipeline(
@@ -1461,21 +1794,47 @@ with tab_compare:
                 status_placeholder=placeholder1,
                 uploaded_file=upload1, upload_report_type=rtype1 or "BRSR",
             )
+
+            # Update col 2 to active state once col 1 is done
+            placeholder2.markdown(
+                '<div class="status-box">🔍 Starting search...</div>',
+                unsafe_allow_html=True,
+            )
+
             data2 = run_company_pipeline(
                 company_name=company2, fy=int(fy2), sector=sector,
                 db_online=db_online, llm_service=llm_service,
                 status_placeholder=placeholder2,
                 uploaded_file=upload2, upload_report_type=rtype2 or "BRSR",
             )
+
         except Exception as exc:
             pipeline_error = exc
-            st.error(f"Pipeline error: {exc}")
-            with st.expander("Full traceback"):
+            st.error(f"Something went wrong: {exc}")
+            with st.expander("Technical details"):
                 st.code(traceback.format_exc())
 
         if pipeline_error is None and data1 is not None and data2 is not None:
+            # Show appropriate final state in each placeholder
+            if not data1.kpi_records:
+                placeholder1.markdown(
+                    f'<div class="status-box-warn">⚠️ No data found for {company1}. '
+                    f'Try uploading the report PDF.</div>',
+                    unsafe_allow_html=True,
+                )
+            if not data2.kpi_records:
+                placeholder2.markdown(
+                    f'<div class="status-box-warn">⚠️ No data found for {company2}. '
+                    f'Try uploading the report PDF.</div>',
+                    unsafe_allow_html=True,
+                )
+
             if not data1.kpi_records and not data2.kpi_records:
-                st.error("No KPIs extracted for either company.")
+                st.warning(
+                    "No ESG data found for either company. "
+                    "Please upload the report PDFs using the **Upload PDF** tab, "
+                    "then return here to compare."
+                )
                 st.stop()
 
             result = _build_benchmark(data1, data2, sector)
@@ -1532,56 +1891,14 @@ with tab_compare:
                     f"{', '.join(KPI_GROUPS.get(k, {}).get('label', k) for k in skipped)}")
 
         if not filtered:
-            st.warning("No KPIs passed the sanity filter.")
+            st.warning(
+                "No comparable ESG metrics found between these two companies. "
+                "This can happen when reports use very different formats, "
+                "or when data for one company is incomplete."
+            )
             st.stop()
 
         st.markdown("---")
-
-        # st.markdown('<div class="sec">Overview</div>', unsafe_allow_html=True)
-        # wins_a = sum(1 for c in filtered if c.winner == label_a)
-        # wins_b = sum(1 for c in filtered if c.winner == label_b)
-        # leader = c1n if wins_a >= wins_b else c2n
-
-        score_cols = st.columns(4)
-        # for col, (bc, bl, bv, bs) in zip(score_cols, [
-        #     (C["blue"],  "KPIs Compared",  str(len(filtered)),  f"of {len(report.comparisons)} total"),
-        #     (C["ca"],    f"{c1n} FY{fy1v}", str(wins_a),         "KPI wins"),
-        #     (C["cb"],    f"{c2n} FY{fy2v}", str(wins_b),         "KPI wins"),
-        #     (C["green"], "Leader",          leader,               "More KPI wins"),
-        # ]):
-        #     col.markdown(f"""
-        #     <div class="card" style="border-top:3px solid {bc}">
-        #         <div class="label">{bl}</div>
-        #         <div style="font-size:28px;font-weight:800;color:{C['text']};
-        #                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-        #             {bv}
-        #         </div>
-        #         <div style="font-size:12px;color:{C['sub']};margin-top:2px">{bs}</div>
-        #     </div>""", unsafe_allow_html=True)
-
-        # st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-
-        # vc1, vc2 = st.columns([2, 1])
-        # with vc1:
-        #     st.markdown('<div class="sec">Performance Radar</div>', unsafe_allow_html=True)
-        #     st.caption("Higher score = better performance on that metric")
-        #     fig = _radar_chart(filtered, label_a, label_b)
-        #     if fig:
-        #         st.plotly_chart(fig, use_container_width=True,
-        #                         config={"displayModeBar": False})
-        # with vc2:
-        #     st.markdown('<div class="sec">Win Distribution</div>', unsafe_allow_html=True)
-        #     st.plotly_chart(
-        #         _donut_chart(filtered, label_a, label_b),
-        #         use_container_width=True, config={"displayModeBar": False},
-        #     )
-
-        # st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-        # st.markdown('<div class="sec">KPI Comparison by Group</div>', unsafe_allow_html=True)
-        # gap = _gap_bar_chart(filtered, label_a, label_b)
-        # if gap:
-        #     st.plotly_chart(gap, use_container_width=True,
-        #                     config={"displayModeBar": False})
 
         for group_name, group_color in [
             ("Environmental", C["green"]),
@@ -1661,7 +1978,7 @@ with tab_compare:
         log1 = result.get("log1", [])
         log2 = result.get("log2", [])
         if log1 or log2:
-            with st.expander("Pipeline log"):
+            with st.expander("Processing details"):
                 lc1, lc2 = st.columns(2)
                 with lc1:
                     if log1:
@@ -1684,8 +2001,8 @@ with tab_upload:
                 unsafe_allow_html=True)
     st.markdown(
         "<div style='font-size:13px;color:#8B92A9;margin-bottom:20px'>"
-        "Upload a PDF directly. Extracted KPIs are available in the "
-        "Comparison tab immediately."
+        "Upload a PDF directly to extract and store ESG metrics. "
+        "Processed reports are immediately available in the Comparison tab."
         "</div>",
         unsafe_allow_html=True,
     )
@@ -1707,7 +2024,7 @@ with tab_upload:
     if uploaded_file is not None:
         size_mb = round(uploaded_file.size / (1024 * 1024), 2)
         if size_mb > 50:
-            st.error(f"File is {size_mb} MB which exceeds the 50 MB limit.")
+            st.error(f"File is {size_mb} MB — maximum allowed size is 50 MB.")
             uploaded_file = None
         else:
             st.markdown(
@@ -1724,10 +2041,12 @@ with tab_upload:
         use_container_width=True,
     )
 
+    if not db_online:
+        st.warning("Database is offline. Uploads require a database connection.")
+
     if upload_btn and upload_ready and db_online:
         st.markdown("---")
-        st.markdown(f"### Processing {uploaded_file.name} for "
-                    f"{upload_company} FY{upload_fy}")
+        st.markdown(f"### Processing: {uploaded_file.name}")
         upload_status = st.empty()
 
         upload_result = run_upload_pipeline(
@@ -1744,14 +2063,14 @@ with tab_upload:
         if upload_result["success"]:
             kpis = upload_result.get("kpi_records", {})
             rev  = upload_result.get("revenue")
-            st.success(f"Upload processed. {len(kpis)} KPI(s) extracted.")
+            st.success(f"✅ Report processed — {len(kpis)} metric(s) extracted.")
             if kpis:
                 rows = []
                 for k, r in kpis.items():
                     meta = KPI_GROUPS.get(k, {})
                     rows.append({
                         "Group":      meta.get("group", ""),
-                        "KPI":        meta.get("label", k),
+                        "Metric":     meta.get("label", k),
                         "Value":      f"{r['value']:,.2f}",
                         "Unit":       r["unit"],
                         "Method":     r["method"],
@@ -1759,14 +2078,23 @@ with tab_upload:
                     })
                 st.dataframe(pd.DataFrame(rows), use_container_width=True,
                              hide_index=True)
+            else:
+                st.info(
+                    "No metrics could be extracted automatically. "
+                    "The PDF may be image-based or use an unusual format. "
+                    "Try a different PDF or report type."
+                )
             if rev:
                 st.markdown(
                     f"**Revenue:** INR {rev.value_cr:,.0f} Crore "
                     f"[{rev.pattern_name}, confidence {rev.confidence:.0%}]"
                 )
         else:
-            st.error("Upload pipeline failed.")
+            st.error(
+                "Upload failed. Please check that the file is a valid PDF "
+                "and that the company name is correct."
+            )
 
-        with st.expander("Processing log"):
+        with st.expander("Processing details"):
             for line in upload_result.get("log", []):
                 st.code(line, language=None)

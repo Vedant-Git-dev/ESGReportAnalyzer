@@ -72,7 +72,7 @@ TARGET_KPI_NAMES: list[str] = [
     "waste_generated",
 ]
 
-_DEFAULT_REVENUE_CR = 315322.0
+# _DEFAULT_REVENUE_CR = 315322.0
 
 _REPORT_TYPE_PRIORITY: dict[str, int] = {
     "Integrated": 0,
@@ -753,8 +753,8 @@ def process_company(
             print(f"  {'  ' + kpi_name:<35} {rec['value']:>14,.2f}  "
                   f"{rec['unit']}  [WARN: {e}]")
 
-    rev_cr  = revenue_result.value_cr if revenue_result else _DEFAULT_REVENUE_CR
-    rev_src = revenue_result.source   if revenue_result else "default"
+    rev_cr  = revenue_result.value_cr if revenue_result else None
+    rev_src = revenue_result.source   if revenue_result else "Revenue not found"
     print(f"  {'  revenue':<35} {rev_cr:>14,.0f}  INR_Crore  [{rev_src}]")
 
     # ── Build CompanyProfile ──────────────────────────────────────────────────

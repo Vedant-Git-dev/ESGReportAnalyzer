@@ -109,9 +109,9 @@ _SERPAPI_ENDPOINT = "https://serpapi.com/search"
 # Report type priorities and query templates
 # ---------------------------------------------------------------------------
 
-PRIORITY_ORDER: list[str] = [ "Integrated", "ESG", "BRSR"]
+PRIORITY_ORDER: list[str] = [ "Integrated", "ESG"]
 ALL_REPORT_TYPES: list[str] = PRIORITY_ORDER
-DEFAULT_REPORT_TYPE = "BRSR"
+# DEFAULT_REPORT_TYPE = "BRSR"
 
 _QUERY_TEMPLATES: dict[str, list[str]] = {
     "BRSR": [
@@ -203,7 +203,7 @@ def _get_company_tokens(company_name: str) -> dict[str, list[str]]:
             "slug":   [str, ...],
         }
     """
-    name_lower = company_name.lower().strip()
+    name_lower = company_name.lower()
     slug = _SLUG_RE.sub("", name_lower)
 
     anchor_tokens: str = [name_lower]
@@ -243,8 +243,7 @@ def _get_company_tokens(company_name: str) -> dict[str, list[str]]:
         return out
 
     return {
-        "anchor": _dedup(anchor_tokens, 3),
-        "slug":   _dedup(slug_tokens,   3),
+        "anchor": name_lower
     }
 
 
@@ -276,7 +275,6 @@ def has_company_match(
         True if match found; False otherwise.
     """
     anchor_tokens = token_sets["anchor"]
-    slug_tokens   = token_sets["slug"]
 
     title_l   = title.lower()
     snippet_l = snippet.lower()
@@ -292,12 +290,6 @@ def has_company_match(
     for token in anchor_tokens:
         if token in title_l:
             logger.debug("search.company_match.title", token=token)
-            return True
-
-    # 2. Slug token in URL domain+path
-    for token in slug_tokens:
-        if token in url_core:
-            logger.debug("search.company_match.url_slug", token=token)
             return True
 
     # 3. Anchor token (>= 5 chars) in URL after stripping punctuation
@@ -437,8 +429,8 @@ def matches_type(text: str) -> Optional[str]:
     text = text.lower()
 
     # BRSR — highest priority; very specific keyword
-    if any(k in text for k in ["brsr", "business responsibility"]):
-        return "BRSR"
+    # if any(k in text for k in ["brsr", "business responsibility"]):
+    #     return "BRSR" --- IGNORE ---
 
     # ESG — requires "report" qualifier
     esg_keywords = [
@@ -777,7 +769,6 @@ def collect_and_classify(
         total_unique=len(unique_items),
         passed=passed_count,
         dropped=dropped_count,
-        brsr_count=len(classified["BRSR"]),
         esg_count=len(classified["ESG"]),
         integrated_count=len(classified["Integrated"]),
     )
@@ -840,13 +831,12 @@ def _empty_results(company_name: str, year: int) -> dict[str, SearchResult]:
 def search_reports(
     company_name: str,
     year: int,
-    report_type: str = DEFAULT_REPORT_TYPE,
+    report_type: str,
     max_results_per_query: int = 7,
 ) -> SearchResult:
     """Single-type search. Kept for backward compatibility."""
     canonical_type = next(
         (t for t in PRIORITY_ORDER if t.lower() == report_type.lower()),
-        DEFAULT_REPORT_TYPE,
     )
     all_results = collect_and_classify(
         company_name=company_name,
