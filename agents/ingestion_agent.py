@@ -322,6 +322,17 @@ class IngestionAgent:
                 .first()
             )
             if existing:
+                updated = False
+                # Keep legacy/inactive rows visible in API company lists.
+                if existing.is_active is not True:
+                    existing.is_active = True
+                    updated = True
+                # Fill sector if missing, or refresh when caller provided one.
+                if data.sector and existing.sector != data.sector:
+                    existing.sector = data.sector
+                    updated = True
+                if updated:
+                    db.flush()
                 logger.info(
                     "ingestion.company_exists",
                     name=existing.name,

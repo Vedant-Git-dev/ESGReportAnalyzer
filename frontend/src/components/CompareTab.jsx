@@ -14,7 +14,7 @@ const GROUP_COLORS = {
 export default function CompareTab({ compareState, form }) {
   const { running, progress1, progress2, result, error } = compareState
 
-  // ── Empty state ─────────────────────────────────────────────────────────
+  // ── Empty state ────────────────────────────────────────────────────────────
   if (!running && !result && !error) {
     return (
       <div className="hero">
@@ -33,7 +33,7 @@ export default function CompareTab({ compareState, form }) {
     )
   }
 
-  // ── Running ──────────────────────────────────────────────────────────────
+  // ── Running ────────────────────────────────────────────────────────────────
   if (running && !result) {
     return (
       <div>
@@ -51,7 +51,7 @@ export default function CompareTab({ compareState, form }) {
     )
   }
 
-  // ── Error ────────────────────────────────────────────────────────────────
+  // ── Error ──────────────────────────────────────────────────────────────────
   if (error && !result) {
     return (
       <div>
@@ -63,7 +63,6 @@ export default function CompareTab({ compareState, form }) {
     )
   }
 
-  // ── Results ──────────────────────────────────────────────────────────────
   if (!result) return null
 
   const { comparisons = [], summary, label_a, label_b, company1, company2 } = result
@@ -81,8 +80,11 @@ export default function CompareTab({ compareState, form }) {
   )
 }
 
-/* ── Full results view ── */
+// ─────────────────────────────────────────────────────────────────────────────
+// ResultsView — hosts the toggle and passes mode to every KPICard
+// ─────────────────────────────────────────────────────────────────────────────
 function ResultsView({ comparisons, summary, labelA, labelB, company1, company2, form }) {
+  const [normalized,  setNormalized]  = useState(true)   // false = Absolute, true = Normalized
   const [downloading, setDownloading] = useState(false)
   const [logOpen,     setLogOpen]     = useState(false)
 
@@ -93,6 +95,11 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
       </div>
     )
   }
+
+  // Raw absolute kpi_records keyed by kpi_name for each company
+  // Shape: { kpi_name: { value, unit, method, confidence } }
+  const rawA = company1?.kpi_records || {}
+  const rawB = company2?.kpi_records || {}
 
   async function handleExport() {
     setDownloading(true)
@@ -126,7 +133,7 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
 
   return (
     <div>
-      {/* Header */}
+      {/* ── Header row ── */}
       <div className="compare-header">
         <div>
           <div className="compare-title">
@@ -136,12 +143,17 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
           </div>
           <div className="compare-meta">
             <span className="badge badge-blue">{form.sector}</span>
-            &nbsp;&nbsp;{labelA.split(' FY')[1] && `FY${labelA.split(' FY')[1]}`}
+            &nbsp;&nbsp;
+            {labelA.split(' FY')[1] && `FY${labelA.split(' FY')[1]}`}
             {' · '}
             {labelB.split(' FY')[1] && `FY${labelB.split(' FY')[1]}`}
           </div>
         </div>
+
         <div className="compare-actions">
+          {/* ── Mode Toggle ── */}
+          <ModeToggle normalized={normalized} onChange={setNormalized} />
+
           <button
             className="btn btn-ghost btn-sm"
             onClick={handleExport}
@@ -152,7 +164,10 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
         </div>
       </div>
 
-      {/* KPI groups */}
+      {/* ── Mode explanation banner ── */}
+      <ModeBanner normalized={normalized} />
+
+      {/* ── KPI groups ── */}
       {GROUPS.map(group => {
         const groupComps = comparisons.filter(c => c.group === group)
         if (!groupComps.length) return null
@@ -162,13 +177,21 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
               {group}
             </div>
             {groupComps.map(comp => (
-              <KPICard key={comp.kpi_name} comp={comp} labelA={labelA} labelB={labelB} />
+              <KPICard
+                key={comp.kpi_name}
+                comp={comp}
+                labelA={labelA}
+                labelB={labelB}
+                normalized={normalized}
+                rawA={rawA[comp.kpi_name] || null}
+                rawB={rawB[comp.kpi_name] || null}
+              />
             ))}
           </div>
         )
       })}
 
-      {/* Summary */}
+      {/* ── Summary ── */}
       {summary && (
         <>
           <div className="sec" style={{ marginTop: 28 }}>Summary</div>
@@ -176,7 +199,7 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
         </>
       )}
 
-      {/* Pipeline log */}
+      {/* ── Pipeline log ── */}
       <details
         className="log-expander"
         style={{ marginTop: 20 }}
@@ -193,6 +216,64 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ModeToggle — pill-style switch between Absolute and Normalized
+// ─────────────────────────────────────────────────────────────────────────────
+function ModeToggle({ normalized, onChange }) {
+  return (
+    <div className="mode-toggle-wrap">
+      <span className={`mode-label ${!normalized ? 'mode-label-active' : ''}`}>
+        Absolute
+      </span>
+
+      {/* The actual toggle track + thumb */}
+      <button
+        className={`toggle-track ${normalized ? 'toggle-on' : ''}`}
+        onClick={() => onChange(!normalized)}
+        role="switch"
+        aria-checked={normalized}
+        aria-label="Switch between absolute and normalized comparison"
+      >
+        <span className="toggle-thumb" />
+      </button>
+
+      <span className={`mode-label ${normalized ? 'mode-label-active' : ''}`}>
+        Normalized
+      </span>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ModeBanner — contextual explanation below the header
+// ─────────────────────────────────────────────────────────────────────────────
+function ModeBanner({ normalized }) {
+  if (normalized) {
+    return (
+      <div className="mode-banner mode-banner-norm">
+        <span className="mode-banner-icon">📊</span>
+        <div>
+          <strong>Normalized view</strong> — KPI values divided by annual revenue (INR Crore).
+          Enables fair comparison between companies of different sizes.
+          Units shown as <em>value / Crore</em>.
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="mode-banner mode-banner-abs">
+      <span className="mode-banner-icon">🔢</span>
+      <div>
+        <strong>Absolute view</strong> — Raw reported values in original units
+        (tCO2e, GJ, KL, MT, %, headcount). Direct comparison of reported figures.
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LogCol
+// ─────────────────────────────────────────────────────────────────────────────
 function LogCol({ label, lines }) {
   return (
     <div>

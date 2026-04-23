@@ -90,23 +90,6 @@ _SLUG_RE = re.compile(r"[^a-z0-9]")
 
 # Known short ticker → URL/title anchor strings.
 # Keyed on the full-slug of the canonical short name (e.g. "tcs", "ongc").
-_TICKER_ALIASES: dict[str, list[str]] = {
-    "tcs":         ["tata consultancy", "tcs.com"],
-    "infosys":     ["infosys"],
-    "wipro":       ["wipro"],
-    "hcl":         ["hcltech", "hcl technologies"],
-    "bpcl":        ["bharat petroleum"],
-    "hpcl":        ["hindustan petroleum"],
-    "iocl":        ["indianoil", "indian oil"],
-    "ongc":        ["ongcindia"],
-    "ntpc":        ["ntpclimited"],
-    "sail":        ["steelauthority"],
-    "gail":        ["gailonline"],
-    "sbi":         ["statebankofin"],
-    "itc":         ["itcportal"],
-    "ltim":        ["ltimindtree"],
-    "kennametal":  ["kennametal"],
-}
 
 # Legal-entity suffixes stripped from the end of the name to produce a
 # "bare name" slug variant for URL matching.
@@ -167,10 +150,6 @@ def _get_company_tokens(company_name: str) -> dict[str, list[str]]:
 
     anchor_tokens: list[str] = [name_lower]
     slug_tokens:   list[str] = [full_slug]
-
-    # Ticker alias lookup — keyed on the full slug of the entered name.
-    if full_slug in _TICKER_ALIASES:
-        anchor_tokens.extend(_TICKER_ALIASES[full_slug])
 
     # Strip legal suffix to produce a bare-name variant.
     # E.g. "Wipro Limited" → bare "wipro"; "Bharat Electronics Ltd" → "bharat electronics".
@@ -499,7 +478,7 @@ def _build_all_queries(company: str, year: int) -> list[tuple[str, str]]:
 def collect_and_classify(
     company_name: str,
     year: int,
-    max_results_per_query: int = 7,
+    max_results_per_query: int = 3,
 ) -> dict[str, SearchResult]:
     """
     Run all queries via SerpApi, apply STRICT three-way validation per result,

@@ -70,17 +70,48 @@ def get_llm_service():
 
 
 def list_companies() -> list[dict]:
+    """Return all non-deactivated companies, ordered by name."""
     try:
         from core.database import get_db
         from models.db_models import Company
         with get_db() as db:
             rows = (
                 db.query(Company)
-                .filter(Company.is_active == True)
+                # Treat NULL as active for backward compatibility with
+                # legacy rows created before is_active was consistently set.
+                .filter(Company.is_active.isnot(False))
                 .order_by(Company.name)
                 .all()
             )
-        return [{"id": str(r.id), "name": r.name, "sector": r.sector} for r in rows]
+            return [{"id": str(r.id), "name": r.name, "sector": r.sector} for r in rows]
+    except Exception:
+        return []
+
+
+def list_companies_by_sector(sector: str) -> list[dict]:
+    """
+    Return active companies whose sector matches the given string
+    (case-insensitive exact match).  Falls back to list_companies()
+    when sector is empty/None so callers never get an empty list
+    due to a missing sector filter.
+    """
+    if not sector or not sector.strip():
+        return list_companies()
+
+    try:
+        from core.database import get_db
+        from models.db_models import Company
+        with get_db() as db:
+            rows = (
+                db.query(Company)
+                .filter(
+                    Company.is_active.isnot(False),
+                    Company.sector.ilike(sector.strip()),
+                )
+                .order_by(Company.name)
+                .all()
+            )
+            return [{"id": str(r.id), "name": r.name, "sector": r.sector} for r in rows]
     except Exception:
         return []
 
@@ -127,6 +158,30 @@ def db_get_all_reports(company_name: str, fy: int) -> dict:
 
     except Exception:
         return empty
+
+
+def ensure_company_sector(company_id: uuid.UUID, sector: str) -> None:
+    """
+    Backfill missing/blank sector for an existing company row.
+    This keeps sector-filtered dropdowns consistent when a company was
+    discovered earlier without sector metadata.
+    """
+    if not company_id or not sector or not sector.strip():
+        return
+    try:
+        from core.database import get_db
+        from models.db_models import Company
+
+        wanted = sector.strip()
+        with get_db() as db:
+            row = db.query(Company).filter(Company.id == company_id).first()
+            if not row:
+                return
+            if row.sector is None or not str(row.sector).strip():
+                row.sector = wanted
+                db.flush()
+    except Exception:
+        pass
 
 
 def cache_load(company_id: uuid.UUID, fy: int) -> dict:
@@ -491,6 +546,11 @@ def run_company_pipeline(
         company_id = db_data.get("company_id") or company_id
         if db_data["exists"]:
             report_infos = db_data["reports"]
+
+    # Ensure companies discovered in older runs (often with NULL sector)
+    # become visible in sector-scoped dropdowns.
+    if company_id:
+        ensure_company_sector(company_id, sector)
 
     # Step 2 — KPI-level cache check
     _emit("Checking for previously extracted data...")

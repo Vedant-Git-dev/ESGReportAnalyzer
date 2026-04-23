@@ -13,9 +13,19 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  health:    ()    => request('/health'),
-  metadata:  ()    => request('/metadata'),
-  companies: ()    => request('/companies'),
+  health:   () => request('/health'),
+  metadata: () => request('/metadata'),
+
+  /**
+   * Fetch companies from DB.
+   * @param {string|null} sector  when provided, filters to that sector only
+   */
+  companies: (sector = null) => {
+    const path = sector
+      ? `/companies?sector=${encodeURIComponent(sector)}`
+      : '/companies'
+    return request(path)
+  },
 
   compare: (body) =>
     request('/compare', {

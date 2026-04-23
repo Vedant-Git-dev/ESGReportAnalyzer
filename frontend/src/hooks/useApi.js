@@ -1,15 +1,16 @@
 // src/hooks/useApi.js
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../lib/api'
 
 /**
- * Loads health, metadata (sectors, kpi_groups, kpi_names, report_types)
- * and company list at startup. All components read from this single source.
+ * Loads health, metadata and ALL companies at startup.
+ * getCompaniesBySector(sector) filters the in-memory list — no extra
+ * network call needed on every sector change.
  */
 export function useAppState() {
   const [health,    setHealth]    = useState({ db_online: false, llm_ready: false, status: 'loading' })
   const [metadata,  setMetadata]  = useState({ sectors: [], report_types: [], kpi_groups: {}, kpi_names: [] })
-  const [companies, setCompanies] = useState([])
+  const [companies, setCompanies] = useState([])   // all companies, all sectors
   const [loading,   setLoading]   = useState(true)
 
   useEffect(() => {
@@ -25,11 +26,27 @@ export function useAppState() {
     })
   }, [])
 
+  /**
+   * Filter the already-loaded company list by sector (client-side, instant).
+   * Returns all companies when sector is empty/null.
+   */
+  const getCompaniesBySector = useCallback((sector) => {
+    if (!sector) return companies
+    const wanted = sector.trim().toLowerCase()
+    return companies.filter(
+      c => c.sector?.trim().toLowerCase() === wanted
+    )
+  }, [companies])
+
+  /**
+   * Re-fetch companies from the server (e.g. after a new company is ingested
+   * via the pipeline so it appears in future dropdowns immediately).
+   */
   const refreshCompanies = useCallback(() => {
     api.companies().then(setCompanies).catch(() => {})
   }, [])
 
-  return { health, metadata, companies, loading, refreshCompanies }
+  return { health, metadata, companies, loading, refreshCompanies, getCompaniesBySector }
 }
 
 /**
@@ -39,12 +56,13 @@ export function useAppState() {
 export function useCompare() {
   const [state, setState] = useState({
     running:   false,
-    progress1: [],   // log lines for company 1
-    progress2: [],   // log lines for company 2
+    progress1: [],
+    progress2: [],
     result:    null,
     error:     null,
   })
-  const cancelRef = { current: null }
+  // Store close function in a ref so cancel() always has the latest reference
+  const closeRef = useRef(null)
 
   const run = useCallback((params) => {
     setState({ running: true, progress1: [], progress2: [], result: null, error: null })
@@ -69,11 +87,11 @@ export function useCompare() {
       },
     })
 
-    cancelRef.current = close
+    closeRef.current = close
   }, [])
 
   const cancel = useCallback(() => {
-    cancelRef.current?.()
+    closeRef.current?.()
     setState(prev => ({ ...prev, running: false }))
   }, [])
 

@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import Sidebar    from './components/Sidebar'
 import CompareTab from './components/CompareTab'
 import UploadTab  from './components/UploadTab'
@@ -8,9 +8,16 @@ import { useAppState, useCompare } from './hooks/useApi'
 const TABS = ['Comparison', 'Upload PDF']
 
 export default function App() {
-  const { health, metadata, companies, loading, refreshCompanies } = useAppState()
+  const {
+    health,
+    metadata,
+    companies,
+    loading,
+    refreshCompanies,
+    getCompaniesBySector,
+  } = useAppState()
 
-  const [tab,  setTab]  = useState(0)
+  const [tab, setTab] = useState(0)
 
   // Sidebar form state
   const [form, setForm] = useState({
@@ -26,29 +33,37 @@ export default function App() {
   })
 
   const { run, cancel, state: compareState } = useCompare()
+  const prevRunningRef = useRef(false)
+
+  // Compare can create new companies via ingestion; refresh dropdown source once it finishes.
+  useEffect(() => {
+    if (prevRunningRef.current && !compareState.running) {
+      refreshCompanies()
+    }
+    prevRunningRef.current = compareState.running
+  }, [compareState.running, refreshCompanies])
 
   const handleCompare = useCallback(async () => {
-    // If files are attached, upload them first then compare
-    // Otherwise go straight to streaming compare
     setTab(0)
 
+    // If PDFs were attached, upload them first so the pipeline finds them in DB
     const uploadIfNeeded = async (file, company, fy, sector, rtype) => {
       if (!file) return
       const fd = new FormData()
       fd.append('file',        file)
       fd.append('company',     company)
-      fd.append('fy',          fy)
+      fd.append('fy',          String(fy))
       fd.append('sector',      sector)
       fd.append('report_type', rtype)
       try {
         await fetch('/api/upload', { method: 'POST', body: fd })
+        // Refresh company list so newly ingested companies appear in dropdown
         refreshCompanies()
       } catch (e) {
         console.warn('Pre-upload failed:', e)
       }
     }
 
-    // Upload any attached PDFs silently before compare starts
     await Promise.all([
       uploadIfNeeded(form.file1, form.company1, form.fy1, form.sector, form.rtype1),
       uploadIfNeeded(form.file2, form.company2, form.fy2, form.sector, form.rtype2),
@@ -77,7 +92,6 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {/* Sidebar */}
       <Sidebar
         health={health}
         metadata={metadata}
@@ -85,11 +99,10 @@ export default function App() {
         setForm={setForm}
         onCompare={handleCompare}
         comparing={compareState.running}
+        getCompaniesBySector={getCompaniesBySector}
       />
 
-      {/* Main area */}
       <div className="main">
-        {/* Tab bar */}
         <div className="tabs-bar">
           {TABS.map((t, i) => (
             <button
@@ -102,7 +115,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* Tab content */}
         {tab === 0 && (
           <div className="tab-content">
             <CompareTab compareState={compareState} form={form} />
@@ -113,6 +125,7 @@ export default function App() {
           <UploadTab
             metadata={metadata}
             health={health}
+            onUploadComplete={refreshCompanies}
           />
         )}
       </div>
