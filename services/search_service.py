@@ -72,6 +72,7 @@ DEFAULT_REPORT_TYPE = "BRSR"
 _QUERY_TEMPLATES: dict[str, list[str]] = {
     "BRSR": [
         "{company} BRSR {past_year}-{year_short} filetype:pdf",
+        "{company} business responsibility and sustainability report {past_year}-{year_short} filetype:pdf",
     ],
     "ESG": [
         "{company} sustainability report {past_year}-{year_short} filetype:pdf",
@@ -98,21 +99,6 @@ _LEGAL_SUFFIXES: list[str] = [
     " limited", " ltd", " inc", " corp", " corporation",
     " private", " pvt", " llp", " llc", " plc",
 ]
-
-# Domains that are trusted regulatory/exchange filing hosts.
-_TRUSTED_FILING_DOMAINS: frozenset[str] = frozenset({
-    "bseindia.com",
-    "bsmedia.business-standard.com",
-    "nseindia.com",
-    "nsearchive.nseindia.com",
-    "connect2nse.com",
-    "sebi.gov.in",
-    "mca.gov.in",
-    "nsdl.co.in",
-    "cdsl.co.in",
-    "india.gov.in",
-    "nic.in",
-})
 
 
 def _get_company_tokens(company_name: str) -> dict[str, list[str]]:
@@ -317,7 +303,19 @@ def matches_type(text: str) -> Optional[str]:
     Evaluated in priority order — first match wins.
     """
     text = text.lower()
+    # Normalize common separators so phrases like
+    # "business responsibility & sustainability" are matched.
+    text = re.sub(r"[\s\-/]+", " ", text.replace("&", " and "))
 
+    brsr_keywords = [
+        "brsr",
+        "brsrr",
+        "business responsibility and sustainability report",
+        "business responsibility and sustainability reporting",
+        "business responsibility and sustainability",
+    ]
+    if any(k in text for k in brsr_keywords):
+        return "BRSR"
 
     esg_keywords = [
         "esg report", "esg-report",
