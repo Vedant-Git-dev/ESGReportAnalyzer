@@ -348,7 +348,7 @@ select {
 .val-mode-abs  { background: #E2E8F0; color: #475569; }
 .val-mode-norm { background: #DBEAFE; color: #1E40AF; }
 
-.mini-chart { margin: 6px 0 4px; }
+.mini-chart { width: 100%; min-width: 0; margin: 6px 0 4px; }
 
 /* ── Compare header ── */
 .compare-header {

@@ -4,12 +4,18 @@ import KPICard from './KPICard'
 import ProgressPanel from './ProgressPanel'
 import { api } from '../lib/api'
 
-const GROUPS = ['Environmental', 'Social', 'Governance']
+const GROUPS = [
+  { key: 'environmental', label: 'Environmental' },
+  { key: 'social', label: 'Social' },
+  { key: 'governance', label: 'Governance' },
+]
 const GROUP_COLORS = {
-  Environmental: 'var(--green)',
-  Social:        'var(--blue)',
-  Governance:    'var(--amber)',
+  environmental: 'var(--green)',
+  social:        'var(--blue)',
+  governance:    'var(--amber)',
 }
+
+const groupKey = (value) => String(value || '').trim().toLowerCase()
 
 export default function CompareTab({ compareState, form }) {
   const { running, progress1, progress2, result, error } = compareState
@@ -169,12 +175,12 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
 
       {/* ── KPI groups ── */}
       {GROUPS.map(group => {
-        const groupComps = comparisons.filter(c => c.group === group)
+        const groupComps = comparisons.filter(c => groupKey(c.group) === group.key)
         if (!groupComps.length) return null
         return (
-          <div key={group}>
-            <div className="sec" style={{ borderBottomColor: GROUP_COLORS[group] }}>
-              {group}
+          <div key={group.key}>
+            <div className="sec" style={{ borderBottomColor: GROUP_COLORS[group.key] }}>
+              {group.label}
             </div>
             {groupComps.map(comp => (
               <KPICard

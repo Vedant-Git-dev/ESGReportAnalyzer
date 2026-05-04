@@ -1,6 +1,6 @@
 // src/components/KPICard.jsx
 import React from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts'
+import MiniBarChart from './MiniBarChart'
 
 const CA = '#0D6EFD'
 const CB = '#198754'
@@ -127,11 +127,13 @@ export default function KPICard({ comp, labelA, labelB, normalized, rawA, rawB }
 
       {/* Bar chart */}
       {!noData && (
-        <KPIBarChart
-          data={chartData}
+        <MiniBarChart
+          entries={[
+            { company_label: labelA, value: displayA },
+            { company_label: labelB, value: displayB },
+          ].filter(d => d.value != null)}
           unit={displayUnit}
-          higherIsBetter={higherIsBetter}
-          normalized={showNorm}
+          winner={displayWinner}
         />
       )}
 
@@ -162,85 +164,6 @@ export default function KPICard({ comp, labelA, labelB, normalized, rawA, rawB }
           isRatioless={isRatioless}
         />
       </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// KPIBarChart — horizontal grouped bar chart for one KPI
-// ─────────────────────────────────────────────────────────────────────────────
-const CustomTooltip = ({ active, payload, unit }) => {
-  if (!active || !payload?.length) return null
-  return (
-    <div style={{
-      background: '#fff', border: '1px solid var(--border)',
-      borderRadius: 6, padding: '7px 11px', fontSize: 12,
-      boxShadow: '0 2px 8px rgba(0,0,0,.1)',
-    }}>
-      <div style={{ fontWeight: 600, marginBottom: 2 }}>{payload[0].payload.label}</div>
-      <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>
-        {fmt(payload[0].value)} <span style={{ color: 'var(--sub)' }}>{unit}</span>
-      </div>
-    </div>
-  )
-}
-
-function KPIBarChart({ data, unit, higherIsBetter, normalized }) {
-  if (!data?.length) return null
-
-  // Determine opacity: winner gets full opacity, loser gets muted
-  const maxVal  = Math.max(...data.map(d => d.value ?? 0))
-  const minVal  = Math.min(...data.map(d => d.value ?? 0))
-  const theWinner = higherIsBetter
-    ? data.find(d => d.value === maxVal)
-    : data.find(d => d.value === minVal)
-
-  return (
-    <div className="mini-chart">
-      <ResponsiveContainer width="100%" height={80}>
-        <BarChart
-          data={data}
-          layout="vertical"
-          margin={{ top: 4, right: 56, bottom: 4, left: 4 }}
-          barCategoryGap="30%"
-        >
-          <XAxis type="number" hide domain={[0, 'dataMax']} />
-          <YAxis
-            type="category"
-            dataKey="label"
-            width={82}
-            tick={{ fontSize: 11, fill: 'var(--sub)', fontFamily: 'var(--font-sans)' }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <Tooltip
-            content={<CustomTooltip unit={unit} />}
-            cursor={{ fill: 'var(--surface)' }}
-          />
-          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-            <LabelList
-              dataKey="value"
-              position="right"
-              formatter={(v) => fmt(v)}
-              style={{
-                fontSize: 11,
-                fill: 'var(--sub)',
-                fontFamily: 'var(--font-mono)',
-              }}
-            />
-            {data.map((entry, i) => {
-              const isWinner = theWinner && entry.label === theWinner.label
-              return (
-                <Cell
-                  key={i}
-                  fill={i === 0 ? CA : CB}
-                  opacity={isWinner ? 1 : 0.5}
-                />
-              )
-            })}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
     </div>
   )
 }
