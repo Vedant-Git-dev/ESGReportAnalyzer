@@ -450,6 +450,68 @@ select {
 .mode-banner strong { font-weight: 700; }
 .mode-banner em     { font-style: italic; }
 
+/* ════════════════════════════════════════════════════════════════════════════
+   ESG TABS
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.esg-tabs-container {
+  margin-bottom: 20px;
+}
+
+.esg-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.esg-tab {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sub);
+  transition: color .2s, border-bottom-color .2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.esg-tab:hover:not(.esg-tab-active) {
+  color: var(--text);
+}
+
+.esg-tab-active {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.esg-tab-label {
+  display: inline;
+}
+
+.esg-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+}
+
+.esg-tab-active .esg-tab-count {
+  background: rgba(0, 0, 0, 0.12);
+  font-weight: 800;
+}
+
 /* ── Summary box ── */
 .summary-box {
   background: var(--surface); border-left: 4px solid var(--blue);

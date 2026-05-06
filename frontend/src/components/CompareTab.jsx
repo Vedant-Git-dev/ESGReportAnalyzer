@@ -93,6 +93,7 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
   const [normalized,  setNormalized]  = useState(true)   // false = Absolute, true = Normalized
   const [downloading, setDownloading] = useState(false)
   const [logOpen,     setLogOpen]     = useState(false)
+  const [selectedGroup, setSelectedGroup] = useState('environmental') // ESG tab state
 
   if (!comparisons.length) {
     return (
@@ -173,15 +174,24 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
       {/* ── Mode explanation banner ── */}
       <ModeBanner normalized={normalized} />
 
-      {/* ── KPI groups ── */}
-      {GROUPS.map(group => {
-        const groupComps = comparisons.filter(c => groupKey(c.group) === group.key)
-        if (!groupComps.length) return null
-        return (
-          <div key={group.key}>
-            <div className="sec" style={{ borderBottomColor: GROUP_COLORS[group.key] }}>
-              {group.label}
+      {/* ── ESG Tab Navigation ── */}
+      <ESGTabs selectedGroup={selectedGroup} onSelectGroup={setSelectedGroup} comparisons={comparisons} />
+
+      {/* ── KPI Cards for Selected Group ── */}
+      {(() => {
+        const groupComps = comparisons.filter(c => groupKey(c.group) === selectedGroup)
+        const selectedGroupObj = GROUPS.find(g => g.key === selectedGroup)
+        
+        if (!groupComps.length) {
+          return (
+            <div className="alert alert-warn">
+              No KPIs found for {selectedGroupObj?.label} category.
             </div>
+          )
+        }
+
+        return (
+          <div>
             {groupComps.map(comp => (
               <KPICard
                 key={comp.kpi_name}
@@ -195,7 +205,7 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
             ))}
           </div>
         )
-      })}
+      })()}
 
       {/* ── Summary ── */}
       {summary && (
@@ -218,6 +228,38 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
           <LogCol label={labelB.split(' FY')[0]} lines={company2?.log || []} />
         </div>
       </details>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ESGTabs — tab navigation for E, S, G groups
+// ─────────────────────────────────────────────────────────────────────────────
+function ESGTabs({ selectedGroup, onSelectGroup, comparisons }) {
+  return (
+    <div className="esg-tabs-container">
+      <div className="esg-tabs">
+        {GROUPS.map(group => {
+          const groupComps = comparisons.filter(c => groupKey(c.group) === group.key)
+          const count = groupComps.length
+          const isSelected = selectedGroup === group.key
+          
+          return (
+            <button
+              key={group.key}
+              className={`esg-tab ${isSelected ? 'esg-tab-active' : ''}`}
+              onClick={() => onSelectGroup(group.key)}
+              style={isSelected ? {
+                borderBottomColor: GROUP_COLORS[group.key],
+                color: GROUP_COLORS[group.key],
+              } : {}}
+            >
+              <span className="esg-tab-label">{group.label}</span>
+              <span className="esg-tab-count">{count}</span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
