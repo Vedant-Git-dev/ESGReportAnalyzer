@@ -287,6 +287,12 @@ def build_company_profile(
     for kpi_name in BENCHMARK_KPI_NAMES:
         rec = kpi_records.get(kpi_name)
         if not rec or rec.get("value") is None:
+            logger.debug(
+                "benchmark.kpi_missing",
+                company=company_name,
+                fiscal_year=fiscal_year,
+                kpi=kpi_name,
+            )
             continue
 
         group = _kpi_group(kpi_name)
@@ -381,17 +387,35 @@ def compare_profiles(profiles: list[CompanyProfile]) -> BenchmarkReport:
             if ratio:
                 entries.append((label, ratio.ratio_value, ratio.ratio_source))
 
-        if len(entries) < 2:
+        if not entries:
+            logger.info("benchmark.kpi_unavailable", kpi=kpi_name)
             continue
 
-        lower = kpi_name in LOWER_IS_BETTER
-        best  = min(entries, key=lambda e: e[1]) if lower else max(entries, key=lambda e: e[1])
-        worst = max(entries, key=lambda e: e[1]) if lower else min(entries, key=lambda e: e[1])
+        if len(entries) == 1:
+            winner = entries[0][0]
+            pct_gap = 0.0
+            logger.info(
+                "benchmark.kpi_single_sided",
+                kpi=kpi_name,
+                present_in=winner,
+            )
+        else:
+            lower = kpi_name in LOWER_IS_BETTER
+            best  = min(entries, key=lambda e: e[1]) if lower else max(entries, key=lambda e: e[1])
+            worst = max(entries, key=lambda e: e[1]) if lower else min(entries, key=lambda e: e[1])
 
-        pct_gap = (
-            abs(best[1] - worst[1]) / worst[1] * 100
-            if worst[1] > 0 else 0.0
-        )
+            pct_gap = (
+                abs(best[1] - worst[1]) / worst[1] * 100
+                if worst[1] > 0 else 0.0
+            )
+            winner = best[0]
+            logger.info(
+                "benchmark.kpi_compared",
+                kpi=kpi_name,
+                entries=len(entries),
+                winner=winner,
+                pct_gap=round(pct_gap, 3),
+            )
 
         unit = RATIO_UNIT_LABELS.get(kpi_name, CANONICAL_UNITS.get(kpi_name, ""))
 
@@ -401,7 +425,7 @@ def compare_profiles(profiles: list[CompanyProfile]) -> BenchmarkReport:
             group=group,
             unit=unit,
             entries=entries,
-            winner=best[0],
+            winner=winner,
             pct_gap=pct_gap,
         ))
 

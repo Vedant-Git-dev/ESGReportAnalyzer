@@ -563,6 +563,10 @@ def run_company_pipeline(
 
     missing_kpis  = [k for k in ALL_KPI_NAMES if k not in cached_kpis]
     need_revenue  = cached_revenue is None
+    _emit(
+        f"Cache check: {len(cached_kpis)} KPI(s) already available, "
+        f"{len(missing_kpis)} still missing."
+    )
 
     if not missing_kpis and not need_revenue:
         _emit(f"All data loaded from cache ({len(cached_kpis)} metrics).")
@@ -621,6 +625,11 @@ def run_company_pipeline(
     final_merged = {**merged_kpis, **final_kpis}
     final_revenue = final_revenue or final_db.get("revenue")
 
+    _emit(
+        f"Comparison-ready KPI set: {len(final_merged)} total "
+        f"({len(cached_kpis)} cached, {len(all_new_kpis)} newly extracted)."
+    )
+
     if final_merged:
         _emit(f"Found {len(final_merged)} ESG metric(s).")
     else:
@@ -668,16 +677,9 @@ def build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dict
 
     report   = compare_profiles(profiles)
 
-    # Filter comparable (ceiling check, verbatim from ui.py)
-    filtered = []
-    for comp in report.comparisons:
-        meta    = KPI_GROUPS.get(comp.kpi_name, {})
-        ceiling = meta.get("max_ratio")
-        if all(
-            (not ceiling or v <= ceiling) and v >= 0
-            for _, v, _ in comp.entries
-        ):
-            filtered.append(comp)
+    # Include all comparisons (no ceiling filtering to prevent data loss)
+    # The max_ratio values in KPI_GROUPS are informational/validation only
+    filtered = report.comparisons
 
     llm = get_llm_service()
     summary = generate_summary(profiles, report, llm=llm)
