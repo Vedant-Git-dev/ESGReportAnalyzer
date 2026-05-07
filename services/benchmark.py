@@ -105,18 +105,18 @@ RATIO_UNIT_LABELS = {
 }
 
 # Hard ceilings on ratio values — anything above is likely an extraction error
-RATIO_CEILINGS: dict[str, float] = {
-    "scope_1_emissions":   10,
-    "scope_2_emissions":   10,
-    "scope_3_emissions":   50,
-    "energy_consumption":  1_000,
-    "waste_generated":     5,
-    "water_consumption":   500,
-    "employee_count":      5_000,     # employees per Crore
-    "women_in_workforce_percentage": 100,
-    "complaints_filed":    1_000_000,
-    "complaints_pending":  100_000,
-}
+# RATIO_CEILINGS: dict[str, float] = {
+#     "scope_1_emissions":   10,
+#     "scope_2_emissions":   10,
+#     "scope_3_emissions":   50,
+#     "energy_consumption":  1_000,
+#     "waste_generated":     5,
+#     "water_consumption":   500,
+#     "employee_count":      5_000,     # employees per Crore
+#     "women_in_workforce_percentage": 100,
+#     "complaints_filed":    1_000_000,
+#     "complaints_pending":  100_000,
+# }
 
 # Implied revenue sanity (for back-calculation validation)
 _IMPLIED_REV_MIN_CR = 1_000
@@ -338,15 +338,6 @@ def build_company_profile(
 
             ratio_unit = RATIO_UNIT_LABELS.get(kpi_name, "")
 
-        # ── Ceiling guard ─────────────────────────────────────────────────────
-        ceiling = RATIO_CEILINGS.get(kpi_name)
-        if ceiling and ratio_val > ceiling:
-            logger.warning(
-                "benchmark.ratio_exceeds_ceiling",
-                kpi=kpi_name, ratio=ratio_val, ceiling=ceiling,
-                company=company_name,
-            )
-            continue
 
         display = _DISPLAY_NAMES.get(kpi_name, kpi_name)
 

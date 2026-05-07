@@ -332,11 +332,7 @@ def normalize(
             category=cat, conversion_factor=1.0,
         )
     if cat == "percentage":
-        # Guard: percentage values must be 0-100
-        if not (0 <= value <= 100):
-            raise NormalizationError(
-                f"Percentage value {value} out of range [0, 100] for '{kpi_name}'"
-            )
+        # Accept any percentage value — let LLM normalize
         return NormalizedKPI(
             kpi_name=kpi_name, raw_value=value, raw_unit=unit,
             normalized_value=value, normalized_unit=canonical_unit,

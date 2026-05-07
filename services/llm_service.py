@@ -143,7 +143,7 @@ class LLMService:
             "\n4. If multiple values appear, prefer the most recent year or highest reported absolute value"
             "\n5. ALWAYS return the raw number exactly as it appears — do NOT convert or rescale"
             "\n6. NEVER return values in 'Million tonnes' — convert: 5 Million tonnes = 5000000"
-            "\n7. Return the unit EXACTLY as it appears in the source text"
+            "\n7. NORMALIZE all values: for percentages, convert to 0-100 range if needed; for other units, ensure correct scale per the unit guidance"
             "\n8. Respond ONLY with valid JSON — no explanation, no markdown fences, no Python None"
         )
 
@@ -216,19 +216,27 @@ def _build_unit_guidance(kpi_name: str, expected_unit: str) -> str:
     elif kpi_name == "energy_consumption":
         return (
             "\nUNIT RULE: Return value in the unit shown in the PDF (GJ, MJ, MWh, GWh, TJ). "
-            "Do not convert between units — return exact number and exact unit label from PDF.\n"
+            "Do not convert between units — return exact number and exact unit label from PDF. "
+            "NORMALIZE: ensure value is in the correct scale for the unit.\n"
         )
     elif kpi_name == "waste_generated":
         return (
             "\nUNIT RULE: Return value in metric tonnes (MT). "
             "Typical IT company total waste is 1,000 – 50,000 MT per year. "
-            "If you see a value > 500,000 MT, it is likely a different company's data — skip it.\n"
+            "If you see a value > 500,000 MT, it is likely a different company's data — skip it. "
+            "NORMALIZE: ensure all values are properly scaled.\n"
         )
     elif kpi_name == "water_consumption":
         return (
-            "\nUNIT RULE: Return value in KL (kilolitres) or the unit shown in the PDF.\n"
+            "\nUNIT RULE: Return value in KL (kilolitres) or the unit shown in the PDF. "
+            "NORMALIZE: ensure value is in the correct scale for the unit.\n"
         )
-    return f"\nUNIT RULE: Return value in {expected_unit} as shown in the PDF.\n"
+    elif kpi_name in ("renewable_energy_percentage", "women_in_workforce_percentage"):
+        return (
+            "\nUNIT RULE: Return value as a percentage number. "
+            "NORMALIZE: convert to 0-100 range if the value is found in a different format (e.g., 0-1 scale, decimal).\n"
+        )
+    return f"\nUNIT RULE: Return value in {expected_unit} as shown in the PDF. NORMALIZE: ensure value is properly formatted.\n"
 
 
 def _auto_convert_million_scale(result: dict, kpi_name: str) -> dict:

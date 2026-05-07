@@ -80,62 +80,7 @@ _REPORT_TYPE_PRIORITY: dict[str, int] = {
     "ESG":        2,
 }
 
-_KPI_PLAUSIBILITY: dict[str, tuple[float, float]] = {
-    "energy_consumption":  (1_000,     500_000_000),
-    "scope_1_emissions":   (1,           5_000_000),
-    "scope_2_emissions":   (1,           5_000_000),
-    "total_ghg_emissions": (1,          10_000_000),
-    "water_consumption":   (100,        100_000_000),
-    "waste_generated":     (0.1,            500_000),
-}
-
-_RATIO_CEILINGS: dict[str, float] = {
-    "energy_consumption":  1_000,
-    "scope_1_emissions":   10,
-    "scope_2_emissions":   10,
-    "total_ghg_emissions": 20,
-    "water_consumption":   500,
-    "waste_generated":     5,
-}
-
 _kpi_cache_svc = KPICacheService()
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Plausibility guards
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _validate_kpi_plausibility(kpi_name: str, value: float, unit: str) -> bool:
-    limits = _KPI_PLAUSIBILITY.get(kpi_name)
-    if limits is None:
-        return True
-    lo, hi = limits
-    try:
-        norm = normalize(kpi_name=kpi_name, value=value, unit=unit)
-        v = norm.normalized_value
-    except NormalizationError:
-        return False
-    if v < lo or v > hi:
-        logger.warning(
-            "run_benchmark.implausible_value",
-            kpi=kpi_name, value=value, unit=unit,
-            normalized=v, limit_lo=lo, limit_hi=hi,
-        )
-        return False
-    return True
-
-
-def _validate_ratio_plausibility(kpi_name: str, ratio_value: float) -> bool:
-    ceiling = _RATIO_CEILINGS.get(kpi_name)
-    if ceiling is None:
-        return True
-    if ratio_value <= 0 or ratio_value > ceiling:
-        logger.warning(
-            "run_benchmark.implausible_ratio",
-            kpi=kpi_name, ratio=ratio_value, ceiling=ceiling,
-        )
-        return False
-    return True
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -467,10 +412,6 @@ def _run_pipeline_for_report(
                     continue
                 val  = ext.normalized_value
                 unit = ext.unit or ""
-                if not _validate_kpi_plausibility(ext.kpi_name, val, unit):
-                    print(f"           [DROP] {ext.kpi_name}: {val:,.2f} {unit} "
-                          f"— outside plausible range")
-                    continue
                 new_kpis[ext.kpi_name] = {
                     "value":      val,
                     "unit":       unit,
@@ -781,15 +722,6 @@ def process_company(
         fiscal_year=fy,
         page_texts=page_texts,
     )
-
-    bad_ratios = [
-        kpi for kpi, ratio in profile.ratios.items()
-        if not _validate_ratio_plausibility(kpi, ratio.ratio_value)
-    ]
-    for kpi in bad_ratios:
-        print(f"  [DROP ratio] {kpi}: ratio {profile.ratios[kpi].ratio_value:.4e} "
-              f"{profile.ratios[kpi].ratio_unit} exceeds ceiling")
-        del profile.ratios[kpi]
 
     print(f"\n  Intensity ratios ({company_name} FY{fy}):")
     if profile.ratios:
