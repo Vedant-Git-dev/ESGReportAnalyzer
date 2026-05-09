@@ -2,33 +2,40 @@
 import React from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts'
 
-const CA = '#0D6EFD'
-const CB = '#198754'
+const CA = '#237A5F'
+const CB = '#C47D3F'
 
 function fmt(v) {
   if (v === undefined || v === null) return 'N/A'
   if (Math.abs(v) < 0.001) return v.toExponential(2)
-  if (Math.abs(v) < 1)     return v.toFixed(4)
-  if (Math.abs(v) >= 1e6)  return (v / 1e6).toFixed(2) + 'M'
-  if (Math.abs(v) >= 1e3)  return v.toLocaleString('en-IN', { maximumFractionDigits: 1 })
+  if (Math.abs(v) < 1) return v.toFixed(4)
+  if (Math.abs(v) >= 1e9) return (v / 1e9).toFixed(2) + 'B'
+  if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(2) + 'M'
+  if (Math.abs(v) >= 1e3) return v.toLocaleString('en-IN', { maximumFractionDigits: 1 })
   return v.toLocaleString('en-IN', { maximumFractionDigits: 2 })
 }
 
 const CustomTooltip = ({ active, payload, unit }) => {
   if (!active || !payload?.length) return null
+  const data = payload[0].payload
   return (
     <div style={{
-      background: '#fff', border: '1px solid var(--border)',
-      borderRadius: 6, padding: '6px 10px', fontSize: 12,
+      background: '#1A2320',
+      border: 'none',
+      borderRadius: 8,
+      padding: '10px 14px',
+      fontSize: 12,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
     }}>
-      <strong>{payload[0].payload.label}</strong>
-      <br />
-      {fmt(payload[0].value)} {unit}
+      <strong style={{ color: '#F5F7F5' }}>{data.label}</strong>
+      <div style={{ color: '#8B9691', marginTop: 4 }}>
+        {fmt(data.value)} <span style={{ opacity: 0.7 }}>{unit}</span>
+      </div>
     </div>
   )
 }
 
-export default function MiniBarChart({ entries, labelA, labelB, unit, winner }) {
+export default function MiniBarChart({ entries, unit, winner }) {
   const data = (entries || [])
     .map((entry) => {
       const companyLabel = Array.isArray(entry)
@@ -54,32 +61,36 @@ export default function MiniBarChart({ entries, labelA, labelB, unit, winner }) 
 
   return (
     <div className="mini-chart">
-      <ResponsiveContainer width="100%" height={80}>
+      <ResponsiveContainer width="100%" height={70}>
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: 4, right: 56, bottom: 4, left: 4 }}
-          barCategoryGap="30%"
+          margin={{ top: 4, right: 60, bottom: 4, left: 4 }}
+          barCategoryGap="35%"
         >
           <XAxis type="number" hide domain={[0, 'dataMax']} />
           <YAxis
             type="category"
             dataKey="label"
-            width={82}
-            tick={{ fontSize: 11, fill: 'var(--sub)', fontFamily: 'var(--font-sans)' }}
+            width={90}
+            tick={{ fontSize: 12, fill: '#5A6662', fontFamily: 'var(--font-sans)', fontWeight: 500 }}
             tickLine={false}
             axisLine={false}
           />
-          <Tooltip content={<CustomTooltip unit={unit} />} cursor={{ fill: 'var(--surface)' }} />
-          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+          <Tooltip content={<CustomTooltip unit={unit} />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
+          <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24}>
             <LabelList
               dataKey="value"
               position="right"
               formatter={(v) => fmt(v)}
-              style={{ fontSize: 11, fill: 'var(--sub)', fontFamily: 'var(--font-mono)' }}
+              style={{ fontSize: 11, fill: '#8B9691', fontFamily: 'var(--font-mono)', fontWeight: 500 }}
             />
             {data.map((entry, i) => (
-              <Cell key={i} fill={i === 0 ? CA : CB} opacity={entry.isWinner ? 1 : 0.55} />
+              <Cell
+                key={i}
+                fill={i === 0 ? CA : CB}
+                opacity={entry.isWinner ? 1 : 0.5}
+              />
             ))}
           </Bar>
         </BarChart>

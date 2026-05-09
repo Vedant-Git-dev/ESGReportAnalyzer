@@ -1,11 +1,14 @@
 // src/App.jsx
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import Sidebar    from './components/Sidebar'
+import Sidebar from './components/Sidebar'
 import CompareTab from './components/CompareTab'
-import UploadTab  from './components/UploadTab'
+import UploadTab from './components/UploadTab'
 import { useAppState, useCompare } from './hooks/useApi'
 
-const TABS = ['Comparison', 'Upload PDF']
+const TABS = [
+  { id: 'compare', label: 'Comparison', icon: '⚖' },
+  { id: 'upload', label: 'Upload PDF', icon: '📄' },
+]
 
 export default function App() {
   const {
@@ -17,25 +20,20 @@ export default function App() {
     getCompaniesBySector,
   } = useAppState()
 
-  const [tab, setTab] = useState(0)
+  const [tab, setTab] = useState('compare')
 
   // Sidebar form state
   const [form, setForm] = useState({
     company1: '',
-    fy1:      2025,
+    fy1: 2025,
     company2: '',
-    fy2:      2024,
-    sector:   'Information Technology',
-    file1:    null,
-    file2:    null,
-    rtype1:   'BRSR',
-    rtype2:   'BRSR',
+    fy2: 2024,
+    sector: 'Information Technology',
   })
 
   const { run, cancel, state: compareState } = useCompare()
   const prevRunningRef = useRef(false)
 
-  // Compare can create new companies via ingestion; refresh dropdown source once it finishes.
   useEffect(() => {
     if (prevRunningRef.current && !compareState.running) {
       refreshCompanies()
@@ -44,48 +42,22 @@ export default function App() {
   }, [compareState.running, refreshCompanies])
 
   const handleCompare = useCallback(async () => {
-    setTab(0)
-
-    // If PDFs were attached, upload them first so the pipeline finds them in DB
-    const uploadIfNeeded = async (file, company, fy, sector, rtype) => {
-      if (!file) return
-      const fd = new FormData()
-      fd.append('file',        file)
-      fd.append('company',     company)
-      fd.append('fy',          String(fy))
-      fd.append('sector',      sector)
-      fd.append('report_type', rtype)
-      try {
-        await fetch('/api/upload', { method: 'POST', body: fd })
-        // Refresh company list so newly ingested companies appear in dropdown
-        refreshCompanies()
-      } catch (e) {
-        console.warn('Pre-upload failed:', e)
-      }
-    }
-
-    await Promise.all([
-      uploadIfNeeded(form.file1, form.company1, form.fy1, form.sector, form.rtype1),
-      uploadIfNeeded(form.file2, form.company2, form.fy2, form.sector, form.rtype2),
-    ])
+    setTab('compare')
 
     run({
       company1: form.company1,
-      fy1:      form.fy1,
+      fy1: form.fy1,
       company2: form.company2,
-      fy2:      form.fy2,
-      sector:   form.sector,
+      fy2: form.fy2,
+      sector: form.sector,
     })
-  }, [form, run, refreshCompanies])
+  }, [form, run])
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', gap: 12, color: 'var(--sub)',
-      }}>
-        <span className="spinner" />
-        Loading ESG Intelligence…
+      <div className="loading-state" style={{ height: '100vh' }}>
+        <div className="spinner" style={{ width: 28, height: 28 }} />
+        <span className="loading-text">Initializing ESG Intelligence...</span>
       </div>
     )
   }
@@ -103,31 +75,34 @@ export default function App() {
       />
 
       <div className="main">
-        <div className="tabs-bar">
-          {TABS.map((t, i) => (
-            <button
-              key={t}
-              className={`tab-btn ${tab === i ? 'active' : ''}`}
-              onClick={() => setTab(i)}
-            >
-              {t}
-            </button>
-          ))}
+        <div className="top-bar">
+          <div className="top-bar-tabs">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                className={`tab-btn ${tab === t.id ? 'active' : ''}`}
+                onClick={() => setTab(t.id)}
+              >
+                <span className="tab-icon">{t.icon}</span>
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {tab === 0 && (
-          <div className="tab-content">
+        <div className="content-panel">
+          {tab === 'compare' && (
             <CompareTab compareState={compareState} form={form} />
-          </div>
-        )}
+          )}
 
-        {tab === 1 && (
-          <UploadTab
-            metadata={metadata}
-            health={health}
-            onUploadComplete={refreshCompanies}
-          />
-        )}
+          {tab === 'upload' && (
+            <UploadTab
+              metadata={metadata}
+              health={health}
+              onUploadComplete={refreshCompanies}
+            />
+          )}
+        </div>
       </div>
     </div>
   )

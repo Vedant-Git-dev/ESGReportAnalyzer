@@ -9,18 +9,19 @@ function fmt(v) {
   return Number(v).toLocaleString('en-IN', { maximumFractionDigits: 2 })
 }
 
-export default function UploadTab({ metadata, health }) {
+export default function UploadTab({ metadata, health, onUploadComplete }) {
   const { sectors = [], report_types = [] } = metadata
   const fileRef = useRef(null)
 
   const [form, setForm] = useState({
-    company:     '',
-    fy:          2024,
-    sector:      sectors[0] || 'Information Technology',
+    company: '',
+    fy: 2024,
+    sector: sectors[0] || 'Information Technology',
     report_type: 'BRSR',
-    file:        null,
+    file: null,
   })
   const [fileErr, setFileErr] = useState('')
+  const [dragOver, setDragOver] = useState(false)
 
   const { upload, reset, state } = useUpload()
 
@@ -41,135 +42,178 @@ export default function UploadTab({ metadata, health }) {
     if (!form.file || !form.company) return
     reset()
     const fd = new FormData()
-    fd.append('file',        form.file)
-    fd.append('company',     form.company)
-    fd.append('fy',          form.fy)
-    fd.append('sector',      form.sector)
+    fd.append('file', form.file)
+    fd.append('company', form.company)
+    fd.append('fy', form.fy)
+    fd.append('sector', form.sector)
     fd.append('report_type', form.report_type)
     await upload(fd)
+    onUploadComplete?.()
   }
 
   const ready = Boolean(form.file && form.company?.trim() && health.db_online)
-
   const { uploading, result, error } = state
 
   return (
-    <div className="tab-content">
-      <div className="sec" style={{ marginTop: 0 }}>Upload ESG / BRSR Report PDF</div>
-      <p style={{ fontSize: 13, color: 'var(--sub)', marginBottom: 20 }}>
-        Upload a PDF to extract and store ESG metrics. Processed reports are
-        immediately available in the Comparison tab.
-      </p>
+    <div className="upload-tab-container">
+      <div className="upload-header">
+        <h2 className="upload-title">Upload ESG Report</h2>
+        <p className="upload-description">
+          Upload a PDF to extract and store ESG metrics. Processed reports are
+          immediately available for comparison in the platform.
+        </p>
+      </div>
 
       {!health.db_online && (
-        <div className="alert alert-warn" style={{ marginBottom: 16 }}>
-          Database is offline. Uploads require a database connection.
+        <div className="alert alert-warn">
+          <span className="alert-icon">⚠</span>
+          <div>
+            <strong>Database Offline</strong>
+            <p className="alert-text">Uploads require an active database connection.</p>
+          </div>
         </div>
       )}
 
-      {/* Form */}
-      <div className="upload-form">
+      {/* Form Card */}
+      <div className="upload-card">
         <div className="upload-form-grid">
-          <div>
-            <div className="field-label">Company name</div>
+          <div className="field-group">
+            <label className="field-label">Company Name</label>
             <input
               type="text"
-              placeholder="e.g. Wipro"
+              placeholder="e.g. Wipro Ltd"
               value={form.company}
               onChange={e => setField('company', e.target.value)}
             />
           </div>
-          <div>
-            <div className="field-label">Fiscal year</div>
+          <div className="field-group">
+            <label className="field-label">Fiscal Year</label>
             <input
               type="number"
-              min={2010} max={2030}
+              min={2010}
+              max={2030}
               value={form.fy}
               onChange={e => setField('fy', Number(e.target.value))}
             />
           </div>
-          <div>
-            <div className="field-label">Sector</div>
+          <div className="field-group">
+            <label className="field-label">Sector</label>
             <select value={form.sector} onChange={e => setField('sector', e.target.value)}>
               {sectors.map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
-          <div>
-            <div className="field-label">Report type</div>
+          <div className="field-group">
+            <label className="field-label">Report Type</label>
             <select value={form.report_type} onChange={e => setField('report_type', e.target.value)}>
               {report_types.map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
         </div>
 
-        {/* File picker */}
-        <div className="field-label">PDF file</div>
-        <div
-          className="upload-zone"
-          onClick={() => fileRef.current?.click()}
-          onDragOver={e => e.preventDefault()}
-          onDrop={e => {
-            e.preventDefault()
-            const f = e.dataTransfer.files?.[0]
-            if (f?.type === 'application/pdf') {
-              handleFile({ target: { files: [f] } })
-            }
-          }}
-        >
-          <input type="file" accept=".pdf" ref={fileRef} onChange={handleFile} />
-          {form.file
-            ? <div className="upload-name">
-                ✅ {form.file.name} ({(form.file.size / 1e6).toFixed(1)} MB)
-              </div>
-            : <div className="upload-zone-text">
-                Click or drag a PDF here
-              </div>
-          }
-        </div>
-        {fileErr && <div className="alert alert-error" style={{ marginTop: 6 }}>{fileErr}</div>}
+        {/* File Drop Zone */}
+        <div className="field-group">
+          <label className="field-label">PDF Report</label>
+          <div
+            className={`upload-zone ${dragOver ? 'drag-over' : ''} ${form.file ? 'has-file' : ''}`}
+            onClick={() => fileRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={e => {
+              e.preventDefault()
+              setDragOver(false)
+              const f = e.dataTransfer.files?.[0]
+              if (f?.type === 'application/pdf') {
+                handleFile({ target: { files: [f] } })
+              }
+            }}
+          >
+            <input type="file" accept=".pdf" ref={fileRef} onChange={handleFile} />
 
-        <button
-          className="btn btn-primary"
-          style={{ marginTop: 14 }}
-          disabled={!ready || uploading}
-          onClick={handleSubmit}
-        >
-          {uploading
-            ? <><span className="spinner" style={{ width: 14, height: 14 }} /> Processing…</>
-            : 'Process Upload'
-          }
-        </button>
+            {form.file ? (
+              <div className="upload-file-info">
+                <div className="upload-file-icon">📄</div>
+                <div className="upload-file-details">
+                  <div className="upload-name">{form.file.name}</div>
+                  <div className="upload-zone-hint">
+                    {(form.file.size / 1e6).toFixed(1)} MB • Click to change file
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <span className="upload-zone-icon">📁</span>
+                <div className="upload-zone-text">Drop PDF here or click to browse</div>
+                <div className="upload-zone-hint">Supported format: PDF • Max size: {MAX_MB} MB</div>
+              </>
+            )}
+          </div>
+          {fileErr && (
+            <div className="alert alert-error" style={{ marginTop: 8 }}>
+              <span className="alert-icon">⚠</span>
+              <span>{fileErr}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="upload-actions">
+          <button
+            className="btn-upload"
+            disabled={!ready || uploading}
+            onClick={handleSubmit}
+          >
+            {uploading ? (
+              <>
+                <span className="spinner spinner-sm" />
+                Processing Report...
+              </>
+            ) : (
+              <>
+                <span className="btn-icon">⚡</span>
+                Extract ESG Metrics
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Results */}
       {error && (
-        <div className="alert alert-error" style={{ marginTop: 16 }}>
-          ⚠️ {error}
+        <div className="alert alert-error">
+          <span className="alert-icon">⚠</span>
+          <div>
+            <strong>Upload Failed</strong>
+            <p className="alert-text">{error}</p>
+          </div>
         </div>
       )}
 
       {result && (
-        <div style={{ marginTop: 20, maxWidth: 680 }}>
+        <div className="upload-results">
           <div className={`alert ${Object.keys(result.kpi_records || {}).length ? 'alert-ok' : 'alert-warn'}`}>
-            {result.message}
+            <span className="alert-icon">{Object.keys(result.kpi_records || {}).length ? '✓' : '📋'}</span>
+            <div>
+              <strong>{result.message}</strong>
+            </div>
           </div>
 
           {result.revenue && (
-            <p style={{ fontSize: 13, color: 'var(--sub)', marginTop: 8 }}>
-              Revenue: INR {Number(result.revenue.value_cr).toLocaleString('en-IN', { maximumFractionDigits: 0 })} Crore
-              [{result.revenue.pattern_name}, {Math.round(result.revenue.confidence * 100)}% confidence]
-            </p>
+            <div className="revenue-info">
+              <span className="revenue-label">Revenue extracted:</span>
+              <strong className="revenue-value">INR {Number(result.revenue.value_cr).toLocaleString('en-IN', { maximumFractionDigits: 0 })} Crore</strong>
+              <span className="revenue-meta">
+                {result.revenue.pattern_name} • {Math.round(result.revenue.confidence * 100)}% confidence
+              </span>
+            </div>
           )}
 
           {Object.keys(result.kpi_records || {}).length > 0 && (
             <KPIResultTable kpiRecords={result.kpi_records} />
           )}
 
-          {/* Log */}
           {result.log?.length > 0 && (
-            <details className="log-expander" style={{ marginTop: 16 }}>
+            <details className="log-expander">
               <summary>Processing details ({result.log.length} steps)</summary>
-              <div style={{ marginTop: 8 }}>
+              <div className="log-content">
                 {result.log.map((line, i) => (
                   <div key={i} className="log-line">{line}</div>
                 ))}
@@ -182,51 +226,72 @@ export default function UploadTab({ metadata, health }) {
   )
 }
 
-/* ── KPI results table ── */
+/* KPI meta mapping */
 const KPI_META = {
-  scope_1_emissions:             { label: 'Scope 1 GHG',         group: 'Environmental' },
-  scope_2_emissions:             { label: 'Scope 2 GHG',         group: 'Environmental' },
-  scope_3_emissions:             { label: 'Scope 3 GHG',         group: 'Environmental' },
-  energy_consumption:            { label: 'Energy Intensity',    group: 'Environmental' },
-  water_consumption:             { label: 'Water Intensity',     group: 'Environmental' },
-  waste_generated:               { label: 'Waste Intensity',     group: 'Environmental' },
-  renewable_energy_percentage:   { label: 'Renewable Energy',    group: 'Environmental' },
-  employee_count:                { label: 'Workforce',           group: 'Social'        },
-  women_in_workforce_percentage: { label: 'Women in Workforce',  group: 'Social'        },
-  complaints_filed:              { label: 'Complaints Filed',    group: 'Governance'    },
-  complaints_pending:            { label: 'Complaints Pending',  group: 'Governance'    },
+  scope_1_emissions: { label: 'Scope 1 GHG Emissions', group: 'Environmental' },
+  scope_2_emissions: { label: 'Scope 2 GHG Emissions', group: 'Environmental' },
+  scope_3_emissions: { label: 'Scope 3 GHG Emissions', group: 'Environmental' },
+  energy_consumption: { label: 'Energy Consumption', group: 'Environmental' },
+  water_consumption: { label: 'Water Consumption', group: 'Environmental' },
+  waste_generated: { label: 'Waste Generated', group: 'Environmental' },
+  renewable_energy_percentage: { label: 'Renewable Energy %', group: 'Environmental' },
+  employee_count: { label: 'Total Workforce', group: 'Social' },
+  women_in_workforce_percentage: { label: 'Women in Workforce %', group: 'Social' },
+  complaints_filed: { label: 'Complaints Filed', group: 'Governance' },
+  complaints_pending: { label: 'Complaints Pending', group: 'Governance' },
+}
+
+const GROUP_COLORS = {
+  Environmental: 'var(--env-color)',
+  Social: 'var(--soc-color)',
+  Governance: 'var(--gov-color)',
 }
 
 function KPIResultTable({ kpiRecords }) {
   return (
-    <table className="upload-result-table">
-      <thead>
-        <tr>
-          <th>Group</th>
-          <th>Metric</th>
-          <th>Value</th>
-          <th>Unit</th>
-          <th>Method</th>
-          <th>Confidence</th>
-        </tr>
-      </thead>
-      <tbody>
-        {Object.entries(kpiRecords).map(([name, rec]) => {
-          const meta = KPI_META[name] || { label: name, group: '—' }
-          return (
-            <tr key={name}>
-              <td>{meta.group}</td>
-              <td>{meta.label}</td>
-              <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                {fmt(rec.value)}
-              </td>
-              <td>{rec.unit}</td>
-              <td>{rec.method}</td>
-              <td>{Math.round((rec.confidence || 0) * 100)}%</td>
+    <div className="kpi-results">
+      <div className="sec">Extracted KPIs ({Object.keys(kpiRecords).length})</div>
+      <div className="table-wrapper">
+        <table className="upload-result-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Metric</th>
+              <th>Value</th>
+              <th>Unit</th>
+              <th>Method</th>
+              <th>Conf.</th>
             </tr>
-          )
-        })}
-      </tbody>
-    </table>
+          </thead>
+          <tbody>
+            {Object.entries(kpiRecords).map(([name, rec]) => {
+              const meta = KPI_META[name] || { label: name, group: 'Other' }
+              const groupColor = GROUP_COLORS[meta.group] || 'var(--text-secondary)'
+              return (
+                <tr key={name}>
+                  <td>
+                    <span className="category-badge" style={{ color: groupColor, background: `${groupColor}12` }}>
+                      {meta.group}
+                    </span>
+                  </td>
+                  <td className="metric-name">{meta.label}</td>
+                  <td className="metric-value">{fmt(rec.value)}</td>
+                  <td className="metric-unit">{rec.unit}</td>
+                  <td className="metric-method">{rec.method}</td>
+                  <td>
+                    <span
+                      className="confidence-badge"
+                      style={{ color: (rec.confidence || 0) > 0.7 ? 'var(--success)' : 'var(--warning)' }}
+                    >
+                      {Math.round((rec.confidence || 0) * 100)}%
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }

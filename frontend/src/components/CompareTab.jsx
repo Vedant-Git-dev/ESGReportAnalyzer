@@ -5,14 +5,15 @@ import ProgressPanel from './ProgressPanel'
 import { api } from '../lib/api'
 
 const GROUPS = [
-  { key: 'environmental', label: 'Environmental' },
-  { key: 'social', label: 'Social' },
-  { key: 'governance', label: 'Governance' },
+  { key: 'environmental', label: 'Environmental', icon: '🌱' },
+  { key: 'social', label: 'Social', icon: '👥' },
+  { key: 'governance', label: 'Governance', icon: '⚖' },
 ]
-const GROUP_COLORS = {
-  environmental: 'var(--green)',
-  social:        'var(--blue)',
-  governance:    'var(--amber)',
+
+const GROUP_STYLES = {
+  environmental: { color: 'var(--env-color)', bg: 'rgba(26, 77, 64, 0.1)' },
+  social: { color: 'var(--soc-color)', bg: 'rgba(46, 107, 138, 0.1)' },
+  governance: { color: 'var(--gov-color)', bg: 'rgba(123, 94, 60, 0.1)' },
 }
 
 const groupKey = (value) => String(value || '').trim().toLowerCase()
@@ -20,31 +21,17 @@ const groupKey = (value) => String(value || '').trim().toLowerCase()
 export default function CompareTab({ compareState, form }) {
   const { running, progress1, progress2, result, error } = compareState
 
-  // ── Empty state ────────────────────────────────────────────────────────────
+  // Empty state
   if (!running && !result && !error) {
-    return (
-      <div className="hero">
-        <div className="hero-icon">🌿</div>
-        <div className="hero-title">ESG Competitive Intelligence</div>
-        <div className="hero-sub">
-          Enter two company names in the sidebar and click Compare to benchmark
-          their ESG performance across Environmental, Social, and Governance metrics.
-        </div>
-        <div className="badge-row">
-          <span className="badge badge-blue">Environmental</span>
-          <span className="badge badge-green">Social</span>
-          <span className="badge badge-amber">Governance</span>
-        </div>
-      </div>
-    )
+    return <EmptyState />
   }
 
-  // ── Running ────────────────────────────────────────────────────────────────
+  // Running
   if (running && !result) {
     return (
       <div>
-        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
-          Comparing {form.company1} FY{form.fy1} vs {form.company2} FY{form.fy2}
+        <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 20, color: 'var(--text-primary)' }}>
+          Comparing {form.company1} (FY{form.fy1}) vs {form.company2} (FY{form.fy2})
         </h2>
         <ProgressPanel
           company1={form.company1}
@@ -57,13 +44,19 @@ export default function CompareTab({ compareState, form }) {
     )
   }
 
-  // ── Error ──────────────────────────────────────────────────────────────────
+  // Error
   if (error && !result) {
     return (
       <div>
-        <div className="alert alert-error">⚠️ {error}</div>
-        <p style={{ fontSize: 13, color: 'var(--sub)', marginTop: 8 }}>
-          Try uploading the report PDFs directly using the Upload PDF tab.
+        <div className="alert alert-error">
+          <span style={{ fontSize: 18 }}>⚠</span>
+          <div>
+            <strong>Analysis Failed</strong>
+            <p style={{ marginTop: 4, fontSize: 13, opacity: 0.9 }}>{error}</p>
+          </div>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 12 }}>
+          Try uploading the report PDFs directly using the Upload tab, or check that the company names are correct.
         </p>
       </div>
     )
@@ -71,14 +64,12 @@ export default function CompareTab({ compareState, form }) {
 
   if (!result) return null
 
-  const { comparisons = [], summary, label_a, label_b, company1, company2 } = result
-
   return (
     <ResultsView
-      comparisons={comparisons}
-      summary={summary}
-      labelA={label_a}
-      labelB={label_b}
+      comparisons={result.comparisons || []}
+      summary={result.summary}
+      labelA={result.label_a}
+      labelB={result.label_b}
       company1={result.company1}
       company2={result.company2}
       form={form}
@@ -87,24 +78,60 @@ export default function CompareTab({ compareState, form }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ResultsView — hosts the toggle and passes mode to every KPICard
+// Empty State
+// ─────────────────────────────────────────────────────────────────────────────
+function EmptyState() {
+  return (
+    <div className="hero">
+      <div className="hero-illustration">
+        <div className="hero-illustration-icon">📊</div>
+      </div>
+      <h1 className="hero-title">ESG Competitive Intelligence</h1>
+      <p className="hero-subtitle">
+        Benchmark companies on their Environmental, Social, and Governance performance.
+        Select two companies from the sidebar and click Compare to begin analysis.
+      </p>
+      <div className="hero-badges">
+        <span className="esg-badge env">
+          <span className="esg-badge-icon">🌱</span>
+          Environmental
+        </span>
+        <span className="esg-badge soc">
+          <span className="esg-badge-icon">👥</span>
+          Social
+        </span>
+        <span className="esg-badge gov">
+          <span className="esg-badge-icon">⚖</span>
+          Governance
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Results View
 // ─────────────────────────────────────────────────────────────────────────────
 function ResultsView({ comparisons, summary, labelA, labelB, company1, company2, form }) {
-  const [normalized,  setNormalized]  = useState(true)   // false = Absolute, true = Normalized
+  const [normalized, setNormalized] = useState(true)
   const [downloading, setDownloading] = useState(false)
-  const [logOpen,     setLogOpen]     = useState(false)
-  const [selectedGroup, setSelectedGroup] = useState('environmental') // ESG tab state
+  const [logOpen, setLogOpen] = useState(false)
+  const [selectedGroup, setSelectedGroup] = useState('environmental')
 
   if (!comparisons.length) {
     return (
       <div className="alert alert-warn">
-        No comparable ESG metrics found. Reports may use different formats.
+        <span style={{ fontSize: 18 }}>📋</span>
+        <div>
+          <strong>No comparable metrics found</strong>
+          <p style={{ marginTop: 4, fontSize: 13, opacity: 0.9 }}>
+            Reports may use different formats or KPI definitions. Try uploading source PDFs.
+          </p>
+        </div>
       </div>
     )
   }
 
-  // Raw absolute kpi_records keyed by kpi_name for each company
-  // Shape: { kpi_name: { value, unit, method, confidence } }
   const rawA = company1?.kpi_records || {}
   const rawB = company2?.kpi_records || {}
 
@@ -113,21 +140,21 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
     try {
       const blob = await api.exportPdf({
         company1: labelA.split(' FY')[0],
-        fy1:      parseInt(labelA.split(' FY')[1]),
+        fy1: parseInt(labelA.split(' FY')[1]),
         company2: labelB.split(' FY')[0],
-        fy2:      parseInt(labelB.split(' FY')[1]),
-        sector:   form.sector,
+        fy2: parseInt(labelB.split(' FY')[1]),
+        sector: form.sector,
         summary,
         comparisons: comparisons.map(c => ({
           kpi_name: c.kpi_name,
-          entries:  c.entries,
-          pct_gap:  c.pct_gap,
-          winner:   c.winner,
+          entries: c.entries,
+          pct_gap: c.pct_gap,
+          winner: c.winner,
         })),
       })
-      const url  = URL.createObjectURL(blob)
-      const a    = document.createElement('a')
-      a.href     = url
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
       a.download = `ESG_${labelA.split(' FY')[0]}_vs_${labelB.split(' FY')[0]}.pdf`
       a.click()
       URL.revokeObjectURL(url)
@@ -138,91 +165,93 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
     }
   }
 
+  const groupComps = comparisons.filter(c => groupKey(c.group) === selectedGroup)
+  const selectedGroupObj = GROUPS.find(g => g.key === selectedGroup)
+  const groupStyle = GROUP_STYLES[selectedGroup]
+
   return (
     <div>
-      {/* ── Header row ── */}
+      {/* Header */}
       <div className="compare-header">
         <div>
-          <div className="compare-title">
-            {labelA.split(' FY')[0]}
-            <span style={{ color: 'var(--sub)', fontWeight: 400, margin: '0 10px' }}>vs</span>
-            {labelB.split(' FY')[0]}
+          <div className="compare-title-block">
+            <span className="company-title">{labelA.split(' FY')[0]}</span>
+            <span className="vs-label">vs</span>
+            <span className="company-title">{labelB.split(' FY')[0]}</span>
           </div>
           <div className="compare-meta">
-            <span className="badge badge-blue">{form.sector}</span>
-            &nbsp;&nbsp;
-            {labelA.split(' FY')[1] && `FY${labelA.split(' FY')[1]}`}
-            {' · '}
-            {labelB.split(' FY')[1] && `FY${labelB.split(' FY')[1]}`}
+            <span className="sector-badge">{form.sector}</span>
+            <span className="fy-label">
+              FY{labelA.split(' FY')[1]} · FY{labelB.split(' FY')[1]}
+            </span>
           </div>
         </div>
 
         <div className="compare-actions">
-          {/* ── Mode Toggle ── */}
           <ModeToggle normalized={normalized} onChange={setNormalized} />
-
           <button
             className="btn btn-ghost btn-sm"
             onClick={handleExport}
             disabled={downloading}
           >
-            {downloading ? 'Generating…' : '⬇ Download PDF'}
+            {downloading ? '⏳ Generating...' : '⬇ Export PDF'}
           </button>
         </div>
       </div>
 
-      {/* ── Mode explanation banner ── */}
+      {/* Mode Banner */}
       <ModeBanner normalized={normalized} />
 
-      {/* ── ESG Tab Navigation ── */}
-      <ESGTabs selectedGroup={selectedGroup} onSelectGroup={setSelectedGroup} comparisons={comparisons} />
+      {/* ESG Tabs */}
+      <ESGTabs
+        selectedGroup={selectedGroup}
+        onSelectGroup={setSelectedGroup}
+        comparisons={comparisons}
+      />
 
-      {/* ── KPI Cards for Selected Group ── */}
-      {(() => {
-        const groupComps = comparisons.filter(c => groupKey(c.group) === selectedGroup)
-        const selectedGroupObj = GROUPS.find(g => g.key === selectedGroup)
-        
-        if (!groupComps.length) {
-          return (
-            <div className="alert alert-warn">
-              No KPIs found for {selectedGroupObj?.label} category.
-            </div>
-          )
-        }
-
-        return (
+      {/* KPI Cards */}
+      {groupComps.length > 0 ? (
+        <div style={{ animation: 'fadeIn 0.3s ease' }}>
+          {groupComps.map(comp => (
+            <KPICard
+              key={comp.kpi_name}
+              comp={comp}
+              labelA={labelA}
+              labelB={labelB}
+              normalized={normalized}
+              rawA={rawA[comp.kpi_name] || null}
+              rawB={rawB[comp.kpi_name] || null}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="alert alert-info">
+          <span style={{ fontSize: 18 }}>📊</span>
           <div>
-            {groupComps.map(comp => (
-              <KPICard
-                key={comp.kpi_name}
-                comp={comp}
-                labelA={labelA}
-                labelB={labelB}
-                normalized={normalized}
-                rawA={rawA[comp.kpi_name] || null}
-                rawB={rawB[comp.kpi_name] || null}
-              />
-            ))}
+            <strong>No {selectedGroupObj?.label} KPIs found</strong>
+            <p style={{ marginTop: 4, fontSize: 13, opacity: 0.9 }}>
+              Try switching to a different ESG category above.
+            </p>
           </div>
-        )
-      })()}
+        </div>
+      )}
 
-      {/* ── Summary ── */}
+      {/* Summary */}
       {summary && (
         <>
-          <div className="sec" style={{ marginTop: 28 }}>Summary</div>
+          <div className="sec">Executive Summary</div>
           <div className="summary-box">{summary}</div>
         </>
       )}
 
-      {/* ── Pipeline log ── */}
+      {/* Pipeline Logs */}
       <details
         className="log-expander"
-        style={{ marginTop: 20 }}
+        style={{ marginTop: 24 }}
         open={logOpen}
         onToggle={e => setLogOpen(e.target.open)}
       >
-        <summary>Processing details</summary>
+        <summary>Processing Details</summary>
         <div className="log-body">
           <LogCol label={labelA.split(' FY')[0]} lines={company1?.log || []} />
           <LogCol label={labelB.split(' FY')[0]} lines={company2?.log || []} />
@@ -233,7 +262,7 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ESGTabs — tab navigation for E, S, G groups
+// ESGTabs
 // ─────────────────────────────────────────────────────────────────────────────
 function ESGTabs({ selectedGroup, onSelectGroup, comparisons }) {
   return (
@@ -243,18 +272,18 @@ function ESGTabs({ selectedGroup, onSelectGroup, comparisons }) {
           const groupComps = comparisons.filter(c => groupKey(c.group) === group.key)
           const count = groupComps.length
           const isSelected = selectedGroup === group.key
-          
+
           return (
             <button
               key={group.key}
-              className={`esg-tab ${isSelected ? 'esg-tab-active' : ''}`}
+              className={`esg-tab ${group.key.substring(0, 3)} ${isSelected ? 'esg-tab-active' : ''}`}
               onClick={() => onSelectGroup(group.key)}
               style={isSelected ? {
-                borderBottomColor: GROUP_COLORS[group.key],
-                color: GROUP_COLORS[group.key],
+                color: GROUP_STYLES[group.key].color,
               } : {}}
             >
-              <span className="esg-tab-label">{group.label}</span>
+              <span>{group.icon}</span>
+              <span>{group.label}</span>
               <span className="esg-tab-count">{count}</span>
             </button>
           )
@@ -265,7 +294,7 @@ function ESGTabs({ selectedGroup, onSelectGroup, comparisons }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ModeToggle — pill-style switch between Absolute and Normalized
+// ModeToggle
 // ─────────────────────────────────────────────────────────────────────────────
 function ModeToggle({ normalized, onChange }) {
   return (
@@ -273,8 +302,6 @@ function ModeToggle({ normalized, onChange }) {
       <span className={`mode-label ${!normalized ? 'mode-label-active' : ''}`}>
         Absolute
       </span>
-
-      {/* The actual toggle track + thumb */}
       <button
         className={`toggle-track ${normalized ? 'toggle-on' : ''}`}
         onClick={() => onChange(!normalized)}
@@ -284,7 +311,6 @@ function ModeToggle({ normalized, onChange }) {
       >
         <span className="toggle-thumb" />
       </button>
-
       <span className={`mode-label ${normalized ? 'mode-label-active' : ''}`}>
         Normalized
       </span>
@@ -293,26 +319,25 @@ function ModeToggle({ normalized, onChange }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ModeBanner — contextual explanation below the header
+// ModeBanner
 // ─────────────────────────────────────────────────────────────────────────────
 function ModeBanner({ normalized }) {
   if (normalized) {
     return (
-      <div className="mode-banner mode-banner-norm">
+      <div className="mode-banner norm">
         <span className="mode-banner-icon">📊</span>
         <div>
-          <strong>Normalized view</strong> — KPI values divided by annual revenue (INR Crore).
-          Enables fair comparison between companies of different sizes.
-          Units shown as <em>value / Crore</em>.
+          <strong>Normalized View</strong> — Values normalized by annual revenue (INR Crore).
+          Enables fair comparison across companies of different sizes. Units displayed as <em>value / Crore</em>.
         </div>
       </div>
     )
   }
   return (
-    <div className="mode-banner mode-banner-abs">
+    <div className="mode-banner abs">
       <span className="mode-banner-icon">🔢</span>
       <div>
-        <strong>Absolute view</strong> — Raw reported values in original units
+        <strong>Absolute View</strong> — Raw reported values in original units
         (tCO2e, GJ, KL, MT, %, headcount). Direct comparison of reported figures.
       </div>
     </div>
@@ -329,6 +354,9 @@ function LogCol({ label, lines }) {
       {lines.map((line, i) => (
         <div key={i} className="log-line">{line}</div>
       ))}
+      {lines.length === 0 && (
+        <div className="log-line" style={{ fontStyle: 'italic', opacity: 0.5 }}>No processing details</div>
+      )}
     </div>
   )
 }
