@@ -116,8 +116,76 @@ def list_companies_by_sector(sector: str) -> list[dict]:
         return []
 
 
+def db_check_exact_match(company_name: str, fy: int) -> dict:
+    """
+    Check for EXACT company name (case-insensitive) + EXACT year match.
+    Returns exact match data if found, otherwise returns empty.
+    This is used as the first check before falling back to search.
+    """
+    empty = {"exists": False, "company_id": None, "reports": [], "exact_match": False}
+    try:
+        from core.database import get_db
+        from models.db_models import Company, Report
+
+        with get_db() as db:
+            # Exact match on company name (case-insensitive)
+            company_row = (
+                db.query(Company)
+                .filter(Company.name.ilike(company_name.strip()))
+                .first()
+            )
+            if not company_row:
+                return {**empty, "exact_match": False}
+
+            company_id = company_row.id
+
+            # Exact match on year
+            reports = (
+                db.query(Report)
+                .filter(
+                    Report.company_id == company_id,
+                    Report.report_year == fy,
+                    Report.status.in_(["downloaded", "parsed", "extracted"]),
+                )
+                .order_by(Report.created_at.desc())
+                .all()
+            )
+
+            if not reports:
+                # Company exists but no report for this year
+                return {**empty, "exists": False, "company_id": company_id, "exact_match": True}
+
+            infos = sorted(
+                [ReportInfo(id=r.id, report_type=r.report_type,
+                            file_path=r.file_path, status=r.status)
+                 for r in reports],
+                key=lambda ri: (
+                    REPORT_TYPE_PRIORITY.get(ri.report_type, 99),
+                    0 if ri.file_path and Path(ri.file_path).exists() else 1,
+                ),
+            )
+            return {"exists": True, "company_id": company_id, "reports": infos, "exact_match": True}
+
+    except Exception:
+        return empty
+
+
 def db_get_all_reports(company_name: str, fy: int) -> dict:
-    empty = {"exists": False, "company_id": None, "reports": []}
+    """
+    Get reports for a company. First tries exact match, then falls back to partial match.
+    Returns dict with exists, company_id, reports, and exact_match flag.
+    """
+    # First try exact match
+    exact_result = db_check_exact_match(company_name, fy)
+    if exact_result["exists"]:
+        return exact_result
+
+    # If company exists but no report for this year, return info for search
+    if exact_result.get("company_id") and exact_result.get("exact_match"):
+        return {"exists": False, "company_id": exact_result["company_id"], "reports": [], "exact_match": True, "company_exists": True}
+
+    # Fall back to partial match (for backwards compatibility)
+    empty = {"exists": False, "company_id": None, "reports": [], "exact_match": False}
     try:
         from core.database import get_db
         from models.db_models import Company, Report
@@ -154,7 +222,7 @@ def db_get_all_reports(company_name: str, fy: int) -> dict:
                     0 if ri.file_path and Path(ri.file_path).exists() else 1,
                 ),
             )
-            return {"exists": True, "company_id": company_id, "reports": infos}
+            return {"exists": True, "company_id": company_id, "reports": infos, "exact_match": False}
 
     except Exception:
         return empty
@@ -524,14 +592,26 @@ def run_company_pipeline(
             emit(msg)
 
     # Step 1 — resolve company + reports
-    _emit(f"Searching for {company_name} FY{fy} reports...")
+    # First check: exact company name + exact year match in DB
+    _emit(f"Checking for {company_name} FY{fy} in database...")
     db_data    = db_get_all_reports(company_name, fy)
     company_id = db_data.get("company_id")
     report_infos: list[ReportInfo] = []
+    exact_match = db_data.get("exact_match", False)
 
     if db_data["exists"]:
+        if exact_match:
+            _emit(f"✓ Found exact match in database (FY{fy})")
+        else:
+            _emit(f"✓ Found company in database (FY{fy})")
         report_infos = db_data["reports"]
     else:
+        if exact_match:
+            # Company exists but no report for this year - need to search
+            _emit(f"No report found for {company_name} FY{fy}. Searching...")
+        else:
+            # Company not found in DB - need to search
+            _emit(f"{company_name} not in database. Searching for reports...")
         ingest_result = step_ingest(company_name, fy, sector, log, emit)
         company_id    = ingest_result.get("company_id") or company_id
         report_infos  = ingest_result.get("reports", [])

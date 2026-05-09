@@ -26,6 +26,11 @@ python main.py kpi-retrieve --company "TCS" --year 2024 --kpi scope_1_emissions
 python main.py kpi-debug --company "TCS" --year 2024 --kpi scope_2_emissions
 python main.py kpi-debug --company "Infosys" --year 2025 --kpi scope_1_emissions --verbose
 python main.py kpi-debug --company "Wipro" --year 2024 --kpi energy_consumption --full-text
+
+# Debug exact chunks going to extraction layer (keyword + semantic search fusion)
+python main.py extraction-chunks --company "TCS" --year 2024 --kpi scope_1_emissions
+python main.py extraction-chunks --company "Infosys" --year 2024 --kpi energy_consumption --report BRSR
+python main.py extraction-chunks --company "Wipro" --year 2025 --kpi water_consumption --full-text
 """
 from __future__ import annotations
 
@@ -1029,6 +1034,184 @@ def cmd_list_kpis(_args) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Debug extraction chunks command
+# ---------------------------------------------------------------------------
+
+def cmd_extraction_chunks(args) -> None:
+    """
+    Debug command to show exact chunks that will go to extraction layer.
+    Returns all chunks after keyword, semantic searches and fusion.
+    Supports: --company --year --report (optional) --kpi
+    """
+    from core.database import get_db
+    from models.db_models import KPIDefinition, ParsedDocument, Report, Company
+    from services.retrieval_service import HybridRetrievalService, ScoredChunk
+    from sqlalchemy import or_
+    import uuid
+
+    W = 80
+    SEP = "=" * W
+
+    with get_db() as db:
+        # ── Resolve company ───────────────────────────────────────────────────
+        company_row = (
+            db.query(Company)
+            .filter(Company.name.ilike(f"%{args.company}%"))
+            .first()
+        )
+        if not company_row:
+            print(f"✗  Company '{args.company}' not found in DB.")
+            sys.exit(1)
+
+        company_id = company_row.id
+        print(f"Company: {company_row.name}")
+
+        # ── Resolve report ─────────────────────────────────────────────────────
+        report_query = db.query(Report).filter(
+            Report.company_id == company_id,
+            Report.report_year == args.year,
+            Report.status.in_(["downloaded", "parsed", "extracted"]),
+        )
+
+        if args.report:
+            report = report_query.filter(
+                Report.report_type.ilike(f"%{args.report}%")
+            ).first()
+        else:
+            # Default: prioritize BRSR > ESG > Integrated
+            type_priority = {"BRSR": 1, "ESG": 2, "Integrated": 0}
+            reports = report_query.order_by(
+                Report.report_type
+            ).all()
+            reports_with_file = [r for r in reports if r.file_path]
+            if reports_with_file:
+                reports_with_file.sort(key=lambda r: (type_priority.get(r.report_type, 99), -r.created_at.timestamp()))
+                report = reports_with_file[0]
+            elif reports:
+                report = reports[0]
+            else:
+                report = None
+
+        if not report:
+            print(f"✗  No usable report found for {company_row.name} FY{args.year}.")
+            if args.report:
+                print(f"   Report type '{args.report}' not found.")
+            sys.exit(1)
+
+        print(f"Report : {report.report_type} FY{args.year} (id={str(report.id)[:8]})")
+
+        # ── Resolve KPI ────────────────────────────────────────────────────────
+        kpi = db.query(KPIDefinition).filter(KPIDefinition.name == args.kpi).first()
+        if not kpi:
+            print(f"✗  KPI '{args.kpi}' not found.")
+            print("   Run: python main.py list-kpis to see available KPI names.")
+            sys.exit(1)
+
+        print(f"KPI   : {kpi.display_name} [{kpi.expected_unit}]")
+        print(SEP)
+
+        # ── Get parsed document ───────────────────────────────────────────────
+        parsed_doc = (
+            db.query(ParsedDocument)
+            .filter(ParsedDocument.report_id == report.id)
+            .order_by(ParsedDocument.parsed_at.desc())
+            .first()
+        )
+        if not parsed_doc:
+            print(f"✗  No parse cache found for report {report.id}.")
+            print(f"   Run: python main.py parse --report-id {report.id}")
+            sys.exit(1)
+
+        print(f"ParsedDoc: {parsed_doc.id} (v{parsed_doc.parser_version}, {parsed_doc.page_count} pages)")
+        print(SEP)
+
+        # ── Get retrieval service and retrieve chunks ─────────────────────────
+        retrieval = HybridRetrievalService()
+        scored_chunks = retrieval.retrieve(
+            parsed_document_id=parsed_doc.id,
+            kpi=kpi,
+            db=db,
+            top_k=args.top_k,
+        )
+
+        # ── Get extra wider chunks (same logic as ExtractionAgent) ────────────
+        from agents.extraction_agent import _get_wider_chunks, _KPI_ALIASES
+        retrieved_ids = {sc.chunk.id for sc in scored_chunks}
+        extra_chunks = _get_wider_chunks(parsed_doc, kpi, db, retrieved_ids, extra_k=5)
+
+        all_scored = scored_chunks + extra_chunks
+
+        print(f"\n[EXTRACTION CHUNKS DEBUG]")
+        print(f"Primary chunks from retrieval: {len(scored_chunks)}")
+        print(f"Extra wider chunks: {len(extra_chunks)}")
+        print(f"Total chunks to extraction layer: {len(all_scored)}")
+        print(SEP)
+
+        # ── Display Primary Chunks ────────────────────────────────────────────
+        print(f"\n{'='*W}")
+        print(f"  PRIMARY CHUNKS (from keyword + semantic retrieval)")
+        print(f"{'='*W}")
+
+        if not scored_chunks:
+            print("  No chunks retrieved.")
+        else:
+            for rank, sc in enumerate(scored_chunks, 1):
+                chunk = sc.chunk
+                type_label = f"table" if chunk.chunk_type == "table" else chunk.chunk_type
+                print(f"\n  --- Chunk {rank} ---")
+                print(f"  Score      : {sc.score:.4f}")
+                print(f"  Type       : {type_label}")
+                print(f"  Page       : {chunk.page_number or '?'}")
+                print(f"  Chunk Index: {chunk.chunk_index}")
+                print(f"  Is Neighbor: {'Yes' if sc.is_neighbor else 'No'}")
+                print(f"  Keywords   : {', '.join(sc.matched_keywords[:5]) if sc.matched_keywords else 'none'}")
+
+                content = chunk.content
+                if not args.full_text and len(content) > args.limit:
+                    content = content[:args.limit] + f"\n  ... [{len(chunk.content)} chars total]"
+                print(f"  Content:")
+                for line in content.splitlines():
+                    print(f"    {line}")
+
+        # ── Display Extra Wider Chunks ────────────────────────────────────────
+        print(f"\n{'='*W}")
+        print(f"  EXTRA WIDER CHUNKS (added for LLM fallback)")
+        print(f"{'='*W}")
+
+        if not extra_chunks:
+            print("  No extra chunks added.")
+        else:
+            for rank, sc in enumerate(extra_chunks, 1):
+                chunk = sc.chunk
+                type_label = f"table" if chunk.chunk_type == "table" else chunk.chunk_type
+                print(f"\n  --- Extra Chunk {rank} ---")
+                print(f"  Score      : {sc.score:.4f}")
+                print(f"  Type       : {type_label}")
+                print(f"  Page       : {chunk.page_number or '?'}")
+                print(f"  Chunk Index: {chunk.chunk_index}")
+
+                content = chunk.content
+                if not args.full_text and len(content) > args.limit:
+                    content = content[:args.limit] + f"\n  ... [{len(chunk.content)} chars total]"
+                print(f"  Content:")
+                for line in content.splitlines():
+                    print(f"    {line}")
+
+        print(f"\n{'='*W}")
+        print(f"  SUMMARY")
+        print(f"{'='*W}")
+        print(f"  Company     : {company_row.name}")
+        print(f"  Year        : FY{args.year}")
+        print(f"  Report Type : {report.report_type}")
+        print(f"  KPI         : {kpi.name}")
+        print(f"  Primary     : {len(scored_chunks)} chunks")
+        print(f"  Extra       : {len(extra_chunks)} chunks")
+        print(f"  Total       : {len(all_scored)} chunks")
+        print(f"{'='*W}")
+        print()
+
+
+# ---------------------------------------------------------------------------
 # Embedding commands
 # ---------------------------------------------------------------------------
 
@@ -1411,6 +1594,27 @@ def main():
     rec_p = sub.add_parser("list-kpi-records", help="Show extracted KPI records for a report")
     rec_p.add_argument("--report-id", required=True)
 
+    # ── Debug extraction chunks ────────────────────────────────────────────────
+    ec_p = sub.add_parser(
+        "extraction-chunks",
+        help="Debug command: show exact chunks going to extraction layer after all searches",
+    )
+    ec_p.add_argument("--company", required=True,
+                      help="Company name (partial match ok, e.g. 'TCS')")
+    ec_p.add_argument("--year", required=True, type=int,
+                      help="Fiscal year end integer, e.g. 2024")
+    ec_p.add_argument("--report", default=None,
+                      help="Report type (BRSR, ESG, Integrated) - optional, auto-selects if not specified")
+    ec_p.add_argument("--kpi", required=True,
+                      help="KPI name, e.g. scope_2_emissions")
+    ec_p.add_argument("--top-k", type=int, default=7,
+                      help="Number of top chunks to retrieve (default 7)")
+    ec_p.add_argument("--limit", type=int, default=800,
+                      help="Max chars of chunk content to display (default 800)")
+    ec_p.add_argument("--full-text", action="store_true",
+                      help="Show full chunk text with no truncation")
+    # ─────────────────────────────────────────────────────────────────────────
+
     args = parser.parse_args()
 
     dispatch = {
@@ -1426,12 +1630,13 @@ def main():
         "parse-status":     cmd_parse_status,
         "search-chunks":    cmd_search_chunks,
         "kpi-retrieve":     cmd_kpi_retrieve,
-        "kpi-debug":        cmd_kpi_debug,       # ← NEW
+        "kpi-debug":        cmd_kpi_debug,
         "list-kpis":        cmd_list_kpis,
         "embed":            cmd_embed,
         "embed-status":     cmd_embed_status,
         "extract":          cmd_extract,
         "list-kpi-records": cmd_list_kpi_records,
+        "extraction-chunks": cmd_extraction_chunks,  # ← NEW
     }
 
     if args.command not in dispatch:

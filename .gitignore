@@ -6,3 +6,4 @@ logs/
 *.db
 *.txt
 */node_modules/
+*.vscode/

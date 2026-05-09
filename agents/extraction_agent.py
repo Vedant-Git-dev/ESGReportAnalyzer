@@ -117,7 +117,7 @@ _UNIT_SYNONYMS: dict[str, str] = {
     "tonnes co2e": "tCO2e", "tons co2e": "tCO2e",
     "mwh": "MWh", "gwh": "GWh", "twh": "TWh",
     "gj": "GJ", "tj": "TJ", "pj": "PJ",
-    "kwh": "kWh", "mj": "MJ",
+    "kwh": "kWh", "mj": "MJ", "megajoule": "MJ", "megajoules": "MJ",
     "kl": "KL", "kilolitre": "KL", "kiloliter": "KL", "kilo litre": "KL",
     "m3": "m\u00b3", "cubic meter": "m\u00b3", "cubic metre": "m\u00b3",
     "mt": "MT", "metric ton": "MT", "metric tonne": "MT",
@@ -126,6 +126,17 @@ _UNIT_SYNONYMS: dict[str, str] = {
     "inr crore": "INR Crore", "crore": "INR Crore", "cr": "INR Crore",
     "inr lakh": "INR Lakh", "lakh": "INR Lakh",
     "number": "count", "nos": "count", "headcount": "count",
+}
+
+# Unit conversion for LLM fallback - convert to expected unit
+_UNIT_CONVERSIONS: dict[tuple[str, str], float] = {
+    # (returned_unit, expected_unit) -> multiplier to convert to expected
+    ("mj", "gj"): 0.001,  # 1 MJ = 0.001 GJ
+    ("MJ", "GJ"): 0.001,
+    ("megajoule", "gj"): 0.001,
+    ("kwh", "gwh"): 0.001,  # 1 kWh = 0.001 MWh (already close to GWh logic)
+    ("kwh", "mwh"): 0.001,  # 1 kWh = 0.001 MWh
+    ("mwh", "gwh"): 0.001,  # 1 MWh = 0.001 GWh
 }
 
 # ---------------------------------------------------------------------------
@@ -229,6 +240,24 @@ def _normalise_unit(unit_str: str) -> str:
     return _UNIT_SYNONYMS.get(key, unit_str.strip())
 
 
+def _convert_unit_for_kpi(value: float, unit: str, kpi_name: str, expected_unit: str) -> tuple[float, str]:
+    """
+    Convert unit if needed based on KPI expectations.
+    Returns (converted_value, normalized_unit).
+    """
+    from_normalized = _normalise_unit(unit).upper()
+    to_normalized = _normalise_unit(expected_unit).upper()
+
+    key = (from_normalized, to_normalized)
+    multiplier = _UNIT_CONVERSIONS.get(key)
+
+    if multiplier and value is not None:
+        converted = round(value * multiplier, 2)
+        return converted, expected_unit
+
+    return value, _normalise_unit(unit)
+
+
 def _parse_number(s: str) -> Optional[float]:
     """Parse number strings including Indian number format (1,00,000)."""
     if not s:
@@ -286,28 +315,41 @@ def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]
     block_patterns_for_kpi: dict[str, list[str]] = {
         # ── Existing KPIs (unchanged) ────────────────────────────────────────
         "energy_consumption": [
+            # ── Existing patterns ─────────────────────────────────────────────
             r"total\s+energy\s+consumed\s*\(A[^)]*D[^)]*F\)[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+energy\s+consumed\s*\((?:A[^)]*)\)[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+energy\s+consumption[^\n]{0,80}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+energy\s+consumed[^\n]{0,80}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         ],
         "water_consumption": [
+            # ── Existing patterns ─────────────────────────────────────────────
             r"total\s+volume\s+of\s+water\s+consumption[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+water\s+consumption[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+water\s+withdrawn[^\n]{0,80}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+water\s+(?:intake|sourced|used)[^\n]{0,80}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
         ],
         "waste_generated": [
+            # ── Existing patterns ─────────────────────────────────────────────
             r"^total\s*\([a-h\s\+]+\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+\(A\s*\+\s*B[^\n]*\)\s*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            # ── NEW: "waste produced X mt" format ──────────────────────────────
+            r"waste\s+produced\s*\([^\)]+\)\s*(\d[\d,]+)\s*(?:mt|metric)",
         ],
         "scope_1_emissions": [
+            # ── Existing patterns ─────────────────────────────────────────────
             r"total\s+scope\s*1\s+emissions.{0,200}?metric\s+tonnes\s+of\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+scope\s*1\s+emissions[\s\S]{0,300}?equivalent\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            # ── Add next-line format to match more layouts ─────────────────────
+            r"scope\s*1\s+emissions[^\n]*\n\s*(\d[\d,]+)",
+            r"total\s+scope\s*1.{0,100}?\s+(\d[\d,]+)",
         ],
         "scope_2_emissions": [
+            # ── Existing patterns ─────────────────────────────────────────────
             r"total\s+scope\s*2\s+emissions.{0,200}?metric\s+tonnes\s+of\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+scope\s*2\s+emissions[\s\S]{0,300}?equivalent\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            # ── Add next-line format to match more layouts ─────────────────────
+            r"scope\s*2\s+emissions[^\n]*\n\s*(\d[\d,]+)",
+            r"total\s+scope\s*2.{0,100}?\s+(\d[\d,]+)",
         ],
         "total_ghg_emissions": [],
 
@@ -742,10 +784,24 @@ def _try_llm(
         logger.warning("extraction.llm_bad_value", kpi=kpi.name, raw=raw_value)
         return None
 
-    unit            = _normalise_unit(str(result.get("unit") or kpi.expected_unit))
+    raw_unit        = str(result.get("unit") or kpi.expected_unit)
+    unit            = _normalise_unit(raw_unit)
     confidence      = float(result.get("confidence") or 0.5)
     year            = result.get("year") or report_year
     source_chunk_id = scored_chunks[0].chunk.id if scored_chunks else None
+
+    converted_value, converted_unit = _convert_unit_for_kpi(
+        value, raw_unit, kpi.name, kpi.expected_unit
+    )
+
+    if converted_value != value:
+        logger.info(
+            "extraction.unit_converted",
+            kpi=kpi.name, original=value, converted=converted_value,
+            from_unit=unit, to_unit=converted_unit,
+        )
+        value = converted_value
+        unit = converted_unit
 
     logger.info(
         "extraction.llm_hit", kpi=kpi.name, value=value, unit=unit, confidence=confidence,

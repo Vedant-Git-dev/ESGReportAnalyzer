@@ -371,6 +371,7 @@ def _strict_validate(
 
     text_full = f"{title} {snippet} {url}".lower()
 
+    # Strict year check - must match exactly
     if not is_correct_year(text_full, target_year):
         logger.debug(
             "search.strict_filter.year_fail",
@@ -379,6 +380,7 @@ def _strict_validate(
         )
         return False
 
+    # Strict type check - must detect exactly the target type
     detected = matches_type(text_full)
     if detected != target_type:
         logger.debug(

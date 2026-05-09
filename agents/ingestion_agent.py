@@ -169,10 +169,12 @@ _USER_AGENTS: list[str] = [
 ]
 
 # Headers that mimic a real browser navigating to a PDF document.
+# NOTE: Not including Accept-Encoding because httpx streaming mode doesn't
+# properly decompress brotli/br-compressed binary content, causing PDF magic
+# bytes check to fail. Requesting raw (uncompressed) content is safer.
 _DOWNLOAD_HEADERS: dict[str, str] = {
     "Accept":                    "application/pdf,application/octet-stream,*/*;q=0.9",
     "Accept-Language":           "en-US,en;q=0.9",
-    "Accept-Encoding":           "gzip, deflate, br",
     "Connection":                "keep-alive",
     "Upgrade-Insecure-Requests": "1",
     "Sec-Fetch-Dest":            "document",
@@ -232,9 +234,23 @@ def _stream_to_file(
                     # limit is exceeded to avoid filling the disk.
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     bytes_written = 0
+                    first_chunk_checked = False
                     with dest.open("wb") as out_fh:
                         for chunk in response.iter_bytes(chunk_size=65536):
                             bytes_written += len(chunk)
+
+                            # Check magic bytes on first chunk to fail fast
+                            if not first_chunk_checked and bytes_written >= 5:
+                                possible_magic = chunk[:5]
+                                if possible_magic != b"%PDF-":
+                                    dest.unlink(missing_ok=True)
+                                    raise ValueError(
+                                        f"Server returned non-PDF content "
+                                        f"(first bytes: {possible_magic!r}). "
+                                        f"URL may be invalid or redirected. URL: {url}"
+                                    )
+                                first_chunk_checked = True
+
                             if bytes_written > max_size_bytes:
                                 dest.unlink(missing_ok=True)
                                 raise ValueError(
@@ -244,8 +260,7 @@ def _stream_to_file(
                                 )
                             out_fh.write(chunk)
 
-            # Validate PDF magic bytes after the download is complete.
-            # %PDF- is the standard magic number for all PDF versions (1.0 through 2.0).
+            # Final validation of PDF magic bytes (fallback check)
             with dest.open("rb") as fh:
                 magic = fh.read(5)
             if magic != b"%PDF-":
