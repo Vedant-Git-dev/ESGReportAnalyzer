@@ -7,24 +7,27 @@ Uses Google Search grounding for accurate financial data extraction.
 Pattern: from google import genai; client = genai.Client() (reads GEMINI_API_KEY from env)
 Model: gemma-4-26b-a4b-it
 """
+
 from __future__ import annotations
-
-import asyncio
-import json
-import re
-import time
-from dataclasses import dataclass
-from typing import Optional
-
-from core.logging_config import get_logger
-
-logger = get_logger(__name__)
 
 from pathlib import Path
 import sys
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
+
+import asyncio
+import json
+import re
+import time
+import uuid
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Optional
+
+from core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 @dataclass
 class RevenueSearchResult:
@@ -164,11 +167,6 @@ If you cannot find a reliable figure, return:
                 logger.info("revenue_llm.no_revenue_found", company=company_name, year=fiscal_year)
                 return None
 
-            # Sanity check: Indian IT company revenue
-            if not (5000 <= revenue_cr <= 500000):
-                logger.warning("revenue_llm.suspicious_value", company=company_name, year=fiscal_year, value=revenue_cr)
-                return None
-
             logger.info(
                 "revenue_llm.search_success",
                 company=company_name,
@@ -177,7 +175,7 @@ If you cannot find a reliable figure, return:
                 source_url=source_url,
             )
 
-            return RevenueSearchResult(
+            search_result = RevenueSearchResult(
                 value_cr=revenue_cr,
                 raw_value=str(revenue_cr),
                 source_url=source_url,
@@ -187,6 +185,9 @@ If you cannot find a reliable figure, return:
                 company_name=company_name,
                 is_consolidated=result.get("is_consolidated", True),
             )
+
+            _store_in_cache(search_result)
+            return search_result
 
         except Exception as exc:
             last_error = exc
@@ -203,6 +204,51 @@ If you cannot find a reliable figure, return:
 
     logger.error("revenue_llm.all_retries_failed", company=company_name, year=fiscal_year, error=str(last_error))
     return None
+
+
+def _store_in_cache(result: RevenueSearchResult, model_id=None) -> None:
+    """Write a successful search result to the revenue_search_cache table."""
+    try:
+        from core.database import get_db
+        from models.db_models import RevenueSearchCache
+
+        with get_db() as db:
+            existing = (
+                db.query(RevenueSearchCache)
+                .filter(
+                    RevenueSearchCache.company_name == result.company_name,
+                    RevenueSearchCache.fiscal_year  == result.year,
+                )
+                .first()
+            )
+            if existing:
+                existing.revenue_cr      = result.value_cr
+                existing.raw_value       = result.raw_value
+                existing.source_url      = result.source_url
+                existing.source_domain   = result.source_domain
+                existing.is_consolidated = result.is_consolidated
+                existing.confidence      = result.confidence
+                existing.is_valid        = True
+                existing.searched_at     = datetime.now(timezone.utc)
+                print(f"Updated cache for {result.company_name} FY{result.year} with revenue_cr: {result.value_cr}")
+            else:
+                db.add(RevenueSearchCache(
+                    company_name     = result.company_name,
+                    fiscal_year      = result.year,
+                    revenue_cr       = result.value_cr,
+                    raw_value        = result.raw_value,
+                    source_url       = result.source_url,
+                    source_domain    = result.source_domain,
+                    is_consolidated  = result.is_consolidated,
+                    confidence       = result.confidence,
+                    extraction_method = "llm_web_search",
+                ))
+                print(f"Added to cache for {result.company_name} FY{result.year} with revenue_cr: {result.value_cr}")
+            db.commit()
+            logger.info("revenue_llm.cache_stored", company=result.company_name,
+                        year=result.year, value_cr=result.value_cr)
+    except Exception as exc:
+        logger.warning("revenue_llm.cache_store_failed", error=str(exc))
 
 
 # Async wrapper

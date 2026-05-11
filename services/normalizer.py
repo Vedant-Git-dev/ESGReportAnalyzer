@@ -237,6 +237,7 @@ KPI_NAME_TO_CATEGORY: dict[str, str] = {
     # Revenue
     "revenue":                  "revenue",
     "revenue_from_operations":  "revenue",
+    "revenue_per_employee":     "revenue",
     # Count — NEW
     "employee_count":                    "count",
     "complaints_filed":                  "count",

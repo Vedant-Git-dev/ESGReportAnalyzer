@@ -264,14 +264,62 @@ def cache_load(company_id: uuid.UUID, fy: int) -> dict:
         return {}
 
 
-def cache_load_revenue(company_id: uuid.UUID, fy: int):
+def cache_load_revenue(company_name: str, fy: int):
+    """
+    Load revenue for comparison. Strict flow:
+    1. Check revenue_search_cache table first (authoritative source)
+    2. If not found, run web search and store in revenue_search_cache
+    3. Return result from revenue_search_cache
+    """
     try:
         from core.database import get_db
-        from services.kpi_cache_service import KPICacheService
+        from services.revenue_llm_service import RevenueSearchResult
+        from services.revenue_extractor import RevenueResult
+
         with get_db() as db:
-            return KPICacheService().load_revenue(company_id=company_id, fy=fy, db=db)
+            # Step 1: Check revenue_search_cache first
+            from models.db_models import RevenueSearchCache
+            cached = (
+                db.query(RevenueSearchCache)
+                .filter(
+                    RevenueSearchCache.company_name.ilike(company_name),
+                    RevenueSearchCache.fiscal_year == fy,
+                    RevenueSearchCache.is_valid == True,
+                    RevenueSearchCache.revenue_cr.isnot(None),
+                )
+                .order_by(RevenueSearchCache.confidence.desc())
+                .first()
+            )
+            if cached:
+                return RevenueResult(
+                    value_cr=cached.revenue_cr,
+                    raw_value=str(cached.revenue_cr),
+                    raw_unit="INR_Crore",
+                    source="web_search",
+                    page_number=0,
+                    confidence=cached.confidence,
+                    pattern_name=f"web_{cached.source_domain}",
+                )
+
+            # Step 2: Web search if not in cache
+            from services.revenue_llm_service import search_revenue, _store_in_cache
+            web_result = search_revenue(company_name, fy)
+            if web_result and web_result.confidence >= 0.80:
+                # Store in revenue_search_cache
+                _store_in_cache(web_result)
+                return RevenueResult(
+                    value_cr=web_result.value_cr,
+                    raw_value=web_result.raw_value,
+                    raw_unit="INR_Crore",
+                    source="web_search",
+                    page_number=0,
+                    confidence=web_result.confidence,
+                    pattern_name=f"web_{web_result.source_domain}",
+                )
+
     except Exception:
-        return None
+        pass
+    return None
 
 
 def db_store_kpis(
@@ -293,11 +341,15 @@ def db_store_kpis(
         pass
 
 
-def db_load_kpis_and_revenue(company_id: uuid.UUID, fy: int) -> dict:
+def db_load_kpis_and_revenue(company_id: uuid.UUID, fy: int, company_name: str = "") -> dict:
+    """
+    Load KPIs and revenue from database.
+    Revenue always comes from revenue_search_cache (authoritative source).
+    """
     empty = {"kpis": {}, "revenue": None, "file_path": None}
     try:
         from core.database import get_db
-        from models.db_models import Report, KPIRecord, KPIDefinition
+        from models.db_models import Report, KPIRecord, KPIDefinition, RevenueSearchCache
         from services.revenue_extractor import RevenueResult
         from sqlalchemy import case
 
@@ -321,28 +373,33 @@ def db_load_kpis_and_revenue(company_id: uuid.UUID, fy: int) -> dict:
             )
             file_path = best_report.file_path if best_report else None
 
-            rev_report = (
-                db.query(Report)
-                .filter(
-                    Report.company_id == company_id,
-                    Report.report_year == fy,
-                    Report.revenue_cr.isnot(None),
-                )
-                .order_by(type_priority, Report.created_at.desc())
-                .first()
-            )
+            # Revenue: ALWAYS from revenue_search_cache
             cached_rev = None
-            if rev_report and getattr(rev_report, "revenue_cr", None) is not None:
-                try:
-                    cached_rev = RevenueResult(
-                        value_cr=float(rev_report.revenue_cr),
-                        raw_value=str(rev_report.revenue_cr),
-                        raw_unit=getattr(rev_report, "revenue_unit", None) or "INR_Crore",
-                        source=getattr(rev_report, "revenue_source", None) or "db",
-                        page_number=0, confidence=0.99, pattern_name="cached",
+            if company_name:
+                rev_cached = (
+                    db.query(RevenueSearchCache)
+                    .filter(
+                        RevenueSearchCache.company_name.ilike(company_name),
+                        RevenueSearchCache.fiscal_year == fy,
+                        RevenueSearchCache.is_valid == True,
+                        RevenueSearchCache.revenue_cr.isnot(None),
                     )
-                except Exception:
-                    pass
+                    .order_by(RevenueSearchCache.confidence.desc())
+                    .first()
+                )
+                if rev_cached:
+                    try:
+                        cached_rev = RevenueResult(
+                            value_cr=float(rev_cached.revenue_cr),
+                            raw_value=str(rev_cached.revenue_cr),
+                            raw_unit="INR_Crore",
+                            source="web_search",
+                            page_number=0,
+                            confidence=rev_cached.confidence,
+                            pattern_name=f"web_{rev_cached.source_domain}",
+                        )
+                    except Exception:
+                        pass
 
             kpis: dict = {}
             for kpi_name in ALL_KPI_NAMES:
@@ -641,7 +698,7 @@ def run_company_pipeline(
 
     if company_id:
         cached_kpis    = cache_load(company_id, fy)
-        cached_revenue = cache_load_revenue(company_id, fy)
+        cached_revenue = cache_load_revenue(company_name, fy)
 
     missing_kpis  = [k for k in ALL_KPI_NAMES if k not in cached_kpis]
     need_revenue  = cached_revenue is None
@@ -652,7 +709,7 @@ def run_company_pipeline(
 
     if not missing_kpis and not need_revenue:
         _emit(f"All data loaded from cache ({len(cached_kpis)} metrics).")
-        final_db = db_load_kpis_and_revenue(company_id, fy) if company_id else {}
+        final_db = db_load_kpis_and_revenue(company_id, fy, company_name) if company_id else {}
         return CompanyData(
             company_name=company_name, fy=fy, sector=sector,
             kpi_records=cached_kpis, revenue_result=cached_revenue,
@@ -741,6 +798,28 @@ def build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dict
         rev_cr = rev.value_cr if rev else DEFAULT_REVENUE_CR
         rev_src = rev.source if rev else "default"
 
+        # Inject financial KPIs from revenue result
+        kpi_records = dict(data.kpi_records)
+        if rev and rev.value_cr:
+            kpi_records["revenue_from_operations"] = {
+                "value":      rev.value_cr,
+                "unit":       "INR_Crore",
+                "method":     rev.source,
+                "confidence": rev.confidence,
+                "report_type": None,
+            }
+            emp_rec = kpi_records.get("employee_count")
+            if emp_rec and emp_rec.get("value"):
+                emp_val = float(emp_rec["value"])
+                if emp_val > 0:
+                    kpi_records["revenue_per_employee"] = {
+                        "value":      rev.value_cr / emp_val,
+                        "unit":       "INR_Crore",
+                        "method":     "computed",
+                        "confidence": rev.confidence,
+                        "report_type": None,
+                    }
+
         page_texts: list[str] = []
         if data.file_path and Path(data.file_path).exists():
             try:
@@ -753,7 +832,7 @@ def build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dict
                 pass
 
         profile = build_company_profile(
-            kpi_records=data.kpi_records, revenue_cr=rev_cr,
+            kpi_records=kpi_records, revenue_cr=rev_cr,
             revenue_source=rev_src, company_name=data.company_name,
             fiscal_year=data.fy, page_texts=page_texts,
         )

@@ -35,6 +35,12 @@ logger = get_logger(__name__)
 
 # ── KPI catalogue ─────────────────────────────────────────────────────────────
 
+# Financial — absolute values, no ratio normalization
+FINANCIAL_KPI_NAMES = [
+    "revenue_from_operations",
+    "revenue_per_employee",
+]
+
 # Environmental — ratio = KPI / revenue_cr
 ENVIRONMENTAL_KPI_NAMES = [
     "scope_1_emissions",
@@ -58,7 +64,7 @@ GOVERNANCE_KPI_NAMES = [
 ]
 
 BENCHMARK_KPI_NAMES = (
-    ENVIRONMENTAL_KPI_NAMES + SOCIAL_KPI_NAMES + GOVERNANCE_KPI_NAMES
+    FINANCIAL_KPI_NAMES + ENVIRONMENTAL_KPI_NAMES + SOCIAL_KPI_NAMES + GOVERNANCE_KPI_NAMES
 )
 
 # For these KPIs lower ratio = better performance
@@ -72,12 +78,16 @@ LOWER_IS_BETTER = {
 
 # For these KPIs higher = better
 HIGHER_IS_BETTER = {
+    "revenue_from_operations",
+    "revenue_per_employee",
     "women_in_workforce_percentage",
     "renewable_energy_percentage",
 }
 
 # Canonical display units
 CANONICAL_UNITS = {
+    "revenue_from_operations":       "INR_Crore",
+    "revenue_per_employee":          "INR_Crore",
     "scope_1_emissions":             "tCO2e",
     "scope_2_emissions":             "tCO2e",
     "scope_3_emissions":             "tCO2e",
@@ -92,6 +102,8 @@ CANONICAL_UNITS = {
 
 # Ratio unit labels (shown in UI)
 RATIO_UNIT_LABELS = {
+    "revenue_from_operations":       "INR Crore",
+    "revenue_per_employee":          "INR Crore / employee",
     "scope_1_emissions":             "tCO2e / INR_Crore",
     "scope_2_emissions":             "tCO2e / INR_Crore",
     "scope_3_emissions":             "tCO2e / INR_Crore",
@@ -139,6 +151,8 @@ _KPI_INTENSITY_LABELS: dict[str, list[str]] = {
 }
 
 _DISPLAY_NAMES = {
+    "revenue_from_operations":    "Revenue from Operations",
+    "revenue_per_employee":       "Revenue per Employee",
     "scope_1_emissions":             "Scope 1 GHG Emissions",
     "scope_2_emissions":             "Scope 2 GHG Emissions",
     "scope_3_emissions":             "Scope 3 GHG Emissions",
@@ -247,6 +261,8 @@ def _kpi_group(kpi_name: str) -> str:
         return "governance"
     if kpi_name in SOCIAL_KPI_NAMES:
         return "social"
+    if kpi_name in FINANCIAL_KPI_NAMES:
+        return "financial"
     return "environmental"
 
 
@@ -310,7 +326,23 @@ def build_company_profile(
         profile.raw_kpis[kpi_name] = norm
 
         # ── Ratio calculation ─────────────────────────────────────────────────
-        if group == "governance":
+        if group == "financial":
+            # Financial: absolute revenue, revenue per employee = revenue / employees
+            if kpi_name == "revenue_from_operations":
+                ratio_val    = norm.normalized_value
+                ratio_source = "absolute"
+            else:
+                # revenue_per_employee = revenue_cr / employee_count
+                emp_rec = kpi_records.get("employee_count")
+                if emp_rec and emp_rec.get("value") and float(emp_rec["value"]) > 0:
+                    ratio_val    = norm.normalized_value / float(emp_rec["value"])
+                    ratio_source = "computed"
+                else:
+                    ratio_val    = norm.normalized_value
+                    ratio_source = "absolute"
+            ratio_unit = RATIO_UNIT_LABELS.get(kpi_name, "INR_Crore")
+
+        elif group == "governance":
             # Complaints: use absolute count, no revenue denominator
             ratio_val    = norm.normalized_value
             ratio_source = "absolute"

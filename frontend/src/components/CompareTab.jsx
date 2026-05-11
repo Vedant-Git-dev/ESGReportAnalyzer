@@ -5,6 +5,7 @@ import ProgressPanel from './ProgressPanel'
 import { api } from '../lib/api'
 
 const GROUPS = [
+  { key: 'financial', label: 'Financial', icon: '💰' },
   { key: 'environmental', label: 'Environmental', icon: '🌱' },
   { key: 'social', label: 'Social', icon: '👥' },
   { key: 'governance', label: 'Governance', icon: '⚖' },
@@ -17,6 +18,7 @@ const CONTENT_TABS = [
 ]
 
 const GROUP_STYLES = {
+  financial: { color: 'var(--fin-color)', bg: 'rgba(75, 107, 138, 0.1)' },
   environmental: { color: 'var(--env-color)', bg: 'rgba(26, 77, 64, 0.1)' },
   social: { color: 'var(--soc-color)', bg: 'rgba(46, 107, 138, 0.1)' },
   governance: { color: 'var(--gov-color)', bg: 'rgba(123, 94, 60, 0.1)' },

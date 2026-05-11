@@ -596,7 +596,7 @@ def extract_revenue(
     # ─── LAYER 0: Web search via Gemma 4 26B ─────────────────────────────────
     if company_name and fiscal_year_hint:
         try:
-            from services.revenue_llm_service import search_revenue
+            from services.revenue_llm_service import search_revenue, _store_in_cache
 
             web_result = search_revenue(company_name, fiscal_year_hint)
 

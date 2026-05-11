@@ -38,6 +38,18 @@ UPLOAD_REPORT_TYPE_OPTIONS: list[str] = [
 ]
 
 KPI_GROUPS: dict[str, dict] = {
+    "revenue_from_operations": {
+        "label": "Revenue from Operations", "group": "Financial", "unit": "INR Crore",
+        "ratio_unit": "INR_Crore", "ratio_denominator": "none",
+        "max_ratio": 0, "higher_is_better": True,
+        "desc": "Annual consolidated revenue from operations",
+    },
+    "revenue_per_employee": {
+        "label": "Revenue per Employee", "group": "Financial", "unit": "INR Crore",
+        "ratio_unit": "INR_Crore/employee", "ratio_denominator": "employee",
+        "max_ratio": 0, "higher_is_better": True,
+        "desc": "Revenue from operations divided by total employee count",
+    },
     "scope_1_emissions": {
         "label": "Scope 1 GHG", "group": "Environmental", "unit": "tCO2e",
         "ratio_unit": "tCO2e/Cr", "ratio_denominator": "revenue",
@@ -109,6 +121,8 @@ KPI_GROUPS: dict[str, dict] = {
 ALL_KPI_NAMES: list[str] = list(KPI_GROUPS.keys())
 
 KPI_PLAUSIBILITY: dict[str, tuple[float, float]] = {
+    "revenue_from_operations":    (5_000,   500_000),
+    "revenue_per_employee":       (0.01,         50),
     "scope_1_emissions":             (1,       5_000_000),
     "scope_2_emissions":             (1,       5_000_000),
     "scope_3_emissions":             (1,      10_000_000),

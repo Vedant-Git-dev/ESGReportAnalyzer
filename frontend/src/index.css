@@ -30,6 +30,7 @@
   --env-color: #1A4D40;
   --soc-color: #2E6B8A;
   --gov-color: #7B5E3C;
+  --fin-color: #4B6B8A;
 
   --success: #2D8F5C;
   --warning: #D4933D;
@@ -1225,6 +1226,7 @@ body {
   transition: transform 0.2s ease;
 }
 
+.esg-tab.fin::after { background: var(--fin-color); }
 .esg-tab.env::after { background: var(--env-color); }
 .esg-tab.soc::after { background: var(--soc-color); }
 .esg-tab.gov::after { background: var(--gov-color); }

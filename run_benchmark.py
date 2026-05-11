@@ -361,6 +361,7 @@ def _run_pipeline_for_report(
     missing_kpis: list[str],
     need_revenue: bool,
     llm_service,
+    company_name: str,
 ) -> tuple[dict, Optional[RevenueResult]]:
     """
     Run ParseOrchestrator + ExtractionAgent + revenue extractor for ONE report.
