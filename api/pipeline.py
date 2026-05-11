@@ -729,7 +729,8 @@ def run_company_pipeline(
 
 def build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dict:
     from services.benchmark import build_company_profile, compare_profiles
-    from services.summary_generator import generate_summary
+    from services.summary_generator import generate_summary, generate_recommendation
+    from services.comparison_cache_service import ComparisonCacheService
 
     profiles = []
     for data in [data1, data2]:
@@ -761,12 +762,41 @@ def build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dict
     # The max_ratio values in KPI_GROUPS are informational/validation only
     filtered = report.comparisons
 
+    # Check comparison cache first
+    cache_service = ComparisonCacheService()
+    cache_result = cache_service.get(
+        company1=data1.company_name,
+        fy1=data1.fy,
+        company2=data2.company_name,
+        fy2=data2.fy,
+    )
+
     llm = get_llm_service()
-    summary = generate_summary(profiles, report, llm=llm)
+
+    if cache_result:
+        # Use cached summary and recommendation
+        summary = cache_result.summary
+        recommendation = cache_result.recommendation
+    else:
+        # Generate new summary and recommendation using LLM
+        summary = generate_summary(profiles, report, llm=llm)
+        recommendation = generate_recommendation(profiles, report, llm=llm)
+
+        # Store in cache
+        cache_service.store(
+            company1=data1.company_name,
+            fy1=data1.fy,
+            company2=data2.company_name,
+            fy2=data2.fy,
+            sector=sector,
+            summary=summary,
+            recommendation=recommendation,
+        )
 
     return {
-        "profiles":  profiles,
-        "report":    report,
-        "filtered":  filtered,
-        "summary":   summary,
+        "profiles":      profiles,
+        "report":        report,
+        "filtered":      filtered,
+        "summary":       summary,
+        "recommendation": recommendation,
     }

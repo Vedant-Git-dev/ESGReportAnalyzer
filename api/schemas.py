@@ -208,12 +208,13 @@ class KPIComparison(BaseModel):
 
 
 class CompareResponse(BaseModel):
-    company1:    CompanyResult
-    company2:    CompanyResult
-    comparisons: list[KPIComparison]
-    summary:     str
-    label_a:     str
-    label_b:     str
+    company1:       CompanyResult
+    company2:       CompanyResult
+    comparisons:    list[KPIComparison]
+    summary:        str
+    recommendation: str
+    label_a:        str
+    label_b:        str
 
 
 class UploadResponse(BaseModel):

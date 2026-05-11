@@ -100,6 +100,7 @@ def _build_response(
         ),
         comparisons=comparisons,
         summary=benchmark["summary"],
+        recommendation=benchmark.get("recommendation", ""),
         label_a=label_a,
         label_b=label_b,
     )

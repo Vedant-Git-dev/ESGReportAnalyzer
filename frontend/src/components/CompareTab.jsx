@@ -10,6 +10,12 @@ const GROUPS = [
   { key: 'governance', label: 'Governance', icon: '⚖' },
 ]
 
+const CONTENT_TABS = [
+  { key: 'kpis', label: 'KPIs', icon: '📊' },
+  { key: 'summary', label: 'Summary', icon: '📝' },
+  { key: 'recommendations', label: 'Recommendations', icon: '💡' },
+]
+
 const GROUP_STYLES = {
   environmental: { color: 'var(--env-color)', bg: 'rgba(26, 77, 64, 0.1)' },
   social: { color: 'var(--soc-color)', bg: 'rgba(46, 107, 138, 0.1)' },
@@ -68,6 +74,7 @@ export default function CompareTab({ compareState, form }) {
     <ResultsView
       comparisons={result.comparisons || []}
       summary={result.summary}
+      recommendation={result.recommendation}
       labelA={result.label_a}
       labelB={result.label_b}
       company1={result.company1}
@@ -112,11 +119,12 @@ function EmptyState() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Results View
 // ─────────────────────────────────────────────────────────────────────────────
-function ResultsView({ comparisons, summary, labelA, labelB, company1, company2, form }) {
+function ResultsView({ comparisons, summary, recommendation, labelA, labelB, company1, company2, form }) {
   const [normalized, setNormalized] = useState(true)
   const [downloading, setDownloading] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState('environmental')
+  const [selectedContentTab, setSelectedContentTab] = useState('kpis')
 
   if (!comparisons.length) {
     return (
@@ -202,45 +210,66 @@ function ResultsView({ comparisons, summary, labelA, labelB, company1, company2,
       {/* Mode Banner */}
       <ModeBanner normalized={normalized} />
 
-      {/* ESG Tabs */}
-      <ESGTabs
-        selectedGroup={selectedGroup}
-        onSelectGroup={setSelectedGroup}
-        comparisons={comparisons}
+      {/* Content Tabs */}
+      <ContentTabs
+        selectedTab={selectedContentTab}
+        onSelectTab={setSelectedContentTab}
+        summary={summary}
+        recommendation={recommendation}
       />
 
-      {/* KPI Cards */}
-      {groupComps.length > 0 ? (
-        <div style={{ animation: 'fadeIn 0.3s ease' }}>
-          {groupComps.map(comp => (
-            <KPICard
-              key={comp.kpi_name}
-              comp={comp}
-              labelA={labelA}
-              labelB={labelB}
-              normalized={normalized}
-              rawA={rawA[comp.kpi_name] || null}
-              rawB={rawB[comp.kpi_name] || null}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="alert alert-info">
-          <span style={{ fontSize: 18 }}>📊</span>
-          <div>
-            <strong>No {selectedGroupObj?.label} KPIs found</strong>
-            <p style={{ marginTop: 4, fontSize: 13, opacity: 0.9 }}>
-              Try switching to a different ESG category above.
-            </p>
-          </div>
-        </div>
+      {/* KPI Content - only show when KPIs tab is selected */}
+      {selectedContentTab === 'kpis' && (
+        <>
+          {/* ESG Tabs */}
+          <ESGTabs
+            selectedGroup={selectedGroup}
+            onSelectGroup={setSelectedGroup}
+            comparisons={comparisons}
+          />
+
+          {/* KPI Cards */}
+          {groupComps.length > 0 ? (
+            <div style={{ animation: 'fadeIn 0.3s ease' }}>
+              {groupComps.map(comp => (
+                <KPICard
+                  key={comp.kpi_name}
+                  comp={comp}
+                  labelA={labelA}
+                  labelB={labelB}
+                  normalized={normalized}
+                  rawA={rawA[comp.kpi_name] || null}
+                  rawB={rawB[comp.kpi_name] || null}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="alert alert-info">
+              <span style={{ fontSize: 18 }}>📊</span>
+              <div>
+                <strong>No {selectedGroupObj?.label} KPIs found</strong>
+                <p style={{ marginTop: 4, fontSize: 13, opacity: 0.9 }}>
+                  Try switching to a different ESG category above.
+                </p>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Summary */}
-      {summary && (
+      {/* Summary Content - only show when Summary tab is selected */}
+      {selectedContentTab === 'summary' && summary && (
         <>
           <div className="sec">Executive Summary</div>
           <div className="summary-box">{summary}</div>
+        </>
+      )}
+
+      {/* Recommendations Content - only show when Recommendations tab is selected */}
+      {selectedContentTab === 'recommendations' && recommendation && (
+        <>
+          <div className="sec">Investment Recommendations</div>
+          <div className="summary-box">{recommendation}</div>
         </>
       )}
 
@@ -285,6 +314,36 @@ function ESGTabs({ selectedGroup, onSelectGroup, comparisons }) {
               <span>{group.icon}</span>
               <span>{group.label}</span>
               <span className="esg-tab-count">{count}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ContentTabs (Summary, Recommendations, KPIs)
+// ─────────────────────────────────────────────────────────────────────────────
+function ContentTabs({ selectedTab, onSelectTab, summary, recommendation }) {
+  return (
+    <div className="content-tabs-container" style={{ marginBottom: 20 }}>
+      <div className="content-tabs">
+        {CONTENT_TABS.map(tab => {
+          // Hide tab if no content
+          if (tab.key === 'summary' && !summary) return null
+          if (tab.key === 'recommendations' && !recommendation) return null
+
+          const isSelected = selectedTab === tab.key
+
+          return (
+            <button
+              key={tab.key}
+              className={`content-tab ${isSelected ? 'content-tab-active' : ''}`}
+              onClick={() => onSelectTab(tab.key)}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
             </button>
           )
         })}

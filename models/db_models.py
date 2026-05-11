@@ -253,3 +253,29 @@ class KPIRecord(Base):
             f"<KPIRecord kpi={self.kpi_definition_id} "
             f"value={self.normalized_value} {self.unit}>"
         )
+
+
+# ---------------------------------------------------------------------------
+# comparison_cache  (stores summary and recommendation for company comparisons)
+# ---------------------------------------------------------------------------
+class ComparisonCache(Base):
+    __tablename__ = "comparison_cache"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company1 = Column(String(255), nullable=False)
+    fy1 = Column(Integer, nullable=False)
+    company2 = Column(String(255), nullable=False)
+    fy2 = Column(Integer, nullable=False)
+    sector = Column(String(100), nullable=True)
+    summary = Column(Text, nullable=True)
+    recommendation = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
+
+    __table_args__ = (
+        UniqueConstraint("company1", "fy1", "company2", "fy2", name="uq_comparison_cache_companies"),
+        Index("ix_comparison_cache_lookup", "company1", "fy1", "company2", "fy2"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ComparisonCache {self.company1} FY{self.fy1} vs {self.company2} FY{self.fy2}>"

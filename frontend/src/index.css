@@ -1124,6 +1124,64 @@ body {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
+   CONTENT TABS (Summary, Recommendations, KPIs)
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.content-tabs-container {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.content-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.content-tab {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.content-tab::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--brand);
+  transform: scaleX(0);
+  transition: transform 0.2s ease;
+}
+
+.content-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.content-tab-active {
+  color: var(--brand-deep);
+  font-weight: 600;
+}
+
+.content-tab-active::after {
+  transform: scaleX(1);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
    ESG TABS
    ════════════════════════════════════════════════════════════════════════════ */
 
