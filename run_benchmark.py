@@ -436,6 +436,7 @@ def _run_pipeline_for_report(
                 pdf_path=pdf_path,
                 fiscal_year_hint=fy,
                 llm_service=llm_service,
+                company_name=company_name,
             )
             if new_rev:
                 print(f"           OK  revenue: INR {new_rev.value_cr:,.0f} Cr "

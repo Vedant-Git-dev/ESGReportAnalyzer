@@ -487,6 +487,7 @@ def step_extract_missing(
     llm_service,
     missing_kpi_names: list[str],
     need_revenue: bool,
+    company_name: str = "",
     emit=None,
 ) -> dict:
     from agents.extraction_agent import ExtractionAgent
@@ -557,6 +558,7 @@ def step_extract_missing(
                     pdf_path=Path(pdf_path_str),
                     fiscal_year_hint=fy,
                     llm_service=llm_service,
+                    company_name=company_name,
                 )
                 if new_revenue:
                     rev_msg = f"    Revenue: INR {new_revenue.value_cr:,.0f} Cr"
@@ -682,6 +684,7 @@ def run_company_pipeline(
             log=log, llm_service=llm_service,
             missing_kpi_names=list(still_missing),
             need_revenue=still_need_rev, emit=None,
+            company_name=company_name,
         )
         new_kpis    = ext_result["kpis"]
         new_revenue = ext_result["revenue"]

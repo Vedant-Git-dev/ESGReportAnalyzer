@@ -21,11 +21,16 @@ class Settings(BaseSettings):
 
     # --- Tavily ---
     serpapi_api_key: str = ""
+    tavily_api_key: str = ""
+
+    # --- Revenue Search (Gemini) ---
+    revenue_search_api_key: str = ""
+    revenue_search_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
 
     # --- LLM ---
     llm_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
     llm_api_key: str = ""
-    llm_model: str = "gemini-2.5-flash"
+    llm_model: str = "gemma-4-26b-a4b-it"
     llm_max_tokens: int = 1024
     llm_temperature: float = 0.0
 
@@ -33,16 +38,16 @@ class Settings(BaseSettings):
     pdf_storage_path: Path = Path("./storage/pdfs")
 
     # --- Pipeline ---
-    parser_version: str = "1.2.0"       # bumped: spatial chunker enabled
+    parser_version: str = "1.2.0"
     max_chunk_tokens: int = 500
     min_chunk_tokens: int = 200
     retrieval_top_k: int = 7
-    use_spatial_chunker: bool = True     # set False to revert to block-based extraction
+    use_spatial_chunker: bool = True
 
     # --- Embeddings ---
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_batch_size: int = 64
-    use_embedding_retrieval: bool = True   # set False to fall back to keyword-only
+    use_embedding_retrieval: bool = True
 
     # --- HTTP ---
     download_timeout_seconds: int = 60

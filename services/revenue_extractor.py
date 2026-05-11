@@ -198,6 +198,7 @@ class RevenueResult:
     page_number: int
     confidence: float
     pattern_name: str = ""
+    source_url: str = ""  # Source URL for web_search
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -573,18 +574,52 @@ def extract_revenue(
     pdf_path: Path,
     fiscal_year_hint: Optional[int] = None,
     llm_service=None,
+    company_name: Optional[str] = None,
 ) -> Optional[RevenueResult]:
     """
     Extract revenue from operations (INR Crore).
 
-    Three-layer pipeline:
+    Four-layer pipeline (added Layer 0 in v4):
+      Layer 0 — Web search (highest priority): Check external sources first
       Layer 1 — Regex from P&L pages (works for full annual reports)
       Layer 2 — Back-calc from BRSR intensity ratios (works for BRSR-only PDFs)
       Layer 3 — LLM fallback (handles edge cases)
 
-    Both BRSR-only PDFs and full annual reports are supported.
     Always returns consolidated revenue when back-calculation is used.
+
+    Args:
+        pdf_path: Path to the PDF file
+        fiscal_year_hint: Target fiscal year (e.g. 2024 for FY24)
+        llm_service: LLM service instance for Layer 3
+        company_name: Company name for web search Layer 0
     """
+    # ─── LAYER 0: Web search via Gemma 4 26B ─────────────────────────────────
+    if company_name and fiscal_year_hint:
+        try:
+            from services.revenue_llm_service import search_revenue
+
+            web_result = search_revenue(company_name, fiscal_year_hint)
+
+            if web_result and web_result.confidence >= 0.80:
+                logger.info(
+                    "revenue.web_search_hit",
+                    company=company_name, year=fiscal_year_hint,
+                    value=web_result.value_cr, confidence=web_result.confidence,
+                    source=web_result.source_domain,
+                )
+                return RevenueResult(
+                    value_cr=web_result.value_cr,
+                    raw_value=web_result.raw_value,
+                    raw_unit="INR_Crore",
+                    source="web_search",
+                    page_number=0,
+                    confidence=web_result.confidence,
+                    pattern_name=f"web_{web_result.source_domain}",
+                    source_url=web_result.source_url or "",
+                )
+        except Exception as exc:
+            logger.warning("revenue.web_search_skipped", error=str(exc))
+
     path = Path(pdf_path)
     if not path.exists():
         raise FileNotFoundError(f"PDF not found: {pdf_path}")
@@ -661,7 +696,6 @@ def extract_revenue(
         return best
 
     logger.warning("revenue.not_found", pdf=str(path))
-    best = RevenueResult(value_cr=258315, raw_unit="INR_Crore", raw_value="258315", source="reported", page_number=None, confidence=0.7, pattern_name="default")
     return best
 
 
@@ -670,9 +704,13 @@ def extract_revenue(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def store_revenue(report, result: RevenueResult, db) -> None:
-    report.revenue_cr     = result.value_cr
-    report.revenue_unit   = result.raw_unit
-    report.revenue_source = result.source
+    report.revenue_cr        = result.value_cr
+    report.revenue_unit      = result.raw_unit
+    report.revenue_source    = result.source
+    report.revenue_model     = "gemma-4-26b-a4b-it"
+    # Store source URL for web_search results
+    if result.source == "web_search" and hasattr(result, 'source_url') and result.source_url:
+        report.revenue_source_url = result.source_url
     logger.info("revenue.stored", report_id=str(report.id),
                 val=result.value_cr, source=result.source)
 
@@ -685,7 +723,9 @@ def get_cached_revenue(report) -> Optional[RevenueResult]:
         raw_value=str(report.revenue_cr),
         raw_unit=getattr(report, "revenue_unit", None) or "INR_Crore",
         source=getattr(report, "revenue_source", None) or "db",
-        page_number=0, confidence=0.99, pattern_name="cached",
+        page_number=0,
+        confidence=0.99,
+        pattern_name=getattr(report, "revenue_model", "db") or "db",
     )
 
 
@@ -696,7 +736,9 @@ def ensure_revenue_columns(db) -> None:
             "ALTER TABLE reports "
             "ADD COLUMN IF NOT EXISTS revenue_cr DOUBLE PRECISION, "
             "ADD COLUMN IF NOT EXISTS revenue_unit VARCHAR(30), "
-            "ADD COLUMN IF NOT EXISTS revenue_source VARCHAR(50);"
+            "ADD COLUMN IF NOT EXISTS revenue_source VARCHAR(50), "
+            "ADD COLUMN IF NOT EXISTS revenue_source_url TEXT, "
+            "ADD COLUMN IF NOT EXISTS revenue_model VARCHAR(100);"
         ))
         db.commit()
         logger.info("revenue.columns_ensured")

@@ -93,12 +93,12 @@ class Report(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
 
-    # ── Revenue columns (new) ─────────────────────────────────────────────────
-    # Stored directly on the report so we don't need a separate KPI definition
-    # for revenue, keeping it conceptually separate from ESG KPIs.
+    # ── Revenue columns ──────────────────────────────────────────────────────
     revenue_cr = Column(Float, nullable=True)          # INR Crore
-    revenue_unit = Column(String(30), nullable=True)   # "INR_Crore" | "USD_Million"
-    revenue_source = Column(String(50), nullable=True) # "regex" | "llm" | "manual"
+    revenue_unit = Column(String(30), nullable=True)   # "INR_Crore"
+    revenue_source = Column(String(50), nullable=True)  # "web_search" | "pdf_regex" | "llm"
+    revenue_source_url = Column(Text, nullable=True)  # Source URL from web search
+    revenue_model = Column(String(100), nullable=True) # Model used: "gemma-4-26b-a4b-it"
 
     company = relationship("Company", back_populates="reports")
     parsed_documents = relationship(
@@ -253,6 +253,74 @@ class KPIRecord(Base):
             f"<KPIRecord kpi={self.kpi_definition_id} "
             f"value={self.normalized_value} {self.unit}>"
         )
+
+
+# ---------------------------------------------------------------------------
+# revenue_search_models  (dedicated LLM-based revenue search)
+# ---------------------------------------------------------------------------
+class RevenueSearchModel(Base):
+    """
+    Dedicated model for LLM-powered revenue search.
+    Uses Gemma 4 26B via Gemini API with Google Search grounding.
+    """
+    __tablename__ = "revenue_search_models"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    model_name = Column(String(100), nullable=False, unique=True)
+    model_id = Column(String(100), nullable=False)  # e.g. "gemma-4-26b-a4b-it"
+    provider = Column(String(50), nullable=False, default="google")  # "google" | "openai" | etc.
+    base_url = Column(String(255), nullable=False)
+    api_key_env_var = Column(String(50), nullable=True)  # env var name for API key
+    is_default = Column(Boolean, nullable=False, default=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    config = Column(JSONB, nullable=False, default=dict)  # temperature, max_tokens, etc.
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
+
+    __table_args__ = (
+        Index("ix_revenue_search_models_is_default", "is_default"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<RevenueSearchModel {self.model_name} ({self.model_id})>"
+
+
+# ---------------------------------------------------------------------------
+# revenue_search_cache  (cached web search results)
+# ---------------------------------------------------------------------------
+class RevenueSearchCache(Base):
+    """
+    Caches revenue search results to avoid repeated API calls.
+    Keyed on (company_name, fiscal_year).
+    """
+    __tablename__ = "revenue_search_cache"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_name = Column(String(255), nullable=False)
+    fiscal_year = Column(Integer, nullable=False)
+    model_id = Column(UUID(as_uuid=True), ForeignKey("revenue_search_models.id"), nullable=True)
+    revenue_cr = Column(Float, nullable=True)
+    raw_value = Column(Text, nullable=True)
+    source_url = Column(Text, nullable=True)
+    source_domain = Column(String(100), nullable=True)
+    is_consolidated = Column(Boolean, nullable=False, default=True)
+    confidence = Column(Float, nullable=True)
+    extraction_method = Column(String(50), nullable=False, default="llm_web_search")
+    searched_at = Column(DateTime(timezone=True), nullable=False, default=_now)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    is_valid = Column(Boolean, nullable=False, default=True)
+    meta = Column(JSONB, nullable=False, default=dict)
+
+    model = relationship("RevenueSearchModel", backref="search_cache")
+
+    __table_args__ = (
+        UniqueConstraint("company_name", "fiscal_year", name="uq_revenue_search_cache_company_year"),
+        Index("ix_revenue_search_cache_company_year", "company_name", "fiscal_year"),
+        Index("ix_revenue_search_cache_expires", "expires_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<RevenueSearchCache {self.company_name} FY{self.fiscal_year} = {self.revenue_cr}Cr>"
 
 
 # ---------------------------------------------------------------------------

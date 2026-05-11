@@ -1432,9 +1432,11 @@ def cmd_extract(args) -> None:
                 rpt = db.query(Report).filter(Report.id == report_id).first()
                 pdf_path_str = rpt.file_path if rpt else None
                 fy = rpt.report_year if rpt else (args.year or 0)
+                # Get company name from args or DB
+                company_name = getattr(args, 'company', None) or (rpt.company.name if rpt and rpt.company else "")
 
             if pdf_path_str and Path(pdf_path_str).exists():
-                rev = extract_revenue(pdf_path=Path(pdf_path_str), fiscal_year_hint=fy)
+                rev = extract_revenue(pdf_path=Path(pdf_path_str), fiscal_year_hint=fy, company_name=company_name)
                 if rev:
                     print(f"   ✓ Revenue: ₹{rev.value_cr:,.0f} Crore [{rev.pattern_name} conf={rev.confidence:.2f}]")
                 else:

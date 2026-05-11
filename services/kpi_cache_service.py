@@ -264,16 +264,33 @@ class KPICacheService:
         from models.db_models import Report, KPIRecord, KPIDefinition
         from services.revenue_extractor import store_revenue
 
-        # Revenue: write only when absent
+        # Revenue: write/update
+        # - Always write if no existing revenue
+        # - Overwrite if new source is "web_search" (higher confidence, more reliable)
         if revenue_result:
             report_row = db.query(Report).filter(Report.id == report_id).first()
-            if report_row and getattr(report_row, "revenue_cr", None) is None:
+            existing_source = getattr(report_row, "revenue_source", None)
+            existing_cr = getattr(report_row, "revenue_cr", None)
+            should_update = (
+                existing_cr is None
+                or (revenue_result.source == "web_search" and getattr(report_row, "revenue_source", None) != "web_search")  # Web search is most reliable
+            )
+            logger.info(
+                "kpi_cache.revenue_check",
+                report_id=str(report_id)[:8],
+                existing_cr=existing_cr,
+                existing_source=existing_source,
+                new_source=revenue_result.source,
+                should_update=should_update,
+            )
+            if report_row and should_update:
                 try:
                     store_revenue(report_row, revenue_result, db)
                     logger.info(
                         "kpi_cache.revenue_stored",
                         report_id=str(report_id)[:8],
                         value_cr=revenue_result.value_cr,
+                        source=revenue_result.source,
                     )
                 except Exception as exc:
                     logger.warning("kpi_cache.revenue_store_failed", error=str(exc))
