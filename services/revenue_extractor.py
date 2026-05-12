@@ -745,3 +745,30 @@ def ensure_revenue_columns(db) -> None:
     except Exception as exc:
         db.rollback()
         logger.warning("revenue.column_migration_failed", error=str(exc))
+
+    try:
+        db.execute(text(
+            "ALTER TABLE revenue_search_cache "
+            "ADD COLUMN IF NOT EXISTS kpi VARCHAR(50) DEFAULT 'revenue_from_operations';"
+        ))
+        db.commit()
+        db.execute(text(
+            "UPDATE revenue_search_cache SET kpi = 'revenue_from_operations' WHERE kpi IS NULL;"
+        ))
+        db.commit()
+        db.execute(text(
+            "DO $$ BEGIN "
+            "ALTER TABLE revenue_search_cache DROP CONSTRAINT IF EXISTS uq_revenue_search_cache_company_year; "
+            "EXCEPTION WHEN others THEN NULL; "
+            "END $$;"
+        ))
+        db.commit()
+        db.execute(text(
+            "ALTER TABLE revenue_search_cache ADD CONSTRAINT uq_revenue_search_cache_company_year_kpi "
+            "UNIQUE (company_name, fiscal_year, kpi);"
+        ))
+        db.commit()
+        logger.info("revenue_search_cache.kpi_column_ensured")
+    except Exception as exc:
+        db.rollback()
+        logger.warning("revenue_search_cache.migration_failed", error=str(exc))

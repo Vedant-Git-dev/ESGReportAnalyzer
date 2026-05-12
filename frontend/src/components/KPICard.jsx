@@ -5,6 +5,9 @@ import MiniBarChart from './MiniBarChart'
 const CA = '#237A5F'
 const CB = '#C47D3F'
 
+// Financial KPIs that normalize by employee count instead of revenue
+const FINANCIAL_NORMALIZED_KPIS = ['revenue_from_operations', 'net_revenue']
+
 // Number formatting
 function fmt(v, forLabel = false) {
   if (v === undefined || v === null || isNaN(v)) return 'N/A'
@@ -38,6 +41,7 @@ export default function KPICard({ comp, labelA, labelB, normalized, rawA, rawB }
   const higherIsBetter = meta.higher_is_better ?? false
   const ratioDenominator = meta.ratio_denominator || 'revenue'
   const isRatioless = ratioDenominator === 'none'
+  const isFinancialNorm = FINANCIAL_NORMALIZED_KPIS.includes(kpi_name)
 
   // Normalized mode values
   const normMap = Object.fromEntries((entries || []).map(e => [e.company_label, e.value]))
@@ -50,17 +54,53 @@ export default function KPICard({ comp, labelA, labelB, normalized, rawA, rawB }
   const absB = rawB?.value ?? null
   const absUnit = rawA?.unit || rawB?.unit || meta.unit || unit
 
+  // Compute per-employee normalized values for Financial KPIs
+  const empA = rawA && rawA.value != null && rawA.employee_count
+    ? rawA.value / rawA.employee_count
+    : (rawA?.value_per_employee ?? null)
+  const empB = rawB && rawB.value != null && rawB.employee_count
+    ? rawB.value / rawB.employee_count
+    : (rawB?.value_per_employee ?? null)
+
   // Pick display values
-  const showNorm = normalized && !isRatioless
-  const displayA = showNorm ? normA : (isRatioless ? normA : (absA ?? normA))
-  const displayB = showNorm ? normB : (isRatioless ? normB : (absB ?? normB))
-  const displayUnit = showNorm
-    ? normUnit
-    : (isRatioless ? normUnit : ((absA != null || absB != null) ? absUnit : normUnit))
+  const showNorm = normalized && !isRatioless && !isFinancialNorm
+
+  let displayA, displayB, displayUnit
+  if (isFinancialNorm && normalized) {
+    // Normalized: per employee view for Financial KPIs
+    const empNormA = rawA?.value_per_employee ?? empA
+    const empNormB = rawB?.value_per_employee ?? empB
+    displayA = empNormA
+    displayB = empNormB
+    displayUnit = 'INR_Crore/employee'
+  } else if (isFinancialNorm) {
+    // Absolute: show raw INR Crore values
+    displayA = absA
+    displayB = absB
+    displayUnit = 'INR_Crore'
+  } else if (showNorm || isRatioless) {
+    displayA = normA
+    displayB = normB
+    displayUnit = normUnit
+  } else {
+    displayA = absA ?? normA
+    displayB = absB ?? normB
+    displayUnit = (absA != null || absB != null) ? absUnit : normUnit
+  }
 
   // Winner & gap
   let displayWinner, displayGap
-  if (showNorm || isRatioless) {
+  if (isFinancialNorm && normalized) {
+    // Financial normalized: use per-employee values to compute winner
+    const { winner: w, pctGap } = absWinner(displayA, displayB, labelA, labelB, higherIsBetter)
+    displayWinner = w
+    displayGap = pctGap
+  } else if (isFinancialNorm) {
+    // Financial absolute: use raw values to compute winner
+    const { winner: w, pctGap } = absWinner(absA, absB, labelA, labelB, higherIsBetter)
+    displayWinner = w
+    displayGap = pctGap
+  } else if (showNorm || isRatioless) {
     displayWinner = winner
     displayGap = pct_gap
   } else {
@@ -73,11 +113,6 @@ export default function KPICard({ comp, labelA, labelB, normalized, rawA, rawB }
   const aWins = displayWinner === labelA
   const noData = displayA == null && displayB == null
 
-  const chartData = [
-    { label: labelA.split(' FY')[0], value: displayA, isWinner: aWins },
-    { label: labelB.split(' FY')[0], value: displayB, isWinner: !aWins },
-  ].filter(d => d.value != null)
-
   return (
     <div className="card">
       {/* Header */}
@@ -85,12 +120,13 @@ export default function KPICard({ comp, labelA, labelB, normalized, rawA, rawB }
         <div className="kpi-card-info">
           <div className="kpi-card-title">{meta.label || display_name}</div>
           <div className="kpi-card-desc">
-            {showNorm
-              ? (meta.desc || `${meta.label || display_name} per INR Crore revenue`)
-              : (isRatioless
-                  ? (meta.desc || '')
-                  : `Absolute reported value · ${displayUnit}`)
-            }
+            {isFinancialNorm
+              ? (normalized ? 'Revenue per employee (INR Crore/employee)' : 'Absolute revenue (INR Crore)')
+              : showNorm
+                ? (meta.desc || `${meta.label || display_name} per INR Crore revenue`)
+                : (isRatioless
+                    ? (meta.desc || '')
+                    : `Absolute reported value - ${displayUnit}`)}
           </div>
         </div>
         <div className="kpi-card-meta">
@@ -134,7 +170,7 @@ export default function KPICard({ comp, labelA, labelB, normalized, rawA, rawB }
           unit={displayUnit}
           color={CA}
           isWinner={aWins && !noData}
-          normalized={showNorm}
+          normalized={isFinancialNorm ? normalized : showNorm}
           isRatioless={isRatioless}
         />
         <ValPanel
@@ -143,7 +179,7 @@ export default function KPICard({ comp, labelA, labelB, normalized, rawA, rawB }
           unit={displayUnit}
           color={CB}
           isWinner={!aWins && !noData}
-          normalized={showNorm}
+          normalized={isFinancialNorm ? normalized : showNorm}
           isRatioless={isRatioless}
         />
       </div>

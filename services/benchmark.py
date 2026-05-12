@@ -39,6 +39,7 @@ logger = get_logger(__name__)
 FINANCIAL_KPI_NAMES = [
     "revenue_from_operations",
     "revenue_per_employee",
+    "net_revenue",
 ]
 
 # Environmental — ratio = KPI / revenue_cr
@@ -325,21 +326,32 @@ def build_company_profile(
 
         profile.raw_kpis[kpi_name] = norm
 
+        # Add value_per_employee for financial KPIs
+        if group == "financial" and kpi_name in ("revenue_from_operations", "net_revenue"):
+            emp_rec = kpi_records.get("employee_count")
+            emp_val = float(emp_rec["value"]) if emp_rec and emp_rec.get("value") else 0
+            if emp_val > 0:
+                norm.value_per_employee = norm.normalized_value / emp_val
+
         # ── Ratio calculation ─────────────────────────────────────────────────
         if group == "financial":
-            # Financial: absolute revenue, revenue per employee = revenue / employees
-            if kpi_name == "revenue_from_operations":
-                ratio_val    = norm.normalized_value
-                ratio_source = "absolute"
-            else:
-                # revenue_per_employee = revenue_cr / employee_count
-                emp_rec = kpi_records.get("employee_count")
-                if emp_rec and emp_rec.get("value") and float(emp_rec["value"]) > 0:
-                    ratio_val    = norm.normalized_value / float(emp_rec["value"])
-                    ratio_source = "computed"
+            # Financial: normalized mode = per employee, absolute mode = raw INR Crore
+            emp_rec = kpi_records.get("employee_count")
+            emp_val = float(emp_rec["value"]) if emp_rec and emp_rec.get("value") else 0
+
+            if kpi_name in ("revenue_from_operations", "net_revenue"):
+                if emp_val > 0:
+                    ratio_val    = norm.normalized_value / emp_val
+                    ratio_source = "per_employee"
                 else:
                     ratio_val    = norm.normalized_value
                     ratio_source = "absolute"
+            elif kpi_name == "revenue_per_employee":
+                ratio_val    = norm.normalized_value
+                ratio_source = "absolute"
+            else:
+                ratio_val    = norm.normalized_value
+                ratio_source = "absolute"
             ratio_unit = RATIO_UNIT_LABELS.get(kpi_name, "INR_Crore")
 
         elif group == "governance":

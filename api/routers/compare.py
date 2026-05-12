@@ -42,6 +42,7 @@ def _kpi_records_to_schema(kpi_records: dict) -> dict[str, KPIRecord]:
                 method=str(rec.get("method") or ""),
                 confidence=float(rec.get("confidence") or 0.5),
                 report_type=rec.get("report_type"),
+                value_per_employee=rec.get("value_per_employee"),
             )
         except Exception:
             pass
@@ -85,16 +86,20 @@ def _build_response(
             meta=KPI_GROUPS.get(comp.kpi_name, {}),
         ))
 
+    # Use kpi_records from benchmark profiles (which include injected financial KPIs)
+    company1_records = benchmark.get("company1_records", data1.kpi_records)
+    company2_records = benchmark.get("company2_records", data2.kpi_records)
+
     return CompareResponse(
         company1=CompanyResult(
             company_name=data1.company_name, fy=data1.fy,
-            kpi_records=_kpi_records_to_schema(data1.kpi_records),
+            kpi_records=_kpi_records_to_schema(company1_records),
             revenue=_revenue_to_schema(data1.revenue_result),
             log=data1.log,
         ),
         company2=CompanyResult(
             company_name=data2.company_name, fy=data2.fy,
-            kpi_records=_kpi_records_to_schema(data2.kpi_records),
+            kpi_records=_kpi_records_to_schema(company2_records),
             revenue=_revenue_to_schema(data2.revenue_result),
             log=data2.log,
         ),

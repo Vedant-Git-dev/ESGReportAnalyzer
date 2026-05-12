@@ -50,6 +50,12 @@ KPI_GROUPS: dict[str, dict] = {
         "max_ratio": 0, "higher_is_better": True,
         "desc": "Revenue from operations divided by total employee count",
     },
+    "net_revenue": {
+        "label": "Net Revenue", "group": "Financial", "unit": "INR Crore",
+        "ratio_unit": "INR_Crore", "ratio_denominator": "none",
+        "max_ratio": 0, "higher_is_better": True,
+        "desc": "Net revenue after adjustments",
+    },
     "scope_1_emissions": {
         "label": "Scope 1 GHG", "group": "Environmental", "unit": "tCO2e",
         "ratio_unit": "tCO2e/Cr", "ratio_denominator": "revenue",
@@ -122,6 +128,7 @@ ALL_KPI_NAMES: list[str] = list(KPI_GROUPS.keys())
 
 KPI_PLAUSIBILITY: dict[str, tuple[float, float]] = {
     "revenue_from_operations":    (5_000,   500_000),
+    "net_revenue":                (5_000,   600_000),
     "revenue_per_employee":       (0.01,         50),
     "scope_1_emissions":             (1,       5_000_000),
     "scope_2_emissions":             (1,       5_000_000),
@@ -182,11 +189,12 @@ class HealthResponse(BaseModel):
 
 
 class KPIRecord(BaseModel):
-    value:       float
-    unit:        str
-    method:      str
-    confidence:  float
-    report_type: Optional[str] = None
+    value:             float
+    unit:              str
+    method:            str
+    confidence:        float
+    report_type:       Optional[str] = None
+    value_per_employee: Optional[float] = None
 
 
 class RevenueInfo(BaseModel):

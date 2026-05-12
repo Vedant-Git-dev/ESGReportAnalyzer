@@ -264,26 +264,32 @@ def cache_load(company_id: uuid.UUID, fy: int) -> dict:
         return {}
 
 
-def cache_load_revenue(company_name: str, fy: int):
+def cache_load_revenue(company_name: str, fy: int, kpi: str = "revenue_from_operations"):
     """
-    Load revenue for comparison. Strict flow:
+    Load revenue from revenue_search_cache table (authoritative source).
+    Strict flow:
     1. Check revenue_search_cache table first (authoritative source)
     2. If not found, run web search and store in revenue_search_cache
     3. Return result from revenue_search_cache
+
+    Args:
+        company_name: Company name
+        fy: Fiscal year
+        kpi: Which KPI — "revenue_from_operations" or "net_revenue"
     """
     try:
         from core.database import get_db
-        from services.revenue_llm_service import RevenueSearchResult
+        from models.db_models import RevenueSearchCache
         from services.revenue_extractor import RevenueResult
 
         with get_db() as db:
             # Step 1: Check revenue_search_cache first
-            from models.db_models import RevenueSearchCache
             cached = (
                 db.query(RevenueSearchCache)
                 .filter(
                     RevenueSearchCache.company_name.ilike(company_name),
                     RevenueSearchCache.fiscal_year == fy,
+                    RevenueSearchCache.kpi == kpi,
                     RevenueSearchCache.is_valid == True,
                     RevenueSearchCache.revenue_cr.isnot(None),
                 )
@@ -303,10 +309,10 @@ def cache_load_revenue(company_name: str, fy: int):
 
             # Step 2: Web search if not in cache
             from services.revenue_llm_service import search_revenue, _store_in_cache
-            web_result = search_revenue(company_name, fy)
+            web_result = search_revenue(company_name, fy, kpi=kpi)
             if web_result and web_result.confidence >= 0.80:
                 # Store in revenue_search_cache
-                _store_in_cache(web_result)
+                _store_in_cache(web_result, kpi=kpi)
                 return RevenueResult(
                     value_cr=web_result.value_cr,
                     raw_value=web_result.raw_value,
@@ -694,25 +700,31 @@ def run_company_pipeline(
     # Step 2 — KPI-level cache check
     _emit("Checking for previously extracted data...")
     cached_kpis: dict = {}
-    cached_revenue    = None
+    cached_revenue_ops = None
+    cached_net_revenue = None
 
     if company_id:
-        cached_kpis    = cache_load(company_id, fy)
-        cached_revenue = cache_load_revenue(company_name, fy)
+        cached_kpis       = cache_load(company_id, fy)
+        cached_revenue_ops = cache_load_revenue(company_name, fy, kpi="revenue_from_operations")
+        cached_net_revenue = cache_load_revenue(company_name, fy, kpi="net_revenue")
 
-    missing_kpis  = [k for k in ALL_KPI_NAMES if k not in cached_kpis]
-    need_revenue  = cached_revenue is None
+    missing_kpis = [k for k in ALL_KPI_NAMES if k not in cached_kpis]
+    need_rev_ops  = cached_revenue_ops is None
+    need_net_rev  = cached_net_revenue is None
     _emit(
         f"Cache check: {len(cached_kpis)} KPI(s) already available, "
         f"{len(missing_kpis)} still missing."
     )
 
-    if not missing_kpis and not need_revenue:
+    if not missing_kpis and not need_rev_ops and not need_net_rev:
         _emit(f"All data loaded from cache ({len(cached_kpis)} metrics).")
         final_db = db_load_kpis_and_revenue(company_id, fy, company_name) if company_id else {}
+        # Build revenue_result dict for both KPIs
+        rev_ops_result = cached_revenue_ops
+        net_rev_result = cached_net_revenue
         return CompanyData(
             company_name=company_name, fy=fy, sector=sector,
-            kpi_records=cached_kpis, revenue_result=cached_revenue,
+            kpi_records=cached_kpis, revenue_result=rev_ops_result,
             log=log, company_id=company_id,
             report_infos=report_infos, file_path=final_db.get("file_path"),
         )
@@ -722,12 +734,14 @@ def run_company_pipeline(
         report_infos, key=lambda r: REPORT_TYPE_PRIORITY.get(r.report_type, 99),
     )
     still_missing  = list(missing_kpis)
-    still_need_rev = need_revenue
+    still_need_rev_ops = need_rev_ops
+    still_need_net_rev = need_net_rev
     all_new_kpis:  dict = {}
-    final_revenue        = cached_revenue
+    final_revenue_ops = cached_revenue_ops
+    final_net_revenue = cached_net_revenue
 
     for ri in sorted_reports:
-        if not still_missing and not still_need_rev:
+        if not still_missing and not still_need_rev_ops and not still_need_net_rev:
             break
 
         _emit(f"Reading {ri.report_type} report...")
@@ -740,7 +754,7 @@ def run_company_pipeline(
             report_id=ri.id, report_type=ri.report_type, fy=fy,
             log=log, llm_service=llm_service,
             missing_kpi_names=list(still_missing),
-            need_revenue=still_need_rev, emit=None,
+            need_revenue=still_need_rev_ops, emit=None,
             company_name=company_name,
         )
         new_kpis    = ext_result["kpis"]
@@ -751,9 +765,19 @@ def run_company_pipeline(
             if found in still_missing:
                 still_missing.remove(found)
 
-        if new_revenue and final_revenue is None:
-            final_revenue  = new_revenue
-            still_need_rev = False
+        if new_revenue and final_revenue_ops is None:
+            final_revenue_ops = new_revenue
+            still_need_rev_ops = False
+
+        # Net revenue: search if not yet cached
+        if still_need_net_rev:
+            from services.revenue_llm_service import search_revenue, _store_in_cache
+            net_rev = search_revenue(company_name, fy, kpi="net_revenue")
+            if net_rev and net_rev.confidence >= 0.80:
+                _store_in_cache(net_rev, kpi="net_revenue")
+                final_net_revenue = net_rev
+                still_need_net_rev = False
+                log.append(f"    Net Revenue: INR {net_rev.value_cr:,.0f} Cr")
 
         if company_id and (new_kpis or new_revenue):
             db_store_kpis(company_id, ri.id, fy, new_kpis, new_revenue)
@@ -763,7 +787,7 @@ def run_company_pipeline(
     final_db     = db_load_kpis_and_revenue(company_id, fy) if company_id else {}
     final_kpis   = final_db.get("kpis", {})
     final_merged = {**merged_kpis, **final_kpis}
-    final_revenue = final_revenue or final_db.get("revenue")
+    final_revenue_ops = final_revenue_ops or final_db.get("revenue")
 
     _emit(
         f"Comparison-ready KPI set: {len(final_merged)} total "
@@ -777,7 +801,7 @@ def run_company_pipeline(
 
     return CompanyData(
         company_name=company_name, fy=fy, sector=sector,
-        kpi_records=final_merged, revenue_result=final_revenue,
+        kpi_records=final_merged, revenue_result=final_revenue_ops,
         log=log, company_id=company_id,
         report_infos=report_infos, file_path=final_db.get("file_path"),
     )
@@ -809,16 +833,33 @@ def build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dict
                 "report_type": None,
             }
             emp_rec = kpi_records.get("employee_count")
-            if emp_rec and emp_rec.get("value"):
-                emp_val = float(emp_rec["value"])
+            emp_val = float(emp_rec["value"]) if emp_rec and emp_rec.get("value") else 0
+            if emp_val > 0:
+                kpi_records["revenue_per_employee"] = {
+                    "value":      rev.value_cr / emp_val,
+                    "unit":       "INR_Crore",
+                    "method":     "computed",
+                    "confidence": rev.confidence,
+                    "report_type": None,
+                }
+                # Store value_per_employee for Financial KPI display
+                kpi_records["revenue_from_operations"]["value_per_employee"] = rev.value_cr / emp_val
+
+        # Net revenue: load from revenue_search_cache if not in kpi_records
+        if "net_revenue" not in kpi_records:
+            net_rev = cache_load_revenue(data.company_name, data.fy, kpi="net_revenue")
+            if net_rev:
+                emp_rec = kpi_records.get("employee_count")
+                emp_val = float(emp_rec["value"]) if emp_rec and emp_rec.get("value") else 0
+                kpi_records["net_revenue"] = {
+                    "value":      net_rev.value_cr,
+                    "unit":       "INR_Crore",
+                    "method":     net_rev.source,
+                    "confidence": net_rev.confidence,
+                    "report_type": None,
+                }
                 if emp_val > 0:
-                    kpi_records["revenue_per_employee"] = {
-                        "value":      rev.value_cr / emp_val,
-                        "unit":       "INR_Crore",
-                        "method":     "computed",
-                        "confidence": rev.confidence,
-                        "report_type": None,
-                    }
+                    kpi_records["net_revenue"]["value_per_employee"] = net_rev.value_cr / emp_val
 
         page_texts: list[str] = []
         if data.file_path and Path(data.file_path).exists():
@@ -876,9 +917,25 @@ def build_benchmark(data1: CompanyData, data2: CompanyData, sector: str) -> dict
         )
 
     return {
-        "profiles":      profiles,
-        "report":        report,
-        "filtered":      filtered,
-        "summary":       summary,
-        "recommendation": recommendation,
+        "profiles":           profiles,
+        "report":             report,
+        "filtered":           filtered,
+        "summary":            summary,
+        "recommendation":     recommendation,
+        "company1_records":   _profile_to_kpi_records(profiles[0]) if len(profiles) > 0 else {},
+        "company2_records":   _profile_to_kpi_records(profiles[1]) if len(profiles) > 1 else {},
     }
+
+
+def _profile_to_kpi_records(profile) -> dict:
+    """Convert a CompanyProfile's raw_kpis to dict format for API response."""
+    records = {}
+    for kpi_name, norm_kpi in profile.raw_kpis.items():
+        rec = {
+            "value": norm_kpi.raw_value,
+            "unit": norm_kpi.raw_unit,
+        }
+        if hasattr(norm_kpi, 'value_per_employee') and norm_kpi.value_per_employee is not None:
+            rec["value_per_employee"] = norm_kpi.value_per_employee
+        records[kpi_name] = rec
+    return records

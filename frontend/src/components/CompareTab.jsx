@@ -11,6 +11,8 @@ const GROUPS = [
   { key: 'governance', label: 'Governance', icon: '⚖' },
 ]
 
+const FINANCIAL_KPI_NAMES = ['revenue_from_operations', 'net_revenue']
+
 const CONTENT_TABS = [
   { key: 'kpis', label: 'KPIs', icon: '📊' },
   { key: 'summary', label: 'Summary', icon: '📝' },
@@ -176,8 +178,13 @@ function ResultsView({ comparisons, summary, recommendation, labelA, labelB, com
   }
 
   const groupComps = comparisons.filter(c => groupKey(c.group) === selectedGroup)
+  // For Financial tab, only show revenue_from_operations and net_revenue
+  const filteredGroupComps = selectedGroup === 'financial'
+    ? groupComps.filter(c => FINANCIAL_KPI_NAMES.includes(c.kpi_name))
+    : groupComps
   const selectedGroupObj = GROUPS.find(g => g.key === selectedGroup)
   const groupStyle = GROUP_STYLES[selectedGroup]
+  const activeComps = selectedGroup === 'financial' ? filteredGroupComps : groupComps
 
   return (
     <div>
@@ -210,7 +217,7 @@ function ResultsView({ comparisons, summary, recommendation, labelA, labelB, com
       </div>
 
       {/* Mode Banner */}
-      <ModeBanner normalized={normalized} />
+      <ModeBanner normalized={normalized} selectedGroup={selectedGroup} />
 
       {/* Content Tabs */}
       <ContentTabs
@@ -231,9 +238,9 @@ function ResultsView({ comparisons, summary, recommendation, labelA, labelB, com
           />
 
           {/* KPI Cards */}
-          {groupComps.length > 0 ? (
+          {activeComps.length > 0 ? (
             <div style={{ animation: 'fadeIn 0.3s ease' }}>
-              {groupComps.map(comp => (
+              {activeComps.map(comp => (
                 <KPICard
                   key={comp.kpi_name}
                   comp={comp}
@@ -251,7 +258,9 @@ function ResultsView({ comparisons, summary, recommendation, labelA, labelB, com
               <div>
                 <strong>No {selectedGroupObj?.label} KPIs found</strong>
                 <p style={{ marginTop: 4, fontSize: 13, opacity: 0.9 }}>
-                  Try switching to a different ESG category above.
+                  {selectedGroup === 'financial'
+                    ? 'Revenue data is being loaded. Try comparing companies.'
+                    : 'Try switching to a different ESG category above.'}
                 </p>
               </div>
             </div>
@@ -382,14 +391,15 @@ function ModeToggle({ normalized, onChange }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ModeBanner
 // ─────────────────────────────────────────────────────────────────────────────
-function ModeBanner({ normalized }) {
+function ModeBanner({ normalized, selectedGroup }) {
   if (normalized) {
     return (
       <div className="mode-banner norm">
         <span className="mode-banner-icon">📊</span>
         <div>
-          <strong>Normalized View</strong> — Values normalized by annual revenue (INR Crore).
-          Enables fair comparison across companies of different sizes. Units displayed as <em>value / Crore</em>.
+          <strong>Normalized View</strong> — {selectedGroup === 'financial'
+            ? 'Revenue divided by employee count (INR Crore/employee). Enables fair comparison of productivity across companies of different sizes.'
+            : 'Values normalized by annual revenue (INR Crore). Enables fair comparison across companies of different sizes. Units displayed as value / Crore.'}
         </div>
       </div>
     )

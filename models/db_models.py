@@ -291,13 +291,14 @@ class RevenueSearchModel(Base):
 class RevenueSearchCache(Base):
     """
     Caches revenue search results to avoid repeated API calls.
-    Keyed on (company_name, fiscal_year).
+    Keyed on (company_name, fiscal_year, kpi).
     """
     __tablename__ = "revenue_search_cache"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_name = Column(String(255), nullable=False)
     fiscal_year = Column(Integer, nullable=False)
+    kpi = Column(String(50), nullable=False, default="revenue_from_operations")
     model_id = Column(UUID(as_uuid=True), ForeignKey("revenue_search_models.id"), nullable=True)
     revenue_cr = Column(Float, nullable=True)
     raw_value = Column(Text, nullable=True)
@@ -314,7 +315,7 @@ class RevenueSearchCache(Base):
     model = relationship("RevenueSearchModel", backref="search_cache")
 
     __table_args__ = (
-        UniqueConstraint("company_name", "fiscal_year", name="uq_revenue_search_cache_company_year"),
+        UniqueConstraint("company_name", "fiscal_year", "kpi", name="uq_revenue_search_cache_company_year_kpi"),
         Index("ix_revenue_search_cache_company_year", "company_name", "fiscal_year"),
         Index("ix_revenue_search_cache_expires", "expires_at"),
     )
