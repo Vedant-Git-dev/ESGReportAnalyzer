@@ -1,11 +1,11 @@
 """
 services/revenue_llm_service.py
 
-Dedicated Gemma 4 26B service for revenue search using google-genai SDK.
+Dedicated gemini-2.5-flash service for revenue search using google-genai SDK.
 Uses Google Search grounding for accurate financial data extraction.
 
 Pattern: from google import genai; client = genai.Client() (reads GEMINI_API_KEY from env)
-Model: gemma-4-26b-a4b-it
+Model: gemini-2.5-flash
 """
 
 from __future__ import annotations
@@ -72,16 +72,16 @@ def search_revenue(
     kpi: str = "revenue_from_operations",
     max_retries: int = 5,
     retry_delay: float = 15.0,
-    model: str = "gemma-4-26b-a4b-it",  # Gemma 4 26B with Google Search
+    model: str = "gemini-2.5-flash",  # Gemini-2.5-flash with Google Search
 ) -> Optional[RevenueSearchResult]:
     """
-    Search for revenue using Gemma 4 26B with web grounding.
+    Search for revenue using gemini-2.5-flash with web grounding.
 
     Pattern:
         from google import genai
         client = genai.Client()  # reads GEMINI_API_KEY from environment automatically
         response = client.models.generate_content(
-            model="gemma-4-26b-a4b-it",
+            model="gemini-2.5-flash",
             contents="...",
             config=types.GenerateContentConfig(tools=[{"google_search":{}}])
         )
@@ -217,9 +217,9 @@ def _search_net_revenue(
     fiscal_year: int,
     max_retries: int = 5,
     retry_delay: float = 15.0,
-    model: str = "gemma-4-26b-a4b-it",
+    model: str = "gemini-2.5-flash",
 ) -> Optional[RevenueSearchResult]:
-    """Search for Net Revenue / Total Income using Gemma 4 26B with web grounding."""
+    """Search for Net Revenue / Total Income using gemini-2.5-flash with web grounding."""
     try:
         from google import genai
         from google.genai import types
