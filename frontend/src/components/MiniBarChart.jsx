@@ -7,12 +7,7 @@ const CB = '#C47D3F'
 
 function fmt(v) {
   if (v === undefined || v === null) return 'N/A'
-  if (Math.abs(v) < 0.001) return v.toExponential(2)
-  if (Math.abs(v) < 1) return v.toFixed(4)
-  if (Math.abs(v) >= 1e9) return (v / 1e9).toFixed(2) + 'B'
-  if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(2) + 'M'
-  if (Math.abs(v) >= 1e3) return v.toLocaleString('en-IN', { maximumFractionDigits: 1 })
-  return v.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+  return Number(v).toLocaleString('en-IN', { maximumFractionDigits: 2 })
 }
 
 const CustomTooltip = ({ active, payload, unit }) => {

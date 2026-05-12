@@ -11,15 +11,7 @@ const FINANCIAL_NORMALIZED_KPIS = ['revenue_from_operations', 'net_revenue']
 // Number formatting
 function fmt(v, forLabel = false) {
   if (v === undefined || v === null || isNaN(v)) return 'N/A'
-  const abs = Math.abs(v)
-  if (abs === 0) return '0'
-  if (abs < 0.0001) return v.toExponential(2)
-  if (abs < 0.01) return v.toFixed(4)
-  if (abs < 1) return v.toFixed(3)
-  if (abs >= 1e9) return (v / 1e9).toFixed(2) + 'B'
-  if (abs >= 1e6) return (v / 1e6).toFixed(2) + 'M'
-  if (abs >= 1e4) return v.toLocaleString('en-IN', { maximumFractionDigits: 0 })
-  return v.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+  return Number(v).toLocaleString('en-IN', { maximumFractionDigits: 2 })
 }
 
 // Derive absolute-mode winner
