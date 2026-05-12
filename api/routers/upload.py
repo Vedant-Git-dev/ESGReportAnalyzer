@@ -14,7 +14,7 @@ from api.pipeline import (
     cache_load, cache_load_revenue, db_store_kpis, ensure_schema,
     get_llm_service, step_extract_missing, step_parse, ReportInfo,
 )
-from api.schemas import ALL_KPI_NAMES, KPI_PLAUSIBILITY, KPIRecord, RevenueInfo, UploadResponse
+from api.schemas import ALL_KPI_NAMES, KPIRecord, RevenueInfo, UploadResponse
 
 router = APIRouter(tags=["upload"])
 

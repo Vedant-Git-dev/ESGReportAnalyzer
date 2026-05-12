@@ -209,10 +209,6 @@ def _parse_num(s: str) -> float:
     return float(s.strip().replace(",", "").replace(" ", ""))
 
 
-def _validate(v: float) -> bool:
-    return _MIN_CR <= v <= _MAX_CR
-
-
 def _has_force_include(text: str) -> bool:
     tl = text.lower()
     return any(k in tl for k in _FORCE_INCLUDE_KWS)

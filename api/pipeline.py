@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from api.schemas import (
-    ALL_KPI_NAMES, DEFAULT_REVENUE_CR, KPI_GROUPS, KPI_PLAUSIBILITY,
+    ALL_KPI_NAMES, DEFAULT_REVENUE_CR, KPI_GROUPS,
     REPORT_TYPE_PRIORITY,
 )
 
@@ -433,9 +433,6 @@ def db_load_kpis_and_revenue(company_id: uuid.UUID, fy: int, company_name: str =
                     continue
                 val  = rec.normalized_value
                 unit = rec.unit or kdef.expected_unit
-                lo, hi = KPI_PLAUSIBILITY.get(kpi_name, (0, float("inf")))
-                if not (lo <= val <= hi):
-                    continue
                 src_report = db.query(Report).filter(Report.id == rec.report_id).first()
                 rec_type   = src_report.report_type if src_report else "unknown"
                 kpis[kpi_name] = {
@@ -584,10 +581,6 @@ def step_extract_missing(
                     continue
                 val  = ext.normalized_value
                 unit = ext.unit or ""
-                lo, hi = KPI_PLAUSIBILITY.get(ext.kpi_name, (0, float("inf")))
-                if not (lo <= val <= hi):
-                    log.append(f"    {ext.kpi_name}: out of range — dropped")
-                    continue
                 new_kpis[ext.kpi_name] = {
                     "value":      val,
                     "unit":       unit,

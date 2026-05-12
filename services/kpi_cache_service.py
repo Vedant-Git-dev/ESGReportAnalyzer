@@ -50,30 +50,6 @@ REPORT_TYPE_PRIORITY: dict[str, int] = {
 # Values below this threshold are treated as cache misses and re-extracted.
 MIN_CONFIDENCE = 0.40
 
-# Plausibility ranges per KPI (min, max) in canonical units.
-# Values outside this range are silently dropped — they are extraction errors.
-KPI_PLAUSIBILITY: dict[str, tuple[float, float]] = {
-    "scope_1_emissions":   (1,           5_000_000),
-    "scope_2_emissions":   (1,           5_000_000),
-    "total_ghg_emissions": (1,          10_000_000),
-    "energy_consumption":  (1_000,     500_000_000),
-    "water_consumption":   (100,       100_000_000),
-    "waste_generated":     (0.1,           500_000),
-    "employee_count":      (1,           5_000_000),
-    "renewable_energy_percentage": (0,         100),
-    "women_in_workforce_percentage": (0,        100),
-}
-
-
-def _is_plausible(kpi_name: str, value: float) -> bool:
-    """Return True when value falls within the known plausible range."""
-    limits = KPI_PLAUSIBILITY.get(kpi_name)
-    if limits is None:
-        return True
-    lo, hi = limits
-    return lo <= value <= hi
-
-
 def _type_priority_expr(Report):
     """SQLAlchemy CASE expression for report-type priority ordering."""
     return case(
@@ -167,14 +143,6 @@ class KPICacheService:
                 logger.debug(
                     "kpi_cache.low_confidence",
                     kpi=kpi_name, confidence=conf, threshold=MIN_CONFIDENCE,
-                )
-                continue
-
-            # Validate: plausibility gate
-            if not _is_plausible(kpi_name, val):
-                logger.warning(
-                    "kpi_cache.implausible_value",
-                    kpi=kpi_name, value=val, unit=unit,
                 )
                 continue
 
@@ -314,13 +282,7 @@ class KPICacheService:
             if val is None:
                 continue
 
-            # Plausibility gate before writing
-            if not _is_plausible(kpi_name, float(val)):
-                logger.warning(
-                    "kpi_cache.store_skipped_implausible",
-                    kpi=kpi_name, value=val, unit=unit,
-                )
-                continue
+            # Plausibility gate before writing - removed, values can be in any range
 
             # Dedup: same report + KPI + value
             exists = (

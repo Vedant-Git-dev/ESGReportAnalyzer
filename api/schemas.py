@@ -126,23 +126,6 @@ KPI_GROUPS: dict[str, dict] = {
 
 ALL_KPI_NAMES: list[str] = list(KPI_GROUPS.keys())
 
-KPI_PLAUSIBILITY: dict[str, tuple[float, float]] = {
-    "revenue_from_operations":    (5_000,   500_000),
-    "net_revenue":                (5_000,   600_000),
-    "revenue_per_employee":       (0.01,         50),
-    "scope_1_emissions":             (1,       5_000_000),
-    "scope_2_emissions":             (1,       5_000_000),
-    "scope_3_emissions":             (1,      10_000_000),
-    "energy_consumption":            (100,   500_000_000),
-    "water_consumption":             (100,   100_000_000),
-    "waste_generated":               (0.1,       500_000),
-    "renewable_energy_percentage":   (0,              100),
-    "employee_count":                (1,        5_000_000),
-    "women_in_workforce_percentage": (0,              100),
-    "complaints_filed":              (0,        1_000_000),
-    "complaints_pending":            (0,          100_000),
-}
-
 DEFAULT_REVENUE_CR = 315_322.0
 
 REPORT_TYPE_PRIORITY: dict[str, int] = {

@@ -38,7 +38,6 @@ logger = get_logger(__name__)
 # Financial — absolute values, no ratio normalization
 FINANCIAL_KPI_NAMES = [
     "revenue_from_operations",
-    "revenue_per_employee",
     "net_revenue",
 ]
 
