@@ -52,9 +52,10 @@ export const api = {
    * onProgress(event: {company, message}) called for each progress event.
    * onResult(data: CompareResponse)       called once when done.
    * onError(msg: string)                  called on error.
+   * onNotFound(data: {company, message})  called when no report is found.
    * Returns a close() function.
    */
-  compareStream(params, { onProgress, onResult, onError, onDone }) {
+  compareStream(params, { onProgress, onResult, onError, onDone, onNotFound }) {
     const qs = new URLSearchParams(params).toString()
     const es = new EventSource(`${BASE}/compare/stream?${qs}`)
 
@@ -66,6 +67,9 @@ export const api = {
     })
     es.addEventListener('error', (e) => {
       try { onError?.(JSON.parse(e.data)?.message || 'Stream error') } catch {}
+    })
+    es.addEventListener('not_found', (e) => {
+      try { onNotFound?.(JSON.parse(e.data)) } catch {}
     })
     es.addEventListener('done', () => {
       es.close()

@@ -199,6 +199,15 @@ async def compare_stream(
                 yield _sse("progress", {"company": c, "message": msg})
                 await asyncio.sleep(0.01)  # Small delay between messages
 
+            # Check if company 1 reports not found - stop and notify
+            if not getattr(data1, 'reports_found', True):
+                yield _sse("not_found", {
+                    "company": company1,
+                    "message": f"No ESG report found for {company1} FY{fy1}. Please try a different company or year.",
+                })
+                yield _sse("done", {})
+                return
+
             # Company 2
             yield _sse("progress", {"company": company2, "message": "Starting pipeline..."})
             data2 = await loop.run_in_executor(
@@ -208,6 +217,15 @@ async def compare_stream(
             for c, msg in drain_queue():
                 yield _sse("progress", {"company": c, "message": msg})
                 await asyncio.sleep(0.01)
+
+            # Check if company 2 reports not found - stop and notify
+            if not getattr(data2, 'reports_found', True):
+                yield _sse("not_found", {
+                    "company": company2,
+                    "message": f"No ESG report found for {company2} FY{fy2}. Please try a different company or year.",
+                })
+                yield _sse("done", {})
+                return
 
             yield _sse("progress", {"company": "benchmark", "message": "Building comparison..."})
             benchmark = await loop.run_in_executor(

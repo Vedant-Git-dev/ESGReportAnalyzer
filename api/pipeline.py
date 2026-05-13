@@ -44,6 +44,7 @@ class CompanyData:
     company_id:     Optional[uuid.UUID] = None
     report_infos:   list[ReportInfo]    = field(default_factory=list)
     file_path:      Optional[str]       = None
+    reports_found:  bool                = True  # True if reports exist, False if not found
 
 
 # ---------------------------------------------------------------------------
@@ -678,7 +679,7 @@ def run_company_pipeline(
             return CompanyData(
                 company_name=company_name, fy=fy, sector=sector,
                 kpi_records={}, revenue_result=None, log=log,
-                company_id=company_id,
+                company_id=company_id, reports_found=False,
             )
         db_data    = db_get_all_reports(company_name, fy)
         company_id = db_data.get("company_id") or company_id
@@ -797,6 +798,7 @@ def run_company_pipeline(
         kpi_records=final_merged, revenue_result=final_revenue_ops,
         log=log, company_id=company_id,
         report_infos=report_infos, file_path=final_db.get("file_path"),
+        reports_found=len(report_infos) > 0,
     )
 
 

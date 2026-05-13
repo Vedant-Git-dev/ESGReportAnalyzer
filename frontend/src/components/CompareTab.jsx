@@ -29,10 +29,10 @@ const GROUP_STYLES = {
 const groupKey = (value) => String(value || '').trim().toLowerCase()
 
 export default function CompareTab({ compareState, form }) {
-  const { running, progress1, progress2, result, error } = compareState
+  const { running, progress1, progress2, result, error, notFound } = compareState
 
   // Empty state
-  if (!running && !result && !error) {
+  if (!running && !result && !error && !notFound) {
     return <EmptyState />
   }
 
@@ -50,6 +50,24 @@ export default function CompareTab({ compareState, form }) {
           progress2={progress2}
           error={error}
         />
+      </div>
+    )
+  }
+
+  // Report Not Found
+  if (notFound && !result) {
+    return (
+      <div>
+        <div className="alert alert-warning">
+          <span style={{ fontSize: 18 }}>🔍</span>
+          <div>
+            <strong>Report Not Found</strong>
+            <p style={{ marginTop: 4, fontSize: 13, opacity: 0.9 }}>{notFound.message}</p>
+          </div>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 12 }}>
+          Try uploading the report PDFs directly using the Upload tab, or check that the company names and fiscal years are correct.
+        </p>
       </div>
     )
   }

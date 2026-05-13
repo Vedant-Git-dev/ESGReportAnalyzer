@@ -82,6 +82,9 @@ export function useCompare() {
       onError: (msg) => {
         setState(prev => ({ ...prev, error: msg, running: false }))
       },
+      onNotFound: (data) => {
+        setState(prev => ({ ...prev, error: data.message, running: false, notFound: data }))
+      },
       onDone: () => {
         setState(prev => ({ ...prev, running: false }))
       },

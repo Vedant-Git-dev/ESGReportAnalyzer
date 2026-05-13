@@ -11,3 +11,4 @@ logs/
 .claude-flow
 .mcp.json
 *.md
+*.sql
