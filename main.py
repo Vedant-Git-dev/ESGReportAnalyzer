@@ -1078,8 +1078,8 @@ def cmd_extraction_chunks(args) -> None:
                 Report.report_type.ilike(f"%{args.report}%")
             ).first()
         else:
-            # Default: prioritize BRSR > ESG > Integrated
-            type_priority = {"BRSR": 1, "ESG": 2, "Integrated": 0}
+            # Default: prioritize BRSR > ESG > Integrated (lower = higher priority)
+            type_priority = {"BRSR": 0, "ESG": 1, "Integrated": 2}
             reports = report_query.order_by(
                 Report.report_type
             ).all()
@@ -1326,7 +1326,7 @@ def _resolve_report_id_from_company(company_name: str, year: int) -> "uuid.UUID 
             print(f"   Run: python main.py ingest --company \"{company_name}\" --year {year}")
             return None
 
-        type_priority = {"BRSR": 1, "ESG": 2, "Integrated": 0}
+        type_priority = {"BRSR": 0, "ESG": 1, "Integrated": 2}
         reports_with_file = [r for r in reports if r.file_path and Path(r.file_path).exists()]
 
         if not reports_with_file:

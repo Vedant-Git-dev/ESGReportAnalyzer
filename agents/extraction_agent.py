@@ -137,7 +137,39 @@ _UNIT_CONVERSIONS: dict[tuple[str, str], float] = {
     ("kwh", "gwh"): 0.001,  # 1 kWh = 0.001 MWh (already close to GWh logic)
     ("kwh", "mwh"): 0.001,  # 1 kWh = 0.001 MWh
     ("mwh", "gwh"): 0.001,  # 1 MWh = 0.001 GWh
+    # Petroleum company TMTCO2e -> tCO2e (thousand metric tonnes -> metric tonnes)
+    ("tmtco2e", "tco2e"): 1000,
+    ("tmt co2e", "tco2e"): 1000,
+    ("tmtco e", "tco2e"): 1000,
+    # Petroleum company '000 GJ -> GJ (thousand GJ -> GJ)
+    ("'000 gj", "gj"): 1000,
+    ("000 gj", "gj"): 1000,
 }
+
+
+def _detect_unit_multiplier(text: str, kpi_name: str) -> float:
+    """
+    Detect unit multipliers from chunk text for petroleum company reports.
+    Returns multiplier to apply to the extracted value.
+    """
+    text_lower = text.lower()
+    # Normalize: replace newlines with spaces for detection
+    text_normalized = " ".join(text_lower.split())
+
+    # Check for TMTCO2e (thousand metric tonnes CO2e) - petroleum companies
+    if kpi_name in ("scope_1_emissions", "scope_2_emissions", "scope_3_emissions", "total_ghg_emissions"):
+        if "tmtco" in text_normalized or "tmt co" in text_normalized:
+            return 1000
+        # Also check for "total ghg emissions (tmtco" pattern
+        if "tmtco" in text_lower:
+            return 1000
+
+    # Check for '000 GJ format - petroleum company energy
+    if kpi_name == "energy_consumption":
+        if "'000 gj" in text_normalized or "000 gj" in text_normalized:
+            return 1000
+
+    return 1.0
 
 # ---------------------------------------------------------------------------
 # KPI aliases
@@ -150,11 +182,6 @@ _KPI_ALIASES: dict[str, list[str]] = {
     "scope_2_emissions": [
         "scope 2", "indirect emissions", "purchased electricity",
         "electricity consumption ghg", "market-based", "location-based",
-    ],
-    "total_ghg_emissions": [
-        "total emissions", "total ghg", "scope 1 and 2", "scope 1+2",
-        "combined emissions", "carbon footprint", "co2 equivalent",
-        "greenhouse gas", "ghg inventory", "carbon neutral",
     ],
     "energy_consumption": [
         "total energy", "energy consumed", "energy use", "energy usage",
@@ -276,15 +303,20 @@ def _parse_number(s: str) -> Optional[float]:
 _NUM      = r"([\d,]+(?:\.\d+)?)(?:\(\d+\))?"
 _WS       = r"[\s:--|]*"
 _UNIT_PAT = (
-    r"(tco2e?|t\s*co2e?|mt\s*co2e?|kt\s*co2e?|tonnes?\s*co2e?|"
+    r"(tco2e?|t\s*co2e?|mt\s*co2e?|kt\s*co2e?|tmtco2e?|tmt\s*co2e?|tonnes?\s*co2e?|"
     r"mwh|gwh|gj|tj|kl|kilolitr\w*|m3|mt|metric\s*tonn?\w*|"
-    r"%|percent|crore|lakh|number|nos|headcount)"
+    r"%|percent|crore|lakh|number|nos|headcount|'000\s*gj)"
 )
 
 _BROAD_PATTERNS = [
     rf"(?:was|is|were|of|:)\s*{_NUM}\s*{_UNIT_PAT}",
     rf"{_NUM}\s*{_UNIT_PAT}\s*(?:in|for|during|fy|fiscal)",
     rf"\|\s*{_NUM}\s*\|\s*{_UNIT_PAT}",
+    # TMTCO2e format (BPCL etc.) — number on same line as fiscal year
+    rf"(?:tmtco\s*e|tco\s*e|tmtco2e|tco2e)[^\n]*\n\s*{_NUM}",
+    rf"fy\s*2024[^\n]*\n\s*{_NUM}",
+    # Petroleum: '000 GJ format (e.g., "129,219.15 '000 GJ")
+    rf"([\d,]+(?:\.\d+)?)\s*'000\s*gj",
     # rf"(?:total(?:led|s)?|amount(?:ed|s)?|reached|stood at|equat\w+)\s*{_WS}{_NUM}\s*{_UNIT_PAT}",
 ]
 
@@ -320,6 +352,12 @@ def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]
             r"total\s+energy\s+consumed\s*\((?:A[^)]*)\)[^\n]*\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+energy\s+consumption[^\n]{0,80}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+energy\s+consumed[^\n]{0,80}\n([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
+            # ── Petroleum: '000 GJ format (BPCL, HPCL, Oil India) ───────────────
+            r"grand\s+total\s+([\d,]+(?:\.\d+)?)",
+            r"grand\s+total[^\n]*\n\s*([\d,]+(?:\.\d+)?)\s*'000\s*gj",
+            r"total\s+energy\s+consumption[^\n]*?\n\s*([\d,]+(?:\.\d+)?)\s*'000\s*gj",
+            # ── Energy in GJ directly ─────────────────────────────────────────
+            r"total\s+energy\s+consumption[^\n]{0,80}\s*(?:in\s+)?gj[^\n]*\n([\d,]+(?:\.\d+)?)",
         ],
         "water_consumption": [
             # ── Existing patterns ─────────────────────────────────────────────
@@ -342,6 +380,17 @@ def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]
             # ── Add next-line format to match more layouts ─────────────────────
             r"scope\s*1\s+emissions[^\n]*\n\s*(\d[\d,]+)",
             r"total\s+scope\s*1.{0,100}?\s+(\d[\d,]+)",
+            # ── BPCL format: "Scope 1 & Scope 2 emissions (TMTCO e)- Refineries\n9,919.61" ─
+            r"scope\s*1\s*&\s*scope\s*2\s+emissions[^\n]*\n\s*([\d,]+(?:\.\d+)?)",
+            r"scope\s*1\s+&\s*scope\s*2\s+emissions\s*\([^\)]+\)[^\n]*\n\s*([\d,]+(?:\.\d+)?)",
+            # ── BPCL Refineries / BU breakdown: "Scope 1 emissions (TMTCO e)- Refineries" ─
+            r"scope\s*1\s+emissions\s*\([^\)]+\)-?\s*refineries?[^\n]*\n\s*([\d,]+(?:\.\d+)?)",
+            r"scope\s*1\s+emissions\s*\([^\)]+\)[^\n]*\n\s*([\d,]+(?:\.\d+)?)\s+fy\s*2024",
+            # ── BPCL/HPCL table format: "Total Scope 1 emissions Metric tonnes of CO2 55,13,044" ─
+            # Value is actually in TMTCO2e (thousand MT), needs *1000 conversion
+            r"total\s+scope\s*1\s+emissions[^\n]*metric\s+tonnes?[^\n]*\n\s*([\d,]+(?:\.\d+)?)",
+            # BPCL table: "Scope 1 9,937.38* 9,714.87" - value on same line as label
+            r"scope\s*1\s+([\d,]+(?:\.\d+)?)\s*\*?",
         ],
         "scope_2_emissions": [
             # ── Existing patterns ─────────────────────────────────────────────
@@ -350,6 +399,14 @@ def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]
             # ── Add next-line format to match more layouts ─────────────────────
             r"scope\s*2\s+emissions[^\n]*\n\s*(\d[\d,]+)",
             r"total\s+scope\s*2.{0,100}?\s+(\d[\d,]+)",
+            # ── BPCL format: "Scope 1 & Scope 2 emissions (TMTCO e)- Refineries\n9,919.61 ... 612.34" ─
+            r"scope\s*1\s*&\s*scope\s*2\s+emissions[^\n]*\n[^\n]*\n\s*([\d,]+(?:\.\d+)?)",
+            # ── BPCL BU-wise Scope 2 table ─
+            r"scope\s*2\s+ghg\s+emissions[^\n]*\n[^\n]*refineries?[^\n]*\n\s*([\d,]+(?:\.\d+)?)",
+            # ── BPCL/HPCL table format with TMTCO2e ─
+            r"total\s+scope\s*2\s+emissions[^\n]*metric\s+tonnes?[^\n]*\n\s*([\d,]+(?:\.\d+)?)",
+            # BPCL table: "Scope 2 - location based 857.34" - value on same line
+            r"scope\s*2\s*-\s*location\s*based\s+([\d,]+(?:\.\d+)?)",
         ],
         "total_ghg_emissions": [],
 
@@ -358,27 +415,33 @@ def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]
             # ── Existing (unchanged) ─────────────────────────────────────────
             r"total\s+scope\s*3\s+emissions.{0,200}?metric\s+tonnes\s+of\s+([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+scope\s*3\s+emissions[\s\S]{0,300}?equivalent\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
-            r"scope\s*3\s+(?:ghg\s+)?emissions[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"total\s+value\s+chain\s+emissions[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
             r"other\s+indirect\s+\(scope\s*3\)[^\n]{0,80}\n\s*([\d,]+(?:\.\d+)?)(?:\(\d+\))?",
 
-            # ── Pattern A — "total scope 3 emissions" then value on next line ─
-            # Verified: pdfplumber layout=True page 167 of Infosys 2024 Integrated
-            r"total\s+scope\s*3\s+emissions[^\n]*\n\s*(" + _IND_NUM + r"(?:\.\d+)?)",
+            # ── BRSR table: "Metric tonnes of CO2 equivalent | 143,923,201*" ─
+            # Value ends with * (footnote marker); guards against "FY 2023-24" year cols
+            r"metric\s+tonnes?\s+of\s+(?:CO\s*)?2\s+equival\w*[^\n]*\n\s*(" + _IND_NUM + r"(?:\.\d+)?)\s*\*",
 
-            # ── Pattern B — any "scope 3 emissions" label then next line ─────
+            # ── "total scope 3 emissions" label then value on next line ─
+            r"total\s+scope\s*3\s+emissions[^\n]*\n\s*(" + _IND_NUM + r"(?:\.\d+)?)\s*\*",
+
+            # ── Any scope 3 emissions label then next line (5+ digit number) ─
             r"scope\s*3\s+(?:ghg\s+)?emissions[^\n]*\n\s*(" + _IND_NUM + r"(?:\.\d+)?)",
 
-            # ── Pattern C — "other indirect (scope 3)" then next line ────────
-            r"other\s+indirect\s+\(?scope\s*3\)?[^\n]*\n\s*(" + _IND_NUM + r"(?:\.\d+)?)",
-
-            # ── Pattern D — inline value with GHG unit on same line ──────────
+            # ── Inline value with GHG unit on same line ───────────────────────
             r"scope\s*3\s+(?:ghg\s+)?emissions[^\n]{0,100}?("
             + _IND_NUM + r"(?:\.\d+)?)\s*(?:tco2e?|metric\s*tonn\w*)",
 
-            # ── Pattern E — dotall search for "equivalent" then newline+value ─
+            # ── Dotall search for "equivalent" then newline+value ─────────────
             r"total\s+scope\s*3\s+emissions[\s\S]{0,400}?equivalent[^\n]*\n\s*("
             + _IND_NUM + r"(?:\.\d+)?)",
+
+            # ── BPCL/HPCL table format with TMTCO2e ───────────────────────────
+            r"total\s+scope\s*3\s+emissions[^\n]*metric\s+tonnes?[^\n]*\n\s*([\d,]+(?:\.\d+)?)",
+            # BPCL table: "Scope 3 1,58,807.14" - value on same line
+            r"scope\s*3\s+([\d,]+(?:\.\d+)?)",
+            # HPCL/BPCL table: "Total Scope 3 emissions* | Metric tonnes of CO2 equivalent | 143,923,201*"
+            r"total\s+scope\s*3\s+emissions\*?\s*\|\s*[^\|]*\|\s*(" + _IND_NUM + r")\s*\*?",
         ],
 
         # ── renewable_energy_percentage ──────────────────────────────────────
@@ -509,6 +572,16 @@ def _try_block_patterns(chunk, kpi: "KPIDefinition") -> Optional["ExtractedKPI"]
                 if value < 0.1:
                     continue
                 confidence = 0.93 if chunk.chunk_type == "table" else 0.88
+
+            # Apply unit multiplier for petroleum company formats (TMTCO2e, '000 GJ)
+            unit_multiplier = _detect_unit_multiplier(text, kpi.name)
+            if unit_multiplier > 1.0:
+                value = value * unit_multiplier
+                logger.info(
+                    "extraction.unit_multiplier_applied",
+                    kpi=kpi.name, original_value=value / unit_multiplier,
+                    multiplier=unit_multiplier, adjusted_value=value,
+                )
 
             logger.info(
                 "extraction.block_pattern_hit",

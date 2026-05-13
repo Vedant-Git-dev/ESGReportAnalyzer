@@ -125,6 +125,8 @@ KPI_STRICT_FILTERS: dict[str, dict] = {
             "energy from grid", "total energy consumed",
             "total energy consumption", "electricity consumption",
             "non-renewable energy", "renewable energy consumed",
+            "energy intensity", "energy management", "energy transition",
+            "total electricity", "electricity consumption",
         ],
         "must_exclude":  [
             "emissions tco2e",      # GHG table rows

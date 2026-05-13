@@ -38,10 +38,25 @@ _STOP_WORDS = {
     "we", "their", "they", "he", "she", "his", "her", "which", "who", "also",
 }
 
-_ESG_TERMS = {
-    "ghg", "co2", "nox", "sox", "esg", "kl", "mwh", "gwh", "gj", "tj",
-    "fte", "csr", "epi", "re", "pv",
-}
+_ESG_TERMS = frozenset({
+    "ghg", "co2", "co", "scope", "nox", "sox", "esg", "kl", "mwh", "gwh",
+    "gj", "tj", "fte", "csr", "epi", "re", "pv", "co2e", "tco2e",
+})
+
+# Multi-word ESG phrases that matter for retrieval but get split by tokenization.
+# When both words appear in text, add the phrase as a keyword.
+_ESG_PHRASES = frozenset([
+    "scope 1", "scope 2", "scope 3", "scope i", "scope ii", "scope iii",
+    "total scope", "scope 1 and", "scope 2 and",
+    "co2 equivalent", "co2e", "tco2e", "t co2e",
+    "ghg emission", "greenhouse gas",
+    "renewable energy", "total energy", "energy consumption",
+    "energy consumed", "energy use", "energy intensity",
+    "water consumption", "water withdrawal", "total water",
+    "waste generated", "total waste",
+    "women workforce", "women employees",
+    "complaints filed", "complaints pending",
+])
 
 # KPI keywords that trigger label+value merge
 _KPI_LABEL_KEYWORDS: frozenset[str] = frozenset([
@@ -81,11 +96,28 @@ def _estimate_tokens(text: str) -> int:
 # ---------------------------------------------------------------------------
 
 def _extract_keywords(text: str) -> str:
-    tokens = re.findall(r"[a-zA-Z0-9]+", text.lower())
+    text_lower = text.lower()
+    tokens = re.findall(r"[a-zA-Z0-9]+", text_lower)
     keywords = {
         t for t in tokens
         if (len(t) > 2 and t not in _STOP_WORDS) or t in _ESG_TERMS
     }
+    # Detect multi-word ESG phrases split by tokenization (e.g. "scope 1" → "scope" + "1")
+    # Also detect hyphenated/spaced forms like "co2-equivalent" → "co2" + "equivalent"
+    token_set = set(tokens)
+    for phrase in _ESG_PHRASES:
+        parts = phrase.split()
+        if len(parts) == 2:
+            w1, w2 = parts
+            w1_clean = w1.lower()
+            w2_clean = w2.lower()
+            if w1_clean in token_set and w2_clean in token_set:
+                keywords.add(phrase)
+            # Also handle hyphenated: "co2-equivalent" → token "co2" + "equivalent"
+            if "-" in phrase:
+                hyphenated = phrase.replace(" ", "-")
+                if re.search(r"\b" + hyphenated + r"\b", text_lower):
+                    keywords.add(phrase)
     if _NUMBER_RE.search(text):
         keywords.add("has_numbers")
     return " ".join(sorted(keywords))

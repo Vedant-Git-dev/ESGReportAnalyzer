@@ -8,3 +8,6 @@ logs/
 */node_modules/
 *.vscode/
 .claude
+.claude-flow
+.mcp.json
+*.md
