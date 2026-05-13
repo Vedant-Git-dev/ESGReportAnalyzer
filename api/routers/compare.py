@@ -160,38 +160,54 @@ async def compare_stream(
         ensure_schema()
         llm = get_llm_service()
 
-        loop     = asyncio.get_event_loop()
-        data1    = None
-        data2    = None
+        loop = asyncio.get_event_loop()
+        data1 = None
+        data2 = None
 
-        # Company 1
-        def _emit1(msg: str) -> None:
-            pass  # captured in run_in_executor — can't yield from sync callback
+        # Queue for progress messages from thread executor
+        progress_queue: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
 
-        log1: list[str] = []
-        log2: list[str] = []
+        # Create emit callbacks that capture company name
+        def make_emit(company: str):
+            def _emit(msg: str) -> None:
+                progress_queue.put_nowait((company, msg))
+            return _emit
 
-        # We run the blocking pipeline in a thread executor and collect events.
-        # Progress messages are captured in the log and emitted after each company.
+        def run_with_progress(company: str, company_name: str, fy: int):
+            """Run pipeline with progress callback."""
+            return run_company_pipeline(company_name, fy, sector, llm, emit=make_emit(company))
+
+        def drain_queue() -> list[tuple[str, str]]:
+            """Drain all messages from queue."""
+            messages = []
+            while not progress_queue.empty():
+                try:
+                    messages.append(progress_queue.get_nowait())
+                except asyncio.QueueEmpty:
+                    break
+            return messages
 
         try:
+            # Company 1
             yield _sse("progress", {"company": company1, "message": "Starting pipeline..."})
             data1 = await loop.run_in_executor(
                 None,
-                lambda: run_company_pipeline(company1, fy1, sector, llm),
+                lambda: run_with_progress(company1, company1, fy1),
             )
-            for msg in data1.log:
-                yield _sse("progress", {"company": company1, "message": msg})
-                await asyncio.sleep(0)   # yield control
+            # Drain and emit progress
+            for c, msg in drain_queue():
+                yield _sse("progress", {"company": c, "message": msg})
+                await asyncio.sleep(0.01)  # Small delay between messages
 
+            # Company 2
             yield _sse("progress", {"company": company2, "message": "Starting pipeline..."})
             data2 = await loop.run_in_executor(
                 None,
-                lambda: run_company_pipeline(company2, fy2, sector, llm),
+                lambda: run_with_progress(company2, company2, fy2),
             )
-            for msg in data2.log:
-                yield _sse("progress", {"company": company2, "message": msg})
-                await asyncio.sleep(0)
+            for c, msg in drain_queue():
+                yield _sse("progress", {"company": c, "message": msg})
+                await asyncio.sleep(0.01)
 
             yield _sse("progress", {"company": "benchmark", "message": "Building comparison..."})
             benchmark = await loop.run_in_executor(
