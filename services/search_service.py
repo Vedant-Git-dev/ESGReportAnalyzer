@@ -271,14 +271,25 @@ def is_correct_year(text: str, target_year: int) -> bool:
         return False
 
     strong_patterns: list[str] = [
-        f"{prev}-{str(target_year)[-2:]}",
-        f"{str(prev)}_{target_year}",
-        f"{prev}\u2013{str(target_year)[-2:]}",
-        f"fy{target_year}",
-        f"fy{str(target_year)[-2:]}",
+        f"{prev}-{str(target_year)[-2:]}",       # 2024-25
+        f"{str(prev)}_{target_year}",            # 2024_2025
+        f"{prev}\u2013{str(target_year)[-2:]}", # 2024\u201325 (en-dash)
+        f"fy{target_year}",                     # fy2025
+        f"fy{str(target_year)[-2:]}",           # fy25
+        f"fy{prev}-{str(target_year)[-2:]}",    # fy2024-25
+        f"fy{str(prev)[-2:]}-{str(target_year)[-2:]}",  # fy24-25
     ]
     if any(v in text for v in strong_patterns):
         return True
+
+    # Guard: reject standalone "fy{prev}" or "fy{prev_short}" (e.g., "FY24" alone means FY2023-24).
+    # But allow "fy{prev}-{year_short}" or "fy{prev_short}-{year_short}" which are valid.
+    year_short = str(target_year)[-2:]
+    prev_short = str(prev)[-2:]
+    has_prev_fy_standalone = f"fy{prev}" in text or f"fy{prev_short}" in text
+    has_prev_fy_range = f"fy{prev}-{year_short}" in text or f"fy{prev_short}-{year_short}" in text
+    if has_prev_fy_standalone and not has_prev_fy_range:
+        return False
 
     bare_year = str(target_year)
     if bare_year not in text:
@@ -370,6 +381,20 @@ def _strict_validate(
         return False
 
     text_full = f"{title} {snippet} {url}".lower()
+
+    # Title-first check: reject if title explicitly mentions previous fiscal year
+    # (e.g., "FY24" in title is stronger signal than "2024-25" in snippet)
+    title_lower = title.lower()
+    prev = target_year - 1
+    prev_short = str(prev)[-2:]
+    if f"fy{prev}" in title_lower or f"fy{prev_short}" in title_lower:
+        logger.debug(
+            "search.strict_filter.title_prev_year",
+            url=url[:90],
+            target_year=target_year,
+            title_fy_match=f"fy{prev}" in title_lower,
+        )
+        return False
 
     # Strict year check - must match exactly
     if not is_correct_year(text_full, target_year):
